@@ -1,7 +1,7 @@
+#include "GEpch.h"
 #include "Application.h"
 #include "Log.h"
 #include "Events/ApplicationEvent.h"
-
 namespace GE
 {
 	Application::Application()

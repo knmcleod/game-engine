@@ -18,6 +18,9 @@ project "game-engine"
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 
+	pchheader "GEpch.h"
+	pchsource "%{prj.name}/src/GEpch.cpp"
+
 	files
 	{
 		"%{prj.name}/src/**.h",
