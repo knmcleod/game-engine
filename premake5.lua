@@ -10,6 +10,11 @@ workspace "game-engine"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
+IncludeDir = {}
+IncludeDir["glfw"] = "game-engine/vender/glfw/include"
+
+include "game-engine/vender/glfw"
+
 project "game-engine"
 	location "game-engine"
 	kind "SharedLib"
@@ -30,7 +35,15 @@ project "game-engine"
 	includedirs
 	{
 		"%{prj.name}/src",
-		"%{prj.name}/vender/spdlog/include"
+		"%{prj.name}/vender/spdlog/include",
+		"%{IncludeDir.glfw}"
+	}
+
+	links
+	{
+		"glfw",
+		"opengl32.lib",
+		"dwmapi.lib"
 	}
 
 	filter "system:windows"
