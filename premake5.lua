@@ -64,14 +64,17 @@ project "game-engine"
 
 	filter "configurations:Debug"
 		defines "GE_DEBUG"
+		buildoptions "/MDd"
 		symbols "On"
 
 	filter "configurations:Release"
 		defines "GE_RELEASE"
+		buildoptions "/MD"
 		optimize "On"
 
 	filter "configurations:Dist"
 		defines "GE_DIST"
+		buildoptions "/MD"
 		optimize "On"
 
 project "sandbox"
@@ -81,7 +84,7 @@ project "sandbox"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
-
+	
 	files
 	{
 		"%{prj.name}/src/**.h",
@@ -111,13 +114,16 @@ project "sandbox"
 
 	filter "configurations:Debug"
 		defines "GE_DEBUG"
+		buildoptions "/MDd"
 		symbols "On"
 
 	filter "configurations:Release"
 		defines "GE_RELEASE"
+		buildoptions "/MD"
 		optimize "On"
 
 	filter "configurations:Dist"
 		defines "GE_DIST"
+		buildoptions "/MD"
 		optimize "On"
 
