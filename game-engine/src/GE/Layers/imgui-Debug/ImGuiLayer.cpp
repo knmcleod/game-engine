@@ -1,7 +1,7 @@
 #include "GEpch.h"
 #include "ImGuiLayer.h"
 
-#include "GE/Application.h"
+#include "GE/Application/Application.h"
 
 #include "imgui.h"
 #include "Platform/OpenGL/imgui_opengl3_renderer.h"

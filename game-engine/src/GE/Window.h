@@ -18,7 +18,6 @@ namespace GE
 			unsigned int height = 720)
 			: Title(title), Width(width), Height(height)
 		{
-
 		}
 	};
 
@@ -34,6 +33,8 @@ namespace GE
 
 		virtual unsigned int GetWidth() const = 0;
 		virtual unsigned int GetHeight() const = 0;
+
+		virtual void* GetNativeWindow() const = 0;
 
 		//Window attributes
 		virtual void SetEventCallback(const EventCallbackFn& callback) = 0;
