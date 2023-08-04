@@ -8,7 +8,7 @@
 
 #include "Window.h"
 
-#include "GE/LayerStack.h"
+#include "GE/Layers/LayerStack.h"
 
 namespace GE
 {
@@ -25,6 +25,9 @@ namespace GE
 
 		void PushLayer(Layer* layer);
 		void PushOverlay(Layer* layer);
+
+		inline static Application& GetApplication() { return *s_Instance; }
+		inline Window& GetWindow() { return *m_Window; }
 	private:
 		bool OnWindowClose(WindowCloseEvent& e);
 
@@ -32,6 +35,8 @@ namespace GE
 		bool m_Running = true;
 
 		LayerStack m_LayerStack;
+
+		static Application* s_Instance;
 	};
 
 	//Defined in Client

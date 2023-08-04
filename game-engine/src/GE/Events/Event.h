@@ -1,6 +1,6 @@
 #pragma once
 #include "GEpch.h"
-#include "Core.h"
+#include "GE/Core.h"
 
 namespace GE
 {
@@ -12,7 +12,7 @@ namespace GE
 		None = 0,
 		WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved,
 		AppTick, AppUpdate, AppRender,
-		KeyPressed, KeyReleased,
+		KeyPressed, KeyReleased, KeyTyped,
 		MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled
 	};
 

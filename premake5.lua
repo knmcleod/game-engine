@@ -12,8 +12,12 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 IncludeDir = {}
 IncludeDir["glfw"] = "game-engine/vender/glfw/include"
+IncludeDir["GLAD"] = "game-engine/vender/GLAD/include"
+IncludeDir["Imgui"] = "game-engine/vender/imgui"
 
 include "game-engine/vender/glfw"
+include "game-engine/vender/GLAD"
+include "game-engine/vender/imgui"
 
 project "game-engine"
 	location "game-engine"
@@ -36,12 +40,16 @@ project "game-engine"
 	{
 		"%{prj.name}/src",
 		"%{prj.name}/vender/spdlog/include",
-		"%{IncludeDir.glfw}"
+		"%{IncludeDir.glfw}",
+		"%{IncludeDir.GLAD}",
+		"%{IncludeDir.Imgui}"
 	}
 
 	links
 	{
 		"glfw",
+		"GLAD",
+		"Imgui",
 		"opengl32.lib",
 		"dwmapi.lib"
 	}
@@ -54,7 +62,8 @@ project "game-engine"
 		defines
 		{
 			"GE_PLATFORM_WINDOWS",
-			"GE_BUILD_DLL"
+			"GE_BUILD_DLL",
+			"GLFW_INCLUDE_NONE"
 		}
 
 		postbuildcommands
