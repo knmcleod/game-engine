@@ -1,7 +1,9 @@
 #pragma once
 
 #include "GE/Window.h"
-struct  GLFWwindow;
+#include "GE/Renderer/Context.h"
+
+#include <GLFW/glfw3.h>
 
 namespace GE
 {
@@ -32,11 +34,12 @@ namespace GE
 
 	private:
 		GLFWwindow* m_Window;
+		Context* m_Context;
 
 		struct WindowData
 		{
 			std::string Title;
-			unsigned int Width, Height;
+			unsigned int Width = 1280, Height = 720;
 			bool VSync;
 
 			EventCallbackFn EventCallback;

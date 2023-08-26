@@ -1,23 +1,29 @@
 #pragma once
-#include "GEpch.h"
-
-#include "GE/Core.h"
-
-#include "GE/Events/Event.h"
-#include "GE/Events/ApplicationEvent.h"
 
 #include "GE/Window.h"
 
+#include "GE/Input/Input.h"
+#include "GE/Events/ApplicationEvent.h"
+
 #include "GE/Layers/LayerStack.h"
+#include "GE/Layers/imgui/ImGuiLayer.h"
+
+#include "GE/Renderer/Renderer.h"
+#include "GE/Renderer/Buffer.h"
+#include "GE/Renderer/Shader.h"
+#include "GE/Renderer/VertexArray.h"
 
 namespace GE
 {
 
-	class GE_API Application
+	class  Application
 	{
 	public:
 		Application();
 		virtual ~Application();
+
+		inline static Application& GetApplication() { return *s_Instance; }
+		inline Window& GetWindow() { return *m_Window; }
 
 		void Run();
 
@@ -26,17 +32,23 @@ namespace GE
 		void PushLayer(Layer* layer);
 		void PushOverlay(Layer* layer);
 
-		inline static Application& GetApplication() { return *s_Instance; }
-		inline Window& GetWindow() { return *m_Window; }
 	private:
+		static Application* s_Instance;
+
 		bool OnWindowClose(WindowCloseEvent& e);
 
-		std::unique_ptr<Window> m_Window;
 		bool m_Running = true;
 
+		std::unique_ptr<Window> m_Window;
 		LayerStack m_LayerStack;
 
-		static Application* s_Instance;
+		ImGuiLayer* m_ImGuiLayer;
+
+		//	Rendering Variables
+		std::shared_ptr<Shader> m_Shader;
+		std::shared_ptr<VertexBuffer> m_VertexBuffer;
+		std::shared_ptr<IndexBuffer> m_IndexBuffer;
+		std::shared_ptr<VertexArray> m_VertexArray;
 	};
 
 	//Defined in Client

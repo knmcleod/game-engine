@@ -10,7 +10,7 @@
 #include "GE/Input/KeyCodes.h"
 #include "GE/Input/MouseCodes.h"
 
-#include "GE/Layers/imgui-Debug/ImGuiLayer.h"
+#include "GE/Layers/imgui/ImGuiLayer.h"
 
 // --	Entry Point		--
 #include "GE/EntryPoint.h"

@@ -14,7 +14,8 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 IncludeDir = {}
 IncludeDir["glfw"] = "game-engine/vender/glfw/include"
 IncludeDir["GLAD"] = "game-engine/vender/GLAD/include"
-IncludeDir["Imgui"] = "game-engine/vender/imgui"
+IncludeDir["ImGui"] = "game-engine/vender/imgui"
+IncludeDir["glm"] = "game-engine/vender/glm"
 
 group "Dependencies"
 	include "game-engine/vender/glfw"
@@ -24,9 +25,10 @@ group ""
 
 project "game-engine"
 	location "game-engine"
-	kind "SharedLib"
+	kind "StaticLib"
 	language "C++"
-	staticruntime "off"
+	cppdialect "C++17"
+	staticruntime "On"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -37,7 +39,9 @@ project "game-engine"
 	files
 	{
 		"%{prj.name}/src/**.h",
-		"%{prj.name}/src/**.cpp"
+		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/vender/glm/glm/**.hpp",
+		"%{prj.name}/vender/glm/glm/**.inl"
 	}
 
 	includedirs
@@ -46,32 +50,26 @@ project "game-engine"
 		"%{prj.name}/vender/spdlog/include",
 		"%{IncludeDir.glfw}",
 		"%{IncludeDir.GLAD}",
-		"%{IncludeDir.Imgui}"
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.glm}"
 	}
 
 	links
 	{
 		"glfw",
 		"GLAD",
-		"Imgui",
+		"ImGui",
 		"opengl32.lib",
 		"dwmapi.lib"
 	}
 
 	filter "system:windows"
-		cppdialect "C++17"
 		systemversion "latest"
-
 		defines
 		{
 			"GE_PLATFORM_WINDOWS",
 			"GE_BUILD_DLL",
 			"GLFW_INCLUDE_NONE"
-		}
-
-		postbuildcommands
-		{
-			("{COPY} %{cfg.buildtarget.relpath} \"../bin/" .. outputdir .. "/sandbox/\"")
 		}
 
 	filter "configurations:Debug"
@@ -93,7 +91,8 @@ project "sandbox"
 	location "sandbox"
 	kind "ConsoleApp"
 	language "C++"
-	staticruntime "off"
+	cppdialect "C++17"
+	staticruntime "On"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -106,8 +105,10 @@ project "sandbox"
 
 	includedirs
 	{
+		"game-engine/src",
 		"game-engine/vender/spdlog/include",
-		"game-engine/src"
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.glm}"
 	}
 
 	links
@@ -116,7 +117,6 @@ project "sandbox"
 	}
 
 	filter "system:windows"
-		cppdialect "C++17"
 		systemversion "latest"
 
 		defines
@@ -138,4 +138,3 @@ project "sandbox"
 		defines "GE_DIST"
 		runtime "Release"
 		optimize "On"
-

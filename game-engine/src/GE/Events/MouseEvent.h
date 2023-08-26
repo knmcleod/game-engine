@@ -4,7 +4,7 @@
 
 namespace GE
 {
-	class GE_API MouseMovedEvent : public Event
+	class  MouseMovedEvent : public Event
 	{
 	public:
 		MouseMovedEvent(float x, float y)
@@ -26,7 +26,7 @@ namespace GE
 		float m_MouseX, m_MouseY;
 	};
 
-	class GE_API MouseScrolledEvent : public Event
+	class  MouseScrolledEvent : public Event
 	{
 	public:
 		MouseScrolledEvent(float xOffset, float yOffset)
@@ -48,7 +48,7 @@ namespace GE
 		float m_XOffset, m_YOffset;
 	};
 
-	class GE_API MouseButtonEvent : public Event
+	class  MouseButtonEvent : public Event
 	{
 	public:
 		inline int GetMouseButton() const { return m_Button; }
@@ -58,10 +58,10 @@ namespace GE
 		MouseButtonEvent(int button)
 			: m_Button(button) {}
 
-		float m_Button;
+		int m_Button;
 	};
 
-	class GE_API MouseButtonPressedEvent : public MouseButtonEvent
+	class  MouseButtonPressedEvent : public MouseButtonEvent
 	{
 	public:
 		MouseButtonPressedEvent(int button)
@@ -77,7 +77,7 @@ namespace GE
 		EVENT_CLASS_TYPE(MouseButtonPressed)
 	};
 
-	class GE_API MouseButtonReleasedEvent : public MouseButtonEvent
+	class  MouseButtonReleasedEvent : public MouseButtonEvent
 	{
 	public:
 		MouseButtonReleasedEvent(int button)

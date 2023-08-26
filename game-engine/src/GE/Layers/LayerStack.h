@@ -7,7 +7,7 @@
 
 namespace GE
 {
-	class GE_API LayerStack
+	class  LayerStack
 	{
 	public:
 		LayerStack();
@@ -23,6 +23,6 @@ namespace GE
 	
 	private:
 		std::vector<Layer*> m_Layers;
-		std::vector<Layer*>::iterator m_LayerInsert;
+		unsigned int m_LayerInsertIndex = 0;
 	};
 }

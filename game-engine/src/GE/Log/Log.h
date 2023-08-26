@@ -6,7 +6,7 @@
 
 namespace GE
 {
-	class GE_API Log
+	class  Log
 	{
 	public: 
 		static void Init();

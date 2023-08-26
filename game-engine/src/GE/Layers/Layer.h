@@ -5,7 +5,7 @@
 
 namespace GE
 {
-	class GE_API Layer
+	class  Layer
 	{
 	public:
 		Layer(const std::string& name = "Layer");
@@ -14,6 +14,7 @@ namespace GE
 		virtual void OnAttach() {}
 		virtual void OnDetach() {}
 		virtual void OnUpdate() {}
+		virtual void OnImGuiRender() {}
 		virtual void OnEvent(Event& e) {}
 
 		inline const std::string& GetName() const { return m_DebugName;  }
