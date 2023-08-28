@@ -1,7 +1,5 @@
 #pragma once
 
-#include "GE/Core.h"
-
 namespace GE
 {
 	class  Input

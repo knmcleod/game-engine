@@ -1,29 +1,24 @@
 #pragma once
 
-#include "GE/Window.h"
-
-#include "GE/Input/Input.h"
+#include "GE/Window/Window.h"
+#include "GE/Window/Layers/LayerStack.h"
+#include "GE/Window/Layers/imgui/ImGuiLayer.h"
 #include "GE/Events/ApplicationEvent.h"
 
-#include "GE/Layers/LayerStack.h"
-#include "GE/Layers/imgui/ImGuiLayer.h"
-
-#include "GE/Renderer/Renderer.h"
-#include "GE/Renderer/Buffer.h"
-#include "GE/Renderer/Shader.h"
-#include "GE/Renderer/VertexArray.h"
+#include "GE/Rendering/Shader/Shader.h"
+#include "GE/Rendering/VertexArray/VertexArray.h"
 
 namespace GE
 {
 
-	class  Application
+	class Application
 	{
 	public:
 		Application();
 		virtual ~Application();
 
-		inline static Application& GetApplication() { return *s_Instance; }
-		inline Window& GetWindow() { return *m_Window; }
+		inline static Application& GetApplication() { return *s_Instance; };
+		inline Window& GetWindow() { return *m_Window; };
 
 		void Run();
 

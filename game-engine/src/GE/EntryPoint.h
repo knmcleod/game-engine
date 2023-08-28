@@ -1,14 +1,16 @@
 #pragma once
+
+#include "GE/Application/Application.h"
+
 #ifdef GE_PLATFORM_WINDOWS
-extern GE::Application* GE::CreateApplication();
+	extern GE::Application* GE::CreateApplication();
 
-int main(int argc, char** argv)
-{
-	GE::Log::Init();
-	GE_CORE_WARN("Core Warn");
+	int main(int argc, char** argv)
+	{
+		GE::Log::Init();
 
-	auto app = GE::CreateApplication();
-	app->Run();
-	delete app;
-}
+		auto app = GE::CreateApplication();
+		app->Run();
+		delete app;
+	}
 #endif // GE_PLATFORM_WINDOWS

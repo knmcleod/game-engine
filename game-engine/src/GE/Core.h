@@ -1,4 +1,6 @@
 #pragma once
+#include "GE/Log/Log.h"
+
 #ifdef GE_PLATFORM_WINDOWS
 
 #else
@@ -21,5 +23,3 @@
 #define BIT(x) (1 << x)
 
 #define GE_BIND_EVENT_FN(fn) std::bind(&fn, this, std::placeholders::_1)
-
-

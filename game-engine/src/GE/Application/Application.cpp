@@ -1,5 +1,7 @@
 #include "GEpch.h"
-#include "Application.h"
+
+#include "GE/Application/Application.h"
+#include "GE/Rendering/Renderer/Renderer.h"
 
 namespace GE
 {
@@ -11,7 +13,6 @@ namespace GE
 	{
 		GE_CORE_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
-		Renderer::SetAPI(Renderer::RendererAPI::OpenGL);
 
 		//Creates Window and Binds Events
 		m_Window = std::unique_ptr<Window>(Window::Create());
@@ -87,9 +88,10 @@ a_color = vec4(v_Position * 0.5 + 0.5, 1.0);
 	{
 		while (m_Running)
 		{
-
+			Renderer::Start();
 			m_Shader->Bind();
-			m_VertexArray->Bind();
+			Renderer::Run(m_VertexArray);
+			Renderer::End();
 			
 			//	Updates Layers
 			for (Layer* layer : m_LayerStack)

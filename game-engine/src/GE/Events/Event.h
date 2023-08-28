@@ -1,6 +1,7 @@
 #pragma once
-#include "GEpch.h"
-#include "GE/Core.h"
+
+#include <string>
+#include <sstream>
 
 namespace GE
 {

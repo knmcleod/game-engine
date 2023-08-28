@@ -1,4 +1,4 @@
-#include <GE.h>
+#include <GE/GE.h>
 
 class ExampleLayer : public GE::Layer
 {
