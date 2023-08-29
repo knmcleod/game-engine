@@ -1,4 +1,5 @@
 #pragma once
+
 #include "GE/Log/Log.h"
 
 #ifdef GE_PLATFORM_WINDOWS

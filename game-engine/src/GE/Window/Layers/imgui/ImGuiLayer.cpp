@@ -17,43 +17,6 @@ namespace GE
 
 	}
 
-	void ImGuiLayer::OnAttach()
-	{
-		//	Context Setup
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
-
-		ImGuiIO& io = ImGui::GetIO(); (void)io;
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-	
-		//	Style Setup
-		ImGui::StyleColorsDark();
-		ImGuiStyle& style = ImGui::GetStyle();
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			style.WindowRounding = 0.0f;
-			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-		}
-
-		Application& application = Application::GetApplication();
-		GLFWwindow* window = static_cast<GLFWwindow*>(application.GetWindow().GetNativeWindow());
-
-
-		//	Platform/Renderer bindings Setup
-		ImGui_ImplGlfw_InitForOpenGL(window, true);
-		ImGui_ImplOpenGL3_Init("#version 410");
-	}
-
-	void ImGuiLayer::OnDetach()
-	{
-		ImGui_ImplOpenGL3_Shutdown();
-		ImGui_ImplGlfw_Shutdown();
-		ImGui::DestroyContext();
-	}
-
 	void ImGuiLayer::Begin()
 	{
 		ImGui_ImplOpenGL3_NewFrame();
@@ -79,6 +42,43 @@ namespace GE
 			glfwMakeContextCurrent(backup_current_contect);
 
 		}
+	}
+
+	void ImGuiLayer::OnAttach()
+	{
+		//	Context Setup
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+
+		ImGuiIO& io = ImGui::GetIO(); (void)io;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+		//	Style Setup
+		ImGui::StyleColorsDark();
+		ImGuiStyle& style = ImGui::GetStyle();
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			style.WindowRounding = 0.0f;
+			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+		}
+
+		Application& application = Application::GetApplication();
+		GLFWwindow* window = static_cast<GLFWwindow*>(application.GetWindow().GetNativeWindow());
+
+
+		//	Platform/Renderer bindings Setup
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
+		ImGui_ImplOpenGL3_Init("#version 410");
+	}
+
+	void ImGuiLayer::OnDetach()
+	{
+		ImGui_ImplOpenGL3_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
 	}
 
 	void ImGuiLayer::OnImGuiRender()

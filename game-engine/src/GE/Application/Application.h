@@ -1,5 +1,7 @@
 #pragma once
 
+#include "GE/Core.h"
+
 #include "GE/Window/Window.h"
 #include "GE/Window/Layers/LayerStack.h"
 #include "GE/Window/Layers/imgui/ImGuiLayer.h"
@@ -7,6 +9,8 @@
 
 #include "GE/Rendering/Shader/Shader.h"
 #include "GE/Rendering/VertexArray/VertexArray.h"
+
+#include "GE/Rendering/Camera/OrthographicCamera.h"
 
 namespace GE
 {
@@ -30,8 +34,6 @@ namespace GE
 	private:
 		static Application* s_Instance;
 
-		bool OnWindowClose(WindowCloseEvent& e);
-
 		bool m_Running = true;
 
 		std::unique_ptr<Window> m_Window;
@@ -41,9 +43,11 @@ namespace GE
 
 		//	Rendering Variables
 		std::shared_ptr<Shader> m_Shader;
-		std::shared_ptr<VertexBuffer> m_VertexBuffer;
-		std::shared_ptr<IndexBuffer> m_IndexBuffer;
 		std::shared_ptr<VertexArray> m_VertexArray;
+
+		OrthographicCamera m_OrthoCamera;
+
+		bool OnWindowClose(WindowCloseEvent& e);
 	};
 
 	//Defined in Client

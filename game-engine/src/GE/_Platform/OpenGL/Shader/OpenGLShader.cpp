@@ -1,4 +1,5 @@
 #include "GEpch.h"
+
 #include "GE/_Platform/OpenGL/Shader/OpenGLShader.h"
 
 namespace GE

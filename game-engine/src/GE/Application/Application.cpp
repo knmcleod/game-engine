@@ -1,6 +1,7 @@
 #include "GEpch.h"
 
 #include "GE/Application/Application.h"
+
 #include "GE/Rendering/Renderer/Renderer.h"
 
 namespace GE
@@ -9,7 +10,7 @@ namespace GE
 	
 	Application* Application::s_Instance = nullptr;
 
-	Application::Application()
+	Application::Application() : m_OrthoCamera(-1.0f, 1.0f, -1.0f, 1.0f)
 	{
 		GE_CORE_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
@@ -29,6 +30,7 @@ namespace GE
 		float vertices[3 * 3] = { -0.5f, -0.5f, 0.0f,
 									0.5f, -0.5f, 0.0f,
 									0.0f, 0.5f, 0.0f };
+		std::shared_ptr<VertexBuffer> m_VertexBuffer;
 		m_VertexBuffer.reset(VertexBuffer::Create(sizeof(vertices), vertices));
 		
 		//Sets up Layout using Vertex Buffer
@@ -44,6 +46,7 @@ namespace GE
 
 		//Creates Index Buffer
 		uint32_t indices[3] = { 0, 1, 2 };
+		std::shared_ptr<IndexBuffer> m_IndexBuffer;
 		m_IndexBuffer.reset(IndexBuffer::Create(std::size(indices), indices));
 		
 		//Add Index Buffer to Vertex Array
@@ -51,25 +54,30 @@ namespace GE
 
 		//Creates Shader
 		std::string vertexSrc = R"(#version 330 core
-layout(location = 0) in vec3 a_Position;
-layout(location = 1) in vec4 a_Color;
-out vec3 v_Position;
-out vec4 v_Color;
-void main()
-{
-v_Position = a_Position;
-v_Color = a_Color;
-gl_Position = vec4(a_Position, 1.0);
-}
-)";
+			layout(location = 0) in vec3 a_Position;
+			layout(location = 1) in vec4 a_Color;
+			uniform mat4 u_ViewProjection;
+			out vec3 v_Position;
+			out vec4 v_Color;
+			void main()
+			{
+				v_Position = a_Position;
+				v_Color = a_Color;
+				gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
+			}
+		)";
 
 		std::string fragmentSrc = R"(#version 330 core
-layout(location = 0) out vec4 a_color;
-in vec3 v_Position;
-void main()
-{
-a_color = vec4(v_Position * 0.5 + 0.5, 1.0);
-})";
+			layout(location = 0) out vec4 a_color;
+			in vec3 v_Position;
+			in vec4 v_Color;
+			void main()
+			{
+				a_color = vec4(v_Position * 0.5 + 0.5, 1.0);
+				a_color = v_Color;
+			}
+		)";
+
 		m_Shader.reset(Shader::Create(vertexSrc, fragmentSrc));
 	}
 
@@ -78,19 +86,14 @@ a_color = vec4(v_Position * 0.5 + 0.5, 1.0);
 
 	}
 
-	bool Application::OnWindowClose(WindowCloseEvent& e)
-	{
-		m_Running = false;
-		return true;
-	}
-
 	void Application::Run()
 	{
 		while (m_Running)
 		{
-			Renderer::Start();
-			m_Shader->Bind();
-			Renderer::Run(m_VertexArray);
+			RenderCommand::Clear();
+
+			Renderer::Start(m_OrthoCamera);
+			Renderer::Run(m_Shader, m_VertexArray);
 			Renderer::End();
 			
 			//	Updates Layers
@@ -125,6 +128,12 @@ a_color = vec4(v_Position * 0.5 + 0.5, 1.0);
 				break;
 		}
 
+	}
+
+	bool Application::OnWindowClose(WindowCloseEvent& e)
+	{
+		m_Running = false;
+		return true;
 	}
 
 	//	Layer Handling
