@@ -1,6 +1,4 @@
 #pragma once
-//	-- Core	--
-#include "GE/Core.h"
 
 //	--	Entry Point	--
 #include "GE/EntryPoint.h"
@@ -19,5 +17,17 @@
 #include "GE/Input/KeyCodes.h"
 #include "GE/Input/MouseCodes.h"
 
-//	-- Events	--
+//	--	Events	--
+#include "GE/Events/MouseEvent.h"
+#include "GE/Events/KeyEvent.h"
 #include "GE/Events/ApplicationEvent.h"
+
+//	--	Rendering	--
+#include "GE/Rendering/RenderCommand.h"
+#include "GE/Rendering/Renderer/Renderer.h"
+
+#include "GE/Rendering/Shader/Shader.h"
+#include "GE/Rendering/VertexArray/VertexArray.h"
+#include "GE/Rendering/VertexArray/Buffer.h"
+
+#include "GE/Rendering/Camera/OrthographicCamera.h"

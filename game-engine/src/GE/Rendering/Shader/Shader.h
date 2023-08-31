@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace GE
 {
@@ -55,7 +56,7 @@ namespace GE
 		virtual void Bind() const = 0;
 		virtual void Unbind() const = 0;
 
-		void UploadUniformMat4(const std::string& name, const glm::mat4& matrix);
+		virtual void UploadUniformMat4(const std::string& name, const glm::mat4& matrix) const = 0;
 	private:
 		uint32_t m_RendererID = 0;
 	};

@@ -16,7 +16,7 @@ namespace GE
 
 	}
 
-	void Renderer::Run(const std::shared_ptr<Shader>& shader, std::shared_ptr<VertexArray>& vertexArray)
+	void Renderer::Run(const std::shared_ptr<Shader>& shader, const std::shared_ptr<VertexArray>& vertexArray)
 	{
 		shader->Bind();
 		shader->UploadUniformMat4("u_ViewProjection", m_Data->ViewProjectionMatrix);

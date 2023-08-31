@@ -41,12 +41,6 @@ namespace GE
 
 		ImGuiLayer* m_ImGuiLayer;
 
-		//	Rendering Variables
-		std::shared_ptr<Shader> m_Shader;
-		std::shared_ptr<VertexArray> m_VertexArray;
-
-		OrthographicCamera m_OrthoCamera;
-
 		bool OnWindowClose(WindowCloseEvent& e);
 	};
 

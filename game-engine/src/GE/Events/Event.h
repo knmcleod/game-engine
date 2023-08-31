@@ -56,8 +56,7 @@ namespace GE
 		template<typename T>
 		using EventFn = std::function<bool(T&)>;
 	public:
-		EventDispatcher(Event& event)
-			: m_Event(event)
+		EventDispatcher(Event& event) : m_Event(event)
 		{
 
 		}
