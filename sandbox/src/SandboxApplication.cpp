@@ -1,7 +1,6 @@
 #include <GE/GE.h>
 
-//Test only
-#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 class ExampleLayer : public GE::Layer
 {
@@ -22,8 +21,7 @@ public:
 		//Sets up Layout using Vertex Buffer
 		GE::BufferLayout layout =
 		{
-			{ GE::Shader::ShaderDataType::Float3, "a_Position" },
-			{ GE::Shader::ShaderDataType::Float4, "a_Color" }
+			{ GE::Shader::ShaderDataType::Float3, "a_Position" }
 		};
 		m_VertexBuffer->SetLayout(layout);
 
@@ -41,18 +39,15 @@ public:
 		//Creates Shader
 		std::string vertexSrc = R"(#version 330 core
 			layout(location = 0) in vec3 a_Position;
-			layout(location = 1) in vec4 a_Color;
 
 			uniform mat4 u_ViewProjection;
 			uniform mat4 u_Transform;
 
 			out vec3 v_Position;
-			out vec4 v_Color;
 
 			void main()
 			{
 				v_Position = a_Position;
-				v_Color = a_Color;
 				gl_Position = u_ViewProjection * u_Transform * vec4(a_Position, 1.0);
 			}
 		)";
@@ -62,18 +57,19 @@ public:
 
 			in vec3 v_Position;
 			in vec4 v_Color;
+			
+			uniform vec3 u_Color;
 
 			void main()
 			{
-				a_color = vec4(v_Position * 0.5 + 0.5, 1.0);
-				a_color = v_Color;
+				a_color = vec4(u_Color, 1.0f);
 			}
 		)";
 
 		m_Shader.reset(GE::Shader::Create(vertexSrc, fragmentSrc));
 	}
 
-	void OnUpdate(GE::Timestep timestep) override
+	virtual void OnUpdate(GE::Timestep timestep) override
 	{
 		//	Camera Movement
 		if (GE::Input::IsKeyPressed(GE_KEY_LEFT))
@@ -132,10 +128,14 @@ public:
 		glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f));
 
 		glm::mat4 transform = glm::translate(glm::mat4(1.0), m_ShaderPosition) * scale;
+
+		m_Shader->UploadUniformFloat3("u_Color", m_shaderColor);
+
 		GE::Renderer::Run(m_Shader, m_VertexArray, transform);
 
 		GE::Renderer::End();
 	}
+
 private:
 	//	Rendering Variables
 	std::shared_ptr<GE::Shader> m_Shader;
@@ -143,7 +143,7 @@ private:
 
 	GE::OrthographicCamera m_OrthoCamera;
 
-	glm::vec3 m_CameraPosition = glm::vec3(1.0f);
+	glm::vec3 m_CameraPosition = glm::vec3(0.0f);
 	float m_CameraMoveSpeed = 0.1f;
 
 	float m_CameraRotation = 0.0f;
@@ -151,6 +151,8 @@ private:
 
 	glm::vec3 m_ShaderPosition = glm::vec3(1.0f);
 	float m_ShaderMoveSpeed = 0.5f;
+
+	glm::vec3 m_shaderColor = { 0.8f, 0.2f, 0.5f};
 };
 
 class Sandbox : public GE::Application
