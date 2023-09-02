@@ -95,16 +95,16 @@ public:
 		else if (GE::Input::IsKeyPressed(GE_KEY_D))
 		{
 			m_CameraRotation += m_CameraRotationSpeed * timestep;
-
-			GE::RenderCommand::Clear();
-
-			m_OrthoCamera.SetPosition(m_CameraPosition);
-			m_OrthoCamera.SetRotation(m_CameraRotation);
-
-			GE::Renderer::Start(m_OrthoCamera);
-			GE::Renderer::Run(m_Shader, m_VertexArray);
-			GE::Renderer::End();
 		}
+
+		GE::RenderCommand::Clear();
+
+		m_OrthoCamera.SetPosition(m_CameraPosition);
+		m_OrthoCamera.SetRotation(m_CameraRotation);
+
+		GE::Renderer::Start(m_OrthoCamera);
+		GE::Renderer::Run(m_Shader, m_VertexArray);
+		GE::Renderer::End();
 	}
 private:
 	//	Rendering Variables
