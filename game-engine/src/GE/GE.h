@@ -3,14 +3,17 @@
 //	--	Entry Point	--
 #include "GE/EntryPoint.h"
 
-//	-- Logging	==
+//	-- Logging	--
 #include "GE/Log/Log.h"
 
 //	--	Application	--
 #include "GE/Application/Application.h"
-#include "GE/Window/Layers/Layer.h"
-#include "GE/Window/Layers/LayerStack.h"
-#include "GE/Window/Layers/imgui/ImGuiLayer.h"
+#include "GE/Application/Window/Layers/Layer.h"
+#include "GE/Application/Window/Layers/LayerStack.h"
+#include "GE/Application/Window/Layers/imgui/ImGuiLayer.h"
+
+//	--	Timestep	--
+#include "GE/Core/Timestep/Timestep.h"
 
 //	--	Input	--
 #include "GE/Input/Input.h"

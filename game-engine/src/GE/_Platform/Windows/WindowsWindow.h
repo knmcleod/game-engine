@@ -1,7 +1,7 @@
 #pragma once
 #include <GLFW/glfw3.h>
 
-#include "GE/Window/Window.h"
+#include "GE/Application/Window/Window.h"
 
 #include "GE/Rendering/Context/Context.h"
 

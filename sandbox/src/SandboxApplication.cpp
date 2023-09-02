@@ -68,49 +68,44 @@ public:
 		m_Shader.reset(GE::Shader::Create(vertexSrc, fragmentSrc));
 	}
 
-	void OnUpdate() override
+	void OnUpdate(GE::Timestep timestep) override
 	{
 		if (GE::Input::IsKeyPressed(GE_KEY_LEFT))
 		{
-			m_CameraPosition.x -= m_CameraMoveSpeed;
+			m_CameraPosition.x -= m_CameraMoveSpeed * timestep;
 		}
 		else if (GE::Input::IsKeyPressed(GE_KEY_RIGHT))
 		{
-			m_CameraPosition.x += m_CameraMoveSpeed;
+			m_CameraPosition.x += m_CameraMoveSpeed * timestep;
 		}
 
 		if (GE::Input::IsKeyPressed(GE_KEY_UP))
 		{
-			m_CameraPosition.y += m_CameraMoveSpeed;
+			m_CameraPosition.y += m_CameraMoveSpeed * timestep;
 		}
 		else if (GE::Input::IsKeyPressed(GE_KEY_DOWN))
 		{
-			m_CameraPosition.y -= m_CameraMoveSpeed;
+			m_CameraPosition.y -= m_CameraMoveSpeed * timestep;
 		}
 
 		if (GE::Input::IsKeyPressed(GE_KEY_A))
 		{
-			m_CameraRotation -= m_CameraRotationSpeed;
+			m_CameraRotation -= m_CameraRotationSpeed * timestep;
 		}
 		else if (GE::Input::IsKeyPressed(GE_KEY_D))
 		{
-			m_CameraRotation += m_CameraRotationSpeed;
+			m_CameraRotation += m_CameraRotationSpeed * timestep;
+
+			GE::RenderCommand::Clear();
+
+			m_OrthoCamera.SetPosition(m_CameraPosition);
+			m_OrthoCamera.SetRotation(m_CameraRotation);
+
+			GE::Renderer::Start(m_OrthoCamera);
+			GE::Renderer::Run(m_Shader, m_VertexArray);
+			GE::Renderer::End();
 		}
-
-		GE::RenderCommand::Clear();
-
-		m_OrthoCamera.SetPosition(m_CameraPosition);
-		m_OrthoCamera.SetRotation(m_CameraRotation);
-
-		GE::Renderer::Start(m_OrthoCamera);
-		GE::Renderer::Run(m_Shader, m_VertexArray);
-		GE::Renderer::End();
 	}
-
-	void OnEvent(GE::Event& e) override
-	{
-	}
-
 private:
 	//	Rendering Variables
 	std::shared_ptr<GE::Shader> m_Shader;

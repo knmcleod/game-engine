@@ -1,10 +1,12 @@
 #pragma once
 
-#include "GE/Core.h"
+#include "GE/Core/Core.h"
+#include "GE/Core/Timestep/Timestep.h"
 
-#include "GE/Window/Window.h"
-#include "GE/Window/Layers/LayerStack.h"
-#include "GE/Window/Layers/imgui/ImGuiLayer.h"
+#include "GE/Application/Window/Window.h"
+#include "GE/Application/Window/Layers/LayerStack.h"
+#include "GE/Application/Window/Layers/imgui/ImGuiLayer.h"
+
 #include "GE/Events/ApplicationEvent.h"
 
 #include "GE/Rendering/Shader/Shader.h"
@@ -40,6 +42,8 @@ namespace GE
 		LayerStack m_LayerStack;
 
 		ImGuiLayer* m_ImGuiLayer;
+
+		float m_LastFrameTime = 0.0f;
 
 		bool OnWindowClose(WindowCloseEvent& e);
 	};

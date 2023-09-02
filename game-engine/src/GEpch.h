@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "GE/Core.h"
+#include "GE/Core/Core.h"
 #include "GE/Log/Log.h"
 
 #ifdef GE_PLATFORM_WINDOWS
