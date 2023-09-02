@@ -12,7 +12,9 @@ namespace GE
 		inline static RenderAPI::API GetAPI() { return RenderAPI::GetAPI(); }
 
 		static void Start(OrthographicCamera& orthoCamera);
-		static void Run(const std::shared_ptr<Shader>& shader, const std::shared_ptr<VertexArray>& vertexArray);
+		static void Run(const std::shared_ptr<Shader>& shader,
+						const std::shared_ptr<VertexArray>& vertexArray,
+						const glm::mat4& transform = glm::mat4(1.0f));
 		static void End();
 
 	private:
