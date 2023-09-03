@@ -12,8 +12,11 @@ namespace GE
 	{
 	public:
 		OpenGLContext(GLFWwindow* windowHandle);
-
+		
+		// Initializes context using GLFW and GLAD
 		virtual void Init() override;
+
+		// Swaps Buffers using GLFW
 		virtual void SwapBuffers() override;
 	private:
 		GLFWwindow* m_WindowHandle;

@@ -71,6 +71,7 @@ namespace GE
 		std::vector<BufferElements> m_Elements;
 		uint32_t m_Stride = 0;
 
+		// Calculates offset and stride based on elements size
 		void CalculateOffsetAndStride()
 		{
 			uint32_t offset = 0;
@@ -90,7 +91,10 @@ namespace GE
 	public:
 		virtual ~VertexBuffer() {}
 
+		// Binds buffer
 		virtual void Bind() const = 0;
+
+		// Unbinds buffer
 		virtual void Unbind() const = 0;
 
 		virtual inline BufferLayout& GetLayout() = 0;
@@ -104,7 +108,10 @@ namespace GE
 	public:
 		virtual ~IndexBuffer() {}
 
+		// Binds buffer
 		virtual void Bind() const = 0;
+
+		// Unbinds buffer
 		virtual void Unbind() const = 0;
 
 		virtual uint32_t GetCount() const = 0;

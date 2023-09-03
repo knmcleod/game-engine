@@ -26,6 +26,7 @@ namespace GE
 		inline static Application& GetApplication() { return *s_Instance; };
 		inline Window& GetWindow() { return *m_Window; };
 
+		// Runs Window - Updates Layers and Timestep
 		void Run();
 
 		void OnEvent(Event& e);

@@ -15,7 +15,7 @@ public:
 									0.5f, -0.5f, 0.0f,
 									0.0f, 0.5f, 0.0f,
 									0.0f, 0.0f, 0.0f};
-		std::shared_ptr<GE::VertexBuffer> m_VertexBuffer;
+		GE::Ref<GE::VertexBuffer> m_VertexBuffer;
 		m_VertexBuffer.reset(GE::VertexBuffer::Create(sizeof(vertices), vertices));
 
 		//Sets up Layout using Vertex Buffer
@@ -30,7 +30,7 @@ public:
 
 		//Creates Index Buffer
 		uint32_t indices[3] = { 0, 1, 2 };
-		std::shared_ptr<GE::IndexBuffer> m_IndexBuffer;
+		GE::Ref<GE::IndexBuffer> m_IndexBuffer;
 		m_IndexBuffer.reset(GE::IndexBuffer::Create(std::size(indices), indices));
 
 		//Add Index Buffer to Vertex Array
@@ -138,8 +138,8 @@ public:
 
 private:
 	//	Rendering Variables
-	std::shared_ptr<GE::Shader> m_Shader;
-	std::shared_ptr<GE::VertexArray> m_VertexArray;
+	GE::Ref<GE::Shader> m_Shader;
+	GE::Ref<GE::VertexArray> m_VertexArray;
 
 	GE::OrthographicCamera m_OrthoCamera;
 

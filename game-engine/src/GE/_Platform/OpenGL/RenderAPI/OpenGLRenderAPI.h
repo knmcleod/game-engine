@@ -9,8 +9,11 @@ namespace GE
 	class OpenGLRenderAPI : public RenderAPI
 	{
 	public:
+		//	Clears Buffers using OpenGL
 		virtual void Clear() override;
-		virtual void DrawIndices(const std::shared_ptr<VertexArray>& vertexArray) override;
+
+		//	Draws elements using OpenGL
+		virtual void DrawIndices(const Ref<VertexArray>& vertexArray) override;
 	};
 }
 

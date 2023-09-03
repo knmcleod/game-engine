@@ -15,9 +15,11 @@ namespace GE
 		inline static API GetAPI() { return s_API; }
 		inline static void SetAPI(API api) { s_API = api; }
 
+		//	Clears buffers
 		virtual void Clear() = 0;
 
-		virtual void DrawIndices(const std::shared_ptr<VertexArray>& vertexArray) = 0;
+		//	Draws elements
+		virtual void DrawIndices(const Ref<VertexArray>& vertexArray) = 0;
 	private:
 		static API s_API;
 	};

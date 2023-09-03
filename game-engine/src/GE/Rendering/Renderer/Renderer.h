@@ -9,12 +9,17 @@ namespace GE
 	class Renderer
 	{
 	public:
+		// Returns RenderAPI in use
 		inline static RenderAPI::API GetAPI() { return RenderAPI::GetAPI(); }
 
+		// Starts renderer using given camera 
 		static void Start(OrthographicCamera& orthoCamera);
-		static void Run(const std::shared_ptr<Shader>& shader,
-						const std::shared_ptr<VertexArray>& vertexArray,
+
+		// Runs shader amd vertex array at given transform
+		static void Run(const Ref<Shader>& shader,
+						const Ref<VertexArray>& vertexArray,
 						const glm::mat4& transform = glm::mat4(1.0f));
+		// Ends renderer
 		static void End();
 
 	private:

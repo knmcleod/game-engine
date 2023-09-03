@@ -13,7 +13,10 @@ namespace GE
 		OpenGLVertexBuffer(uint32_t size, float* vertices);
 		virtual ~OpenGLVertexBuffer();
 
+		// Binds buffer using OpenGL
 		virtual void Bind() const override;
+
+		// Unbinds buffer using OpenGL
 		virtual void Unbind() const override;
 
 		virtual inline BufferLayout& GetLayout() override { return m_Layout; };
@@ -29,7 +32,10 @@ namespace GE
 		OpenGLIndexBuffer(uint32_t size, uint32_t* indices);
 		virtual ~OpenGLIndexBuffer();
 
+		// Binds buffer using OpenGL
 		virtual void Bind() const override;
+
+		// Unbinds buffer using OpenGL
 		virtual void Unbind() const override;
 
 		virtual uint32_t GetCount() const { return m_Count; }

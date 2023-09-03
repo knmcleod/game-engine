@@ -6,12 +6,14 @@ namespace GE
 	class RenderCommand
 	{
 	public:
+		// Clears RenderAPI in use
 		inline static void Clear()
 		{ 
 			s_RenderAPI->Clear(); 
 		}
 
-		inline static void DrawIndices(const std::shared_ptr<VertexArray>& vertexArray)
+		// Draws elements to RenderAPI in use
+		inline static void DrawIndices(const Ref<VertexArray>& vertexArray)
 		{
 			s_RenderAPI->DrawIndices(vertexArray);
 		}

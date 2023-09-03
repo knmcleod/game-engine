@@ -50,26 +50,36 @@ namespace GE
 			return 0;
 		}
 
+		//	Returns created Shader given vertex and fragment sources
 		static Shader* Create(const std::string& vertexSrc,
 			const std::string& fragmentSrc);
 	
+		// Binds program
 		virtual void Bind() const = 0;
+		// Uninds program
 		virtual void Unbind() const = 0;
 
-		virtual void UploadUniformInt(const std::string& name, int value) = 0;
+		// Uploads uniform int to renderer
+		virtual void UploadUniformInt(const std::string& name,
+			int value) = 0;
 
+		// Uploads uniform float to renderer
 		virtual void UploadUniformFloat(const std::string& name,
 			const glm::vec1& vector) = 0;
 
+		// Uploads uniform 2d float to renderer
 		virtual void UploadUniformFloat2(const std::string& name,
 			const glm::vec2& vector) = 0;
 
+		// Uploads uniform 3d float to renderer
 		virtual void UploadUniformFloat3(const std::string& name,
 			const glm::vec3& vector) = 0;
 
+		// Uploads uniform 4d float to renderer
 		virtual void UploadUniformFloat4(const std::string& name,
 			const glm::vec4& vector) = 0;
 
+		// Uploads uniform 4x4 matrix to renderer
 		virtual void UploadUniformMat4(const std::string& name,
 			const glm::mat4& matrix) = 0;
 
