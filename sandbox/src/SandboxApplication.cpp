@@ -11,17 +11,22 @@ public:
 		m_VertexArray.reset(GE::VertexArray::Create());
 
 		//Creates Vertex Buffer
-		float vertices[3 * 4] = { -0.5f, -0.5f, 0.0f,
-									0.5f, -0.5f, 0.0f,
-									0.0f, 0.5f, 0.0f,
-									0.0f, 0.0f, 0.0f};
+		float vertices[] = {
+			// positions		// colors			// texture coords
+			0.5f, 0.5f, 0.0f,	1.0f, 0.0f, 0.0f,	1.0f, 1.0f,			// top right
+			0.5f, -0.5f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 0.0f,			// bottom right
+			-0.5f, -0.5f, 0.0f,	0.0f, 0.0f, 0.0f,	0.0f, 0.0f,			// bottom left
+			-0.5f, 0.5f, 0.0f,	1.0f, 1.0f, 0.0f,	0.0f, 1.0f			// top left
+		};
 		GE::Ref<GE::VertexBuffer> m_VertexBuffer;
 		m_VertexBuffer.reset(GE::VertexBuffer::Create(sizeof(vertices), vertices));
 
 		//Sets up Layout using Vertex Buffer
 		GE::BufferLayout layout =
 		{
-			{ GE::Shader::ShaderDataType::Float3, "a_Position" }
+			{ GE::Shader::ShaderDataType::Float3, "a_Transform" },
+			{ GE::Shader::ShaderDataType::Float3, "a_Color" },
+			{ GE::Shader::ShaderDataType::Float2, "a_TextureCoord" }
 		};
 		m_VertexBuffer->SetLayout(layout);
 
@@ -29,44 +34,55 @@ public:
 		m_VertexArray->AddVertexBuffer(m_VertexBuffer);
 
 		//Creates Index Buffer
-		uint32_t indices[3] = { 0, 1, 2 };
+		uint32_t indices[] = { 0, 1, 2 };
 		GE::Ref<GE::IndexBuffer> m_IndexBuffer;
 		m_IndexBuffer.reset(GE::IndexBuffer::Create(std::size(indices), indices));
 
 		//Add Index Buffer to Vertex Array
 		m_VertexArray->AddIndexBuffer(m_IndexBuffer);
 
-		//Creates Shader
-		std::string vertexSrc = R"(#version 330 core
-			layout(location = 0) in vec3 a_Position;
+		//Creates TextureShader
+		std::string vertexTextureSrc = R"(#version 330 core
+			layout(location = 0) in vec3 a_Transform;
+			layout(location = 1) in vec3 a_Color;
+			layout(location = 2) in vec2 a_TextureCoord;
 
+			out vec3 v_Color;
+			out vec2 v_TextureCoord;
+			
 			uniform mat4 u_ViewProjection;
 			uniform mat4 u_Transform;
 
-			out vec3 v_Position;
-
 			void main()
 			{
-				v_Position = a_Position;
-				gl_Position = u_ViewProjection * u_Transform * vec4(a_Position, 1.0);
+				gl_Position = u_ViewProjection * u_Transform * vec4(a_Transform, 1.0);
+				v_Color = a_Color;
+				v_TextureCoord = a_TextureCoord;
 			}
 		)";
 
-		std::string fragmentSrc = R"(#version 330 core
-			layout(location = 0) out vec4 a_color;
+		std::string fragmentTextureSrc = R"(#version 330 core
+			in vec3 v_Color;
+			in vec2 v_TextureCoord;
 
-			in vec3 v_Position;
-			in vec4 v_Color;
-			
-			uniform vec3 u_Color;
+			out vec4 color;
+
+			uniform sampler2D u_Texture;
 
 			void main()
 			{
-				a_color = vec4(u_Color, 1.0f);
+				color = texture2D(u_Texture, v_TextureCoord) * vec4(v_Color, 1.0);
 			}
 		)";
 
-		m_Shader.reset(GE::Shader::Create(vertexSrc, fragmentSrc));
+		m_TextureShader.reset(GE::Shader::Create(vertexTextureSrc, fragmentTextureSrc));
+		m_Texture.reset(GE::Texture2D::Create("assets/textures/image.jpg"));
+
+		m_TextureShader->Bind();
+		m_Texture->Bind();
+
+		m_TextureShader->UploadUniformInt("u_Texture", 0);
+
 	}
 
 	virtual void OnUpdate(GE::Timestep timestep) override
@@ -118,6 +134,7 @@ public:
 			m_ShaderPosition.y -= m_ShaderMoveSpeed * timestep;
 		}
 
+		GE::RenderCommand::SetClearColor({ 0.5f, 0.5f, 0.5f, 1.0f });
 		GE::RenderCommand::Clear();
 
 		m_OrthoCamera.SetPosition(m_CameraPosition);
@@ -129,30 +146,28 @@ public:
 
 		glm::mat4 transform = glm::translate(glm::mat4(1.0), m_ShaderPosition) * scale;
 
-		m_Shader->UploadUniformFloat3("u_Color", m_shaderColor);
-
-		GE::Renderer::Run(m_Shader, m_VertexArray, transform);
+		GE::Renderer::Run(m_TextureShader, m_VertexArray, transform);
 
 		GE::Renderer::End();
 	}
 
 private:
 	//	Rendering Variables
-	GE::Ref<GE::Shader> m_Shader;
 	GE::Ref<GE::VertexArray> m_VertexArray;
+	GE::Ref<GE::Shader> m_TextureShader;
+	GE::Ref<GE::Texture> m_Texture;
 
 	GE::OrthographicCamera m_OrthoCamera;
 
 	glm::vec3 m_CameraPosition = glm::vec3(0.0f);
-	float m_CameraMoveSpeed = 0.1f;
+	float m_CameraMoveSpeed = 0.25f;
 
 	float m_CameraRotation = 0.0f;
-	float m_CameraRotationSpeed = 0.1;
+	float m_CameraRotationSpeed = 0.25;
 
-	glm::vec3 m_ShaderPosition = glm::vec3(1.0f);
+	glm::vec3 m_ShaderPosition = glm::vec3(0.0f);
 	float m_ShaderMoveSpeed = 0.5f;
 
-	glm::vec3 m_shaderColor = { 0.8f, 0.2f, 0.5f};
 };
 
 class Sandbox : public GE::Application

@@ -1,4 +1,4 @@
-#include "GEpch.h"
+#include "GE/GEpch.h"
 
 #include "GE/_Platform/OpenGL/Shader/OpenGLShader.h"
 #include "GE/_Platform/OpenGL/VertexArray/OpenGLVertexArray.h"

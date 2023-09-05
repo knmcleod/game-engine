@@ -14,9 +14,13 @@ namespace GE
 
 		inline static API GetAPI() { return s_API; }
 		inline static void SetAPI(API api) { s_API = api; }
+			
+		virtual void Init() = 0;
 
 		//	Clears buffers
 		virtual void Clear() = 0;
+
+		virtual void SetClearColor(const glm::vec4& color) = 0;
 
 		//	Draws elements
 		virtual void DrawIndices(const Ref<VertexArray>& vertexArray) = 0;

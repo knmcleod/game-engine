@@ -33,4 +33,6 @@
 #include "GE/Rendering/VertexArray/VertexArray.h"
 #include "GE/Rendering/VertexArray/Buffer.h"
 
+#include "GE/Rendering/Texture/Texture.h"
+
 #include "GE/Rendering/Camera/OrthographicCamera.h"

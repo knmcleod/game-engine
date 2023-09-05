@@ -16,6 +16,8 @@ IncludeDir["glfw"] = "game-engine/vender/glfw/include"
 IncludeDir["GLAD"] = "game-engine/vender/GLAD/include"
 IncludeDir["ImGui"] = "game-engine/vender/imgui"
 IncludeDir["glm"] = "game-engine/vender/glm"
+IncludeDir["spdlog"] = "game-engine/vender/spdlog/include"
+IncludeDir["stb"] = "game-engine/vender/stb"
 
 group "Dependencies"
 	include "game-engine/vender/glfw"
@@ -33,13 +35,15 @@ project "game-engine"
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 
-	pchheader "GEpch.h"
-	pchsource "%{prj.name}/src/GEpch.cpp"
+	pchheader "GE/GEpch.h"
+	pchsource "%{prj.name}/src/GE/GEpch.cpp"
 
 	files
 	{
 		"%{prj.name}/src/**.h",
 		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/vender/stb/stb_image.h",
+		"%{prj.name}/vender/stb/stb_image.cpp",
 		"%{prj.name}/vender/glm/glm/**.hpp",
 		"%{prj.name}/vender/glm/glm/**.inl"
 	}
@@ -47,11 +51,12 @@ project "game-engine"
 	includedirs
 	{
 		"%{prj.name}/src",
-		"%{prj.name}/vender/spdlog/include",
 		"%{IncludeDir.glfw}",
 		"%{IncludeDir.GLAD}",
 		"%{IncludeDir.ImGui}",
-		"%{IncludeDir.glm}"
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.spdlog}",
+		"%{IncludeDir.stb}"
 	}
 
 	links

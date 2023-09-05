@@ -2,6 +2,8 @@
 #include <string>
 #include <glm/glm.hpp>
 
+#include "GE/Core/Core.h"
+
 namespace GE
 {
 	class Shader

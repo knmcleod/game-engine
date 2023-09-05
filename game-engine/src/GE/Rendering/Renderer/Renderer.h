@@ -12,6 +12,8 @@ namespace GE
 		// Returns RenderAPI in use
 		inline static RenderAPI::API GetAPI() { return RenderAPI::GetAPI(); }
 
+		static void Init();
+
 		// Starts renderer using given camera 
 		static void Start(OrthographicCamera& orthoCamera);
 

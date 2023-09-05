@@ -1,10 +1,15 @@
-#include "GEpch.h"
+#include "GE/GEpch.h"
 
 #include "GE/Rendering/Renderer/Renderer.h"
 
 namespace GE
 {
 	Renderer::Data* Renderer::m_Data = new Renderer::Data;
+
+	void Renderer::Init()
+	{
+		RenderCommand::Init();
+	}
 
 	void Renderer::Start(OrthographicCamera& orthoCamera)
 	{

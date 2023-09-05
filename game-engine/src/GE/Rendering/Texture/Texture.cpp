@@ -1,17 +1,21 @@
 #include "GE/GEpch.h"
 
-#include "Shader.h"
-#include "GE/_Platform/OpenGL/Shader/OpenGLShader.h"
-
-#include "GE/Rendering/RenderAPI.h"
+#include "GE/Rendering/Texture/Texture.h"
+#include "GE/_Platform/OpenGL/Texture/OpenGLTexture.h"
 
 namespace GE
 {
-	Shader::~Shader()
+	Texture::~Texture()
 	{
+
 	}
 
-	Shader* Shader::Create(const std::string& vertexSrc, const std::string& fragmentSrc)
+	Texture2D::~Texture2D()
+	{
+
+	}
+
+	Texture2D* Texture2D::Create(const std::string& path)
 	{
 		switch (RenderAPI::GetAPI())
 		{
@@ -20,11 +24,10 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return new OpenGLShader(vertexSrc, fragmentSrc);
+			return new OpenGLTexture2D(path);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");
 		return nullptr;
 	}
-
 }

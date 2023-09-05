@@ -13,7 +13,6 @@
 #include <unordered_set>
 
 #include "GE/Core/Core.h"
-#include "GE/Log/Log.h"
 
 #ifdef GE_PLATFORM_WINDOWS
 	#include <Windows.h>

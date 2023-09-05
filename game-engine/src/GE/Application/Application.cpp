@@ -1,4 +1,4 @@
-#include "GEpch.h"
+#include "GE/GEpch.h"
 
 #include "GE/Application/Application.h"
 
@@ -21,6 +21,8 @@ namespace GE
 		m_Window = std::unique_ptr<Window>(Window::Create());
 		m_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));
 		
+		Renderer::Init();
+
 		//Creates ImGui Layer
 		m_ImGuiLayer = new ImGuiLayer();
 		PushOverlay(m_ImGuiLayer);

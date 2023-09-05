@@ -6,10 +6,20 @@ namespace GE
 	class RenderCommand
 	{
 	public:
+		inline static void Init()
+		{
+			s_RenderAPI->Init();
+		}
+
 		// Clears RenderAPI in use
 		inline static void Clear()
 		{ 
 			s_RenderAPI->Clear(); 
+		}
+
+		inline static void SetClearColor(const glm::vec4& color)
+		{
+			s_RenderAPI->SetClearColor(color);
 		}
 
 		// Draws elements to RenderAPI in use
