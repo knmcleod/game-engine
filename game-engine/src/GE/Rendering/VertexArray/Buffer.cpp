@@ -6,7 +6,7 @@
 
 namespace GE
 {
-	VertexBuffer* VertexBuffer::Create(uint32_t size, float* vertices)
+	Ref<VertexBuffer> VertexBuffer::Create(uint32_t size, float* vertices)
 	{
 		switch (RenderAPI::GetAPI())
 		{
@@ -15,14 +15,14 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return new OpenGLVertexBuffer(size, vertices);
+			return (Ref<VertexBuffer>) new OpenGLVertexBuffer(size, vertices);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");
 		return nullptr;
 	}
 
-	IndexBuffer* IndexBuffer::Create(uint32_t size, uint32_t* indices)
+	Ref<IndexBuffer> IndexBuffer::Create(uint32_t size, uint32_t* indices)
 	{
 		switch (RenderAPI::GetAPI())
 		{
@@ -31,7 +31,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return new OpenGLIndexBuffer(size, indices);
+			return (Ref<IndexBuffer>) new OpenGLIndexBuffer(size, indices);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");

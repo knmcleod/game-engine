@@ -9,8 +9,6 @@ namespace GE
 	class Shader
 	{
 	public:
-		~Shader();
-
 		enum class ShaderDataType
 		{
 			None,
@@ -52,10 +50,17 @@ namespace GE
 			return 0;
 		}
 
+		virtual ~Shader();
+
+		virtual const std::string& GetName() const = 0;
+
 		//	Returns created Shader given vertex and fragment sources
-		static Shader* Create(const std::string& vertexSrc,
+		static Ref<Shader> Create(const std::string& name, const std::string& vertexSrc,
 			const std::string& fragmentSrc);
-	
+		
+		//	Returns created Shader given path
+		static Ref<Shader> Create(const std::string& path);
+
 		// Binds program
 		virtual void Bind() const = 0;
 		// Uninds program
@@ -85,5 +90,18 @@ namespace GE
 		virtual void UploadUniformMat4(const std::string& name,
 			const glm::mat4& matrix) = 0;
 
+	};
+
+	class ShaderLibrary
+	{
+	public:
+		void Add(const Ref<Shader>& shader, const std::string& name = "");
+		Ref<Shader> Load(const std::string& path, const std::string& name = "");
+
+		Ref<Shader> Get(const std::string& name);
+
+		bool Exists(const std::string& name) const;
+	private:
+		std::unordered_map<std::string, Ref<Shader>> m_Shaders;
 	};
 }

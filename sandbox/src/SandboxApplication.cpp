@@ -8,7 +8,7 @@ public:
 	ExampleLayer() : GE::Layer("Example"), m_OrthoCamera(-1.0f, 1.0f, -1.0f, 1.0f)
 	{
 		//Creates Vertex Array
-		m_VertexArray.reset(GE::VertexArray::Create());
+		m_VertexArray = GE::VertexArray::Create();
 
 		//Creates Vertex Buffer
 		float vertices[] = {
@@ -19,7 +19,7 @@ public:
 			-0.5f, 0.5f, 0.0f,	1.0f, 1.0f, 0.0f,	0.0f, 1.0f			// top left
 		};
 		GE::Ref<GE::VertexBuffer> m_VertexBuffer;
-		m_VertexBuffer.reset(GE::VertexBuffer::Create(sizeof(vertices), vertices));
+		m_VertexBuffer = GE::VertexBuffer::Create(sizeof(vertices), vertices);
 
 		//Sets up Layout using Vertex Buffer
 		GE::BufferLayout layout =
@@ -36,53 +36,17 @@ public:
 		//Creates Index Buffer
 		uint32_t indices[] = { 0, 1, 2 };
 		GE::Ref<GE::IndexBuffer> m_IndexBuffer;
-		m_IndexBuffer.reset(GE::IndexBuffer::Create(std::size(indices), indices));
+		m_IndexBuffer = GE::IndexBuffer::Create(std::size(indices), indices);
 
 		//Add Index Buffer to Vertex Array
 		m_VertexArray->AddIndexBuffer(m_IndexBuffer);
 
-		//Creates TextureShader
-		std::string vertexTextureSrc = R"(#version 330 core
-			layout(location = 0) in vec3 a_Transform;
-			layout(location = 1) in vec3 a_Color;
-			layout(location = 2) in vec2 a_TextureCoord;
-
-			out vec3 v_Color;
-			out vec2 v_TextureCoord;
-			
-			uniform mat4 u_ViewProjection;
-			uniform mat4 u_Transform;
-
-			void main()
-			{
-				gl_Position = u_ViewProjection * u_Transform * vec4(a_Transform, 1.0);
-				v_Color = a_Color;
-				v_TextureCoord = a_TextureCoord;
-			}
-		)";
-
-		std::string fragmentTextureSrc = R"(#version 330 core
-			in vec3 v_Color;
-			in vec2 v_TextureCoord;
-
-			out vec4 color;
-
-			uniform sampler2D u_Texture;
-
-			void main()
-			{
-				color = texture2D(u_Texture, v_TextureCoord) * vec4(v_Color, 1.0);
-			}
-		)";
-
-		m_TextureShader.reset(GE::Shader::Create(vertexTextureSrc, fragmentTextureSrc));
-		m_Texture.reset(GE::Texture2D::Create("assets/textures/image.jpg"));
-
-		m_TextureShader->Bind();
+		m_Texture = GE::Texture2D::Create("assets/textures/image.jpg");
 		m_Texture->Bind();
 
-		m_TextureShader->UploadUniformInt("u_Texture", 0);
-
+		auto textureShader = m_ShaderLibrary.Load("assets/shaders/Texture.glsl", "textureShader");
+		textureShader->Bind();
+		textureShader->UploadUniformInt("u_Texture", 0);
 	}
 
 	virtual void OnUpdate(GE::Timestep timestep) override
@@ -146,15 +110,16 @@ public:
 
 		glm::mat4 transform = glm::translate(glm::mat4(1.0), m_ShaderPosition) * scale;
 
-		GE::Renderer::Run(m_TextureShader, m_VertexArray, transform);
+		auto textureShader = m_ShaderLibrary.Get("textureShader");
+		GE::Renderer::Run(textureShader, m_VertexArray, transform);
 
 		GE::Renderer::End();
 	}
 
 private:
-	//	Rendering Variables
+	GE::ShaderLibrary m_ShaderLibrary;
+
 	GE::Ref<GE::VertexArray> m_VertexArray;
-	GE::Ref<GE::Shader> m_TextureShader;
 	GE::Ref<GE::Texture> m_Texture;
 
 	GE::OrthographicCamera m_OrthoCamera;

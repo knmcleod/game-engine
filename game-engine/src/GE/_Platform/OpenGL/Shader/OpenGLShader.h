@@ -53,8 +53,26 @@ namespace GE
 			return 0;
 		}
 
-		OpenGLShader(const std::string& vertexSrc, const std::string& fragmentSrc);
+		//
+		static GLenum ShaderDataTypeFromString(const std::string& type)
+		{
+			if (type == "vertex")
+			{
+				return GL_VERTEX_SHADER;
+			}
+			else if (type == "fragment" || type == "pixel")
+			{
+				return GL_FRAGMENT_SHADER;
+			}
+			GE_CORE_ASSERT(false, "Unknown Shader type!");
+			return 0;
+		}
+
+		OpenGLShader(const std::string& name, const std::string& vertexSrc, const std::string& fragmentSrc);
+		OpenGLShader(const std::string& path);
 		virtual ~OpenGLShader();
+
+		virtual const std::string& GetName() const override { return m_Name;  }
 
 		//	Binds program using OpenGL
 		virtual void Bind() const override;
@@ -88,5 +106,14 @@ namespace GE
 
 	private:
 		uint32_t m_RendererID = 0;
+
+		std::string m_Name;
+
+		std::string ReadFile(const std::string& path);
+
+		std::unordered_map<GLenum, std::string> Preprocess(const std::string& src);
+
+		// Compiles shader using OpenGL
+		void Compile(const std::unordered_map<GLenum, std::string>& shaderSrc);
 	};
 }

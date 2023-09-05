@@ -25,6 +25,6 @@ namespace GE
 	public:
 		virtual ~Texture2D() = 0;
 
-		static Texture2D* Create(const std::string& path);
+		static Ref<Texture2D> Create(const std::string& path);
 	};
 }

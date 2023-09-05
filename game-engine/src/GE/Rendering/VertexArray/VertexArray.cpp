@@ -6,7 +6,7 @@
 
 namespace GE
 {
-	VertexArray* VertexArray::Create()
+	Ref<VertexArray> VertexArray::Create()
 	{
 		switch (RenderAPI::GetAPI())
 		{
@@ -15,7 +15,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return new OpenGLVertexArray();
+			return (Ref<VertexArray>) new OpenGLVertexArray();
 			break;
 		}
 

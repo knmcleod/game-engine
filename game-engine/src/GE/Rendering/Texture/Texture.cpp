@@ -15,7 +15,7 @@ namespace GE
 
 	}
 
-	Texture2D* Texture2D::Create(const std::string& path)
+	Ref<Texture2D> Texture2D::Create(const std::string& path)
 	{
 		switch (RenderAPI::GetAPI())
 		{
@@ -24,7 +24,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return new OpenGLTexture2D(path);
+			return (Ref<Texture2D>) new OpenGLTexture2D(path);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");

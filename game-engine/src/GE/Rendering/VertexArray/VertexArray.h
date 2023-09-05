@@ -23,7 +23,7 @@ namespace GE
 		virtual inline std::vector<Ref<VertexBuffer>> const& GetVertexBuffers() { return m_VertexBuffers; };
 		virtual inline Ref<IndexBuffer> const& GetIndexBuffer() { return m_IndexBuffer; };
 
-		static VertexArray* Create();
+		static Ref<VertexArray> Create();
 
 	private:
 		std::vector<Ref<VertexBuffer>> m_VertexBuffers;
