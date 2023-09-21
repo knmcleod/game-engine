@@ -1,7 +1,7 @@
 #include "GE/GEpch.h"
 
+#include "OpenGLVertexArray.h"
 #include "GE/_Platform/OpenGL/Shader/OpenGLShader.h"
-#include "GE/_Platform/OpenGL/VertexArray/OpenGLVertexArray.h"
 
 namespace GE
 {

@@ -1,6 +1,6 @@
 #include "GE/GEpch.h"
 
-#include "GE/_Platform/OpenGL/Context/OpenGLContext.h"
+#include "OpenGLContext.h"
 
 namespace GE
 {

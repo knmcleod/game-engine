@@ -38,6 +38,7 @@ namespace GE
 		static Application* s_Instance;
 
 		bool m_Running = true;
+		bool m_Minimized = false;
 
 		std::unique_ptr<Window> m_Window;
 		LayerStack m_LayerStack;
@@ -47,6 +48,7 @@ namespace GE
 		float m_LastFrameTime = 0.0f;
 
 		bool OnWindowClose(WindowCloseEvent& e);
+		bool OnWindowResize(WindowResizeEvent& e);
 	};
 
 	//Defined in Client

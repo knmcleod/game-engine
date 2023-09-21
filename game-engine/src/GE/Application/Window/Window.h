@@ -10,7 +10,7 @@ namespace GE
 		unsigned int Width = 1280;
 		unsigned int Height = 720;
 
-		WindowProps(const std::string& title = "Game Engine",
+		WindowProps(const std::string& title = "Window",
 			unsigned int width = 1280,
 			unsigned int height = 720)
 			: Title(title), Width(width), Height(height)

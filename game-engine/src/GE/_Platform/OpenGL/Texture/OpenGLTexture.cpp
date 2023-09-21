@@ -1,6 +1,6 @@
 #include "GE/GEpch.h"
 
-#include "GE/_Platform/OpenGL/Texture/OpenGLTexture.h"
+#include "OpenGLTexture.h"
 
 namespace GE
 {

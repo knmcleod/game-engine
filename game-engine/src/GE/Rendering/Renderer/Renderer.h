@@ -13,6 +13,7 @@ namespace GE
 		inline static RenderAPI::API GetAPI() { return RenderAPI::GetAPI(); }
 
 		static void Init();
+		static void OnWindowResize(uint32_t width, uint32_t height);
 
 		// Starts renderer using given camera 
 		static void Start(OrthographicCamera& orthoCamera);

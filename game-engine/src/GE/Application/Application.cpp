@@ -40,11 +40,14 @@ namespace GE
 			float time = (float)glfwGetTime(); //Platform::GetTime();
 			Timestep timestep = time - m_LastFrameTime;
 			m_LastFrameTime = time;
-		
-			//	Updates Layers
-			for (Layer* layer : m_LayerStack)
+			
+			if (!m_Minimized)
 			{
-				layer->OnUpdate(timestep);
+				//	Updates Layers
+				for (Layer* layer : m_LayerStack)
+				{
+					layer->OnUpdate(timestep);
+				}
 			}
 
 			//	Updates ImGui
@@ -65,6 +68,7 @@ namespace GE
 	{
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<WindowCloseEvent>(BIND_EVENT_FN(OnWindowClose));
+		dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(OnWindowResize));
 
 		for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
 		{
@@ -79,6 +83,20 @@ namespace GE
 	{
 		m_Running = false;
 		return true;
+	}
+
+	bool Application::OnWindowResize(WindowResizeEvent& e)
+	{
+		if (e.GetWidth() == 0 || e.GetHeight() == 0)
+		{
+			m_Minimized = true;
+			return false;
+		}
+
+		m_Minimized = true;
+		Renderer::OnWindowResize(e.GetWidth(), e.GetHeight());
+
+		return false;
 	}
 
 	//	Layer Handling

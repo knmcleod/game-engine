@@ -12,6 +12,9 @@
 #include "GE/Application/Window/Layers/LayerStack.h"
 #include "GE/Application/Window/Layers/imgui/ImGuiLayer.h"
 
+//	--	Camera Controller	--
+#include "GE/CameraController/OrthographicCameraController.h"
+
 //	--	Timestep	--
 #include "GE/Core/Timestep/Timestep.h"
 

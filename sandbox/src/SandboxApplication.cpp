@@ -5,7 +5,7 @@
 class ExampleLayer : public GE::Layer
 {
 public:
-	ExampleLayer() : GE::Layer("Example"), m_OrthoCamera(-1.0f, 1.0f, -1.0f, 1.0f)
+	ExampleLayer() : GE::Layer("Example"), m_OrthoCameraController(1280.0f/720.0f, true)
 	{
 		//Creates Vertex Array
 		m_VertexArray = GE::VertexArray::Create();
@@ -51,49 +51,23 @@ public:
 
 	virtual void OnUpdate(GE::Timestep timestep) override
 	{
-		//	Camera Movement
-		if (GE::Input::IsKeyPressed(GE_KEY_LEFT))
-		{
-			m_CameraPosition.x -= m_CameraMoveSpeed * timestep;
-		}
-		else if (GE::Input::IsKeyPressed(GE_KEY_RIGHT))
-		{
-			m_CameraPosition.x += m_CameraMoveSpeed * timestep;
-		}
-
-		if (GE::Input::IsKeyPressed(GE_KEY_UP))
-		{
-			m_CameraPosition.y += m_CameraMoveSpeed * timestep;
-		}
-		else if (GE::Input::IsKeyPressed(GE_KEY_DOWN))
-		{
-			m_CameraPosition.y -= m_CameraMoveSpeed * timestep;
-		}
-
-		if (GE::Input::IsKeyPressed(GE_KEY_A))
-		{
-			m_CameraRotation -= m_CameraRotationSpeed * timestep;
-		}
-		else if (GE::Input::IsKeyPressed(GE_KEY_D))
-		{
-			m_CameraRotation += m_CameraRotationSpeed * timestep;
-		}
+		m_OrthoCameraController.OnUpdate(timestep);
 
 		//	Shader Movement
-		if (GE::Input::IsKeyPressed(GE_KEY_Q))
+		if (GE::Input::IsKeyPressed(GE_KEY_LEFT))
 		{
 			m_ShaderPosition.x -= m_ShaderMoveSpeed * timestep;
 		}
-		else if (GE::Input::IsKeyPressed(GE_KEY_E))
+		else if (GE::Input::IsKeyPressed(GE_KEY_RIGHT))
 		{
 			m_ShaderPosition.x += m_ShaderMoveSpeed * timestep;
 		}
 
-		if (GE::Input::IsKeyPressed(GE_KEY_W))
+		if (GE::Input::IsKeyPressed(GE_KEY_UP))
 		{
 			m_ShaderPosition.y += m_ShaderMoveSpeed * timestep;
 		}
-		else if (GE::Input::IsKeyPressed(GE_KEY_S))
+		else if (GE::Input::IsKeyPressed(GE_KEY_DOWN))
 		{
 			m_ShaderPosition.y -= m_ShaderMoveSpeed * timestep;
 		}
@@ -101,10 +75,8 @@ public:
 		GE::RenderCommand::SetClearColor({ 0.5f, 0.5f, 0.5f, 1.0f });
 		GE::RenderCommand::Clear();
 
-		m_OrthoCamera.SetPosition(m_CameraPosition);
-		m_OrthoCamera.SetRotation(m_CameraRotation);
-
-		GE::Renderer::Start(m_OrthoCamera);
+		GE::Renderer::Start(m_OrthoCameraController.GetCamera());
+		//GE::Renderer2D::Start(m_OrthoCamera);
 
 		glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.5f));
 
@@ -116,19 +88,18 @@ public:
 		GE::Renderer::End();
 	}
 
+	virtual void OnEvent(GE::Event& e)
+	{
+		m_OrthoCameraController.OnEvent(e);
+	}
+
 private:
 	GE::ShaderLibrary m_ShaderLibrary;
 
 	GE::Ref<GE::VertexArray> m_VertexArray;
 	GE::Ref<GE::Texture> m_Texture;
 
-	GE::OrthographicCamera m_OrthoCamera;
-
-	glm::vec3 m_CameraPosition = glm::vec3(0.0f);
-	float m_CameraMoveSpeed = 0.25f;
-
-	float m_CameraRotation = 0.0f;
-	float m_CameraRotationSpeed = 0.25;
+	GE::OrthographicCameraController m_OrthoCameraController;
 
 	glm::vec3 m_ShaderPosition = glm::vec3(0.0f);
 	float m_ShaderMoveSpeed = 0.5f;

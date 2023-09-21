@@ -1,6 +1,6 @@
 #include "GE/GEpch.h"
 
-#include "GE/_Platform/OpenGL/RenderAPI/OpenGLRenderAPI.h"
+#include "OpenGLRenderAPI.h"
 
 namespace GE
 {
@@ -8,6 +8,11 @@ namespace GE
 	{
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC0_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+
+	void OpenGLRenderAPI::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+	{
+		glViewport(x, y, width, height);
 	}
 
 	void OpenGLRenderAPI::Clear()

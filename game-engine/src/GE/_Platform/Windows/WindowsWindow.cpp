@@ -1,10 +1,11 @@
 #include "GE/GEpch.h"
 
 #include "WindowsWindow.h"
+#include "WindowsInput.h"
+
 #include "GE/Events/KeyEvent.h"
 #include "GE/Events/MouseEvent.h"
 
-#include "GE/_Platform/Windows/WindowsInput.h"
 #include "GE/_Platform/OpenGL/Context/OpenGLContext.h"
 
 namespace GE
