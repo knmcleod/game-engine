@@ -3,11 +3,11 @@
 #include "GE/Core/Core.h"
 #include "GE/Core/Timestep/Timestep.h"
 
-#include "GE/Application/Window/Window.h"
-#include "GE/Application/Window/Layers/LayerStack.h"
-#include "GE/Application/Window/Layers/imgui/ImGuiLayer.h"
+#include "GE/Core/Application/Window/Window.h"
+#include "GE/Core/Application/Window/Layers/LayerStack.h"
+#include "GE/Core/Application/Window/Layers/imgui/ImGuiLayer.h"
 
-#include "GE/Events/ApplicationEvent.h"
+#include "GE/Core/Events/ApplicationEvent.h"
 
 #include "GE/Rendering/Shader/Shader.h"
 #include "GE/Rendering/VertexArray/VertexArray.h"

@@ -2,7 +2,7 @@
 
 #include "GE/Core/Timestep/Timestep.h"
 
-#include "GE/Events/Event.h"
+#include "GE/Core/Events/Event.h"
 
 namespace GE
 {

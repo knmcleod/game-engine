@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GE/Events/Event.h"
+#include "GE/Core/Events/Event.h"
 
 namespace GE
 {

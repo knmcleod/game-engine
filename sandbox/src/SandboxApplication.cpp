@@ -34,9 +34,9 @@ public:
 		m_VertexArray->AddVertexBuffer(m_VertexBuffer);
 
 		//Creates Index Buffer
-		uint32_t indices[] = { 0, 1, 2 };
+		uint32_t indices[] = { 0, 1, 2, 3 };
 		GE::Ref<GE::IndexBuffer> m_IndexBuffer;
-		m_IndexBuffer = GE::IndexBuffer::Create(std::size(indices), indices);
+		m_IndexBuffer = GE::IndexBuffer::Create(static_cast<unsigned int>(std::size(indices)), indices);
 
 		//Add Index Buffer to Vertex Array
 		m_VertexArray->AddIndexBuffer(m_IndexBuffer);

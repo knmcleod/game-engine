@@ -1,7 +1,7 @@
 #pragma once
 #include <GLFW/glfw3.h>
 
-#include "GE/Application/Window/Window.h"
+#include "GE/Core/Application/Window/Window.h"
 
 #include "GE/Rendering/Context/Context.h"
 
@@ -38,9 +38,9 @@ namespace GE
 
 		struct WindowData
 		{
-			std::string Title;
+			std::string Title = "WindowData";
 			unsigned int Width = 1280, Height = 720;
-			bool VSync;
+			bool VSync = true;
 
 			EventCallbackFn EventCallback;
 

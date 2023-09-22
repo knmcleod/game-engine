@@ -1,32 +1,29 @@
 #pragma once
 
 //	--	Entry Point	--
-#include "GE/EntryPoint.h"
+#include "GE/Core/EntryPoint.h"
 
 //	-- Logging	--
-#include "GE/Log/Log.h"
+#include "GE/Core/Log/Log.h"
 
 //	--	Application	--
-#include "GE/Application/Application.h"
-#include "GE/Application/Window/Layers/Layer.h"
-#include "GE/Application/Window/Layers/LayerStack.h"
-#include "GE/Application/Window/Layers/imgui/ImGuiLayer.h"
-
-//	--	Camera Controller	--
-#include "GE/CameraController/OrthographicCameraController.h"
+#include "GE/Core/Application/Application.h"
+#include "GE/Core/Application/Window/Layers/Layer.h"
+#include "GE/Core/Application/Window/Layers/LayerStack.h"
+#include "GE/Core/Application/Window/Layers/imgui/ImGuiLayer.h"
 
 //	--	Timestep	--
 #include "GE/Core/Timestep/Timestep.h"
 
 //	--	Input	--
-#include "GE/Input/Input.h"
-#include "GE/Input/KeyCodes.h"
-#include "GE/Input/MouseCodes.h"
+#include "GE/Core/Input/Input.h"
+#include "GE/Core/Input/KeyCodes.h"
+#include "GE/Core/Input/MouseCodes.h"
 
 //	--	Events	--
-#include "GE/Events/MouseEvent.h"
-#include "GE/Events/KeyEvent.h"
-#include "GE/Events/ApplicationEvent.h"
+#include "GE/Core/Events/MouseEvent.h"
+#include "GE/Core/Events/KeyEvent.h"
+#include "GE/Core/Events/ApplicationEvent.h"
 
 //	--	Rendering	--
 #include "GE/Rendering/RenderCommand.h"
@@ -39,3 +36,4 @@
 #include "GE/Rendering/Texture/Texture.h"
 
 #include "GE/Rendering/Camera/OrthographicCamera.h"
+#include "GE/Rendering/Camera/Controller/OrthographicCameraController.h"

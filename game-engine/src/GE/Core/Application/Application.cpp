@@ -1,6 +1,6 @@
 #include "GE/GEpch.h"
 
-#include "GE/Application/Application.h"
+#include "GE/Core/Application/Application.h"
 
 #include "GE/Rendering/Renderer/Renderer.h"
 

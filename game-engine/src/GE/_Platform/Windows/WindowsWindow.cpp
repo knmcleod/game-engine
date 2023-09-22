@@ -3,8 +3,8 @@
 #include "WindowsWindow.h"
 #include "WindowsInput.h"
 
-#include "GE/Events/KeyEvent.h"
-#include "GE/Events/MouseEvent.h"
+#include "GE/Core/Events/KeyEvent.h"
+#include "GE/Core/Events/MouseEvent.h"
 
 #include "GE/_Platform/OpenGL/Context/OpenGLContext.h"
 

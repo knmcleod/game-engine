@@ -2,8 +2,8 @@
 
 #include <GLFW/glfw3.h>
 
-#include "GE/Application/Application.h"
-#include "GE/Input/Input.h"
+#include "GE/Core/Application/Application.h"
+#include "GE/Core/Input/Input.h"
 
 namespace GE
 {

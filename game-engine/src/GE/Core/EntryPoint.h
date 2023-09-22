@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GE/Application/Application.h"
+#include "GE/Core/Application/Application.h"
 
 #ifdef GE_PLATFORM_WINDOWS
 	extern GE::Application* GE::CreateApplication();
