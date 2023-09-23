@@ -7,9 +7,6 @@
 
 namespace GE
 {
-	Shader::~Shader()
-	{
-	}
 
 	Ref<Shader> Shader::Create(const std::string& name, const std::string& vertexSrc, const std::string& fragmentSrc)
 	{

@@ -13,7 +13,7 @@ namespace GE
 		inline static RenderAPI::API GetAPI() { return RenderAPI::GetAPI(); }
 
 		static void Init();
-		static void OnWindowResize(uint32_t width, uint32_t height);
+		static void ShutDown();
 
 		// Starts renderer using given camera 
 		static void Start(OrthographicCamera& orthoCamera);
@@ -24,6 +24,8 @@ namespace GE
 						const glm::mat4& transform = glm::mat4(1.0f));
 		// Ends renderer
 		static void End();
+
+		static void OnWindowResize(uint32_t width, uint32_t height);
 
 	private:
 		struct Data

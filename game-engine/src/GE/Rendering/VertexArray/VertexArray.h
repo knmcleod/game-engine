@@ -17,11 +17,11 @@ namespace GE
 		// Unbinds Vertex Array
 		virtual void Unbind() const = 0;
 
-		virtual void AddVertexBuffer(Ref<VertexBuffer> const& vertexBuffer) = 0;
-		virtual void AddIndexBuffer(Ref<IndexBuffer> const& indexBuffer) = 0;
+		virtual void AddVertexBuffer(const Ref<VertexBuffer>& vertexBuffer) = 0;
+		virtual void AddIndexBuffer(const Ref<IndexBuffer>& indexBuffer) = 0;
 
-		virtual inline std::vector<Ref<VertexBuffer>> const& GetVertexBuffers() { return m_VertexBuffers; };
-		virtual inline Ref<IndexBuffer> const& GetIndexBuffer() { return m_IndexBuffer; };
+		virtual inline const std::vector<Ref<VertexBuffer>>& GetVertexBuffers() { return m_VertexBuffers; };
+		virtual inline const Ref<IndexBuffer>& GetIndexBuffer() { return m_IndexBuffer; };
 
 		static Ref<VertexArray> Create();
 

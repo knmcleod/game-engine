@@ -12,7 +12,7 @@ namespace GE
 
 	OpenGLVertexArray::~OpenGLVertexArray()
 	{
-
+		glDeleteVertexArrays(1, &m_RendererID);
 	}
 
 	void OpenGLVertexArray::Bind() const

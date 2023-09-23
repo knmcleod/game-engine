@@ -50,7 +50,7 @@ namespace GE
 			return 0;
 		}
 
-		virtual ~Shader();
+		virtual ~Shader() {};
 
 		virtual const std::string& GetName() const = 0;
 
@@ -66,29 +66,12 @@ namespace GE
 		// Uninds program
 		virtual void Unbind() const = 0;
 
-		// Uploads uniform int to renderer
-		virtual void UploadUniformInt(const std::string& name,
-			int value) = 0;
-
-		// Uploads uniform float to renderer
-		virtual void UploadUniformFloat(const std::string& name,
-			const glm::vec1& vector) = 0;
-
-		// Uploads uniform 2d float to renderer
-		virtual void UploadUniformFloat2(const std::string& name,
-			const glm::vec2& vector) = 0;
-
-		// Uploads uniform 3d float to renderer
-		virtual void UploadUniformFloat3(const std::string& name,
-			const glm::vec3& vector) = 0;
-
-		// Uploads uniform 4d float to renderer
-		virtual void UploadUniformFloat4(const std::string& name,
-			const glm::vec4& vector) = 0;
-
-		// Uploads uniform 4x4 matrix to renderer
-		virtual void UploadUniformMat4(const std::string& name,
-			const glm::mat4& matrix) = 0;
+		virtual void SetMat4(const std::string& name, const glm::mat4& value) = 0;
+		virtual void SetFloat4(const std::string& name, const glm::vec4& value) = 0;
+		virtual void SetFloat3(const std::string& name, const glm::vec3& value) = 0;
+		virtual void SetFloat2(const std::string& name, const glm::vec2& value) = 0;
+		virtual void SetFloat(const std::string& name, const glm::vec1& value) = 0;
+		virtual void SetInt(const std::string& name, const int value) = 0;
 
 	};
 

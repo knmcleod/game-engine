@@ -1,8 +1,5 @@
 #pragma once
 
-//	--	Entry Point	--
-#include "GE/Core/EntryPoint.h"
-
 //	-- Logging	--
 #include "GE/Core/Log/Log.h"
 
@@ -28,6 +25,7 @@
 //	--	Rendering	--
 #include "GE/Rendering/RenderCommand.h"
 #include "GE/Rendering/Renderer/Renderer.h"
+#include "GE/Rendering/Renderer/2D/Renderer2D.h"
 
 #include "GE/Rendering/Shader/Shader.h"
 #include "GE/Rendering/VertexArray/VertexArray.h"
