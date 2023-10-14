@@ -17,6 +17,7 @@ namespace GE
 			const glm::vec4& color);
 		static void FillQuadTexture(const glm::vec3& position, const glm::vec2& size, const float rotation,
 			const Ref<Texture> texture, const glm::vec4& color = glm::vec4(1.0f));
-
+	private:
+		
 	};
 }

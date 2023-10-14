@@ -17,17 +17,19 @@ namespace GE
 
 	void OpenGLVertexArray::Bind() const
 	{
+		GE_PROFILE_FUNCTION();
 		glBindVertexArray(m_RendererID);
 	}
 
 	void OpenGLVertexArray::Unbind() const
 	{
+		GE_PROFILE_FUNCTION();
 		glBindVertexArray(0);
 	}
 
 	void OpenGLVertexArray::AddVertexBuffer(const Ref<VertexBuffer>& vertexBuffer)
 	{
-		glBindVertexArray(m_RendererID);
+		this->Bind();
 
 		vertexBuffer->Bind();
 
@@ -49,7 +51,7 @@ namespace GE
 
 	void OpenGLVertexArray::AddIndexBuffer(const Ref<IndexBuffer>& indexBuffer)
 	{
-		glBindVertexArray(m_RendererID);
+		this->Bind();
 
 		indexBuffer->Bind();
 

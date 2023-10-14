@@ -16,9 +16,9 @@ namespace GE
 			Clear();
 		}
 
-		inline static void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+		inline static void SetViewport(uint32_t xOffset, uint32_t yOffset, uint32_t width, uint32_t height)
 		{
-			s_RenderAPI->SetViewport(x, y, width, height);
+			s_RenderAPI->SetViewport(xOffset, yOffset, width, height);
 		}
 
 		// Clears RenderAPI in use

@@ -10,7 +10,7 @@ namespace GE
 	class OpenGLTexture2D : public Texture2D
 	{
 	public:
-		OpenGLTexture2D(uint32_t width, uint32_t height, uint32_t channels, void* data, uint32_t size);
+		OpenGLTexture2D(uint32_t width, uint32_t height, uint32_t channels, void* data = NULL, uint32_t size = 0);
 		OpenGLTexture2D(const std::string& path);
 		virtual ~OpenGLTexture2D();
 

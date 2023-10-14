@@ -11,7 +11,7 @@ namespace GE
 	class Texture
 	{
 	public:
-		virtual ~Texture() = 0;
+		virtual ~Texture() { }
 
 		virtual uint32_t GetWidth() const = 0;
 		virtual uint32_t GetHeight() const = 0;
@@ -25,9 +25,9 @@ namespace GE
 	class Texture2D : public Texture
 	{
 	public:
-		virtual ~Texture2D() = 0;
+		virtual ~Texture2D() { }
 
-		static Ref<Texture2D> Create(uint32_t width, uint32_t height, uint32_t channel, void* data, uint32_t sizes);
+		static Ref<Texture2D> Create(uint32_t width, uint32_t height, uint32_t channel, void* data = NULL, uint32_t sizes = 0);
 		static Ref<Texture2D> Create(const std::string& path);
 	};
 }

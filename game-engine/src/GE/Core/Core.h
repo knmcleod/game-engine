@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "GE/Core/Log/Log.h"
+#include "GE/Core/Debug/Log/Log.h"
 
 #ifdef _Win32
 	#ifdef _WIN64
@@ -45,7 +45,6 @@
 #else
 	#error "GE only supports Windows!"
 #endif // GE_PLATFORM_WINDOWS
-
 
 #ifdef GE_DEBUG
 	#define GE_ENABLE_ASSERTS

@@ -15,6 +15,8 @@ namespace GE
 
 	void Renderer2D::Init()
 	{
+		GE_PROFILE_FUNCTION();
+
 		RenderCommand::Init();
 
 		s_Data = new Renderer2DData();
@@ -22,14 +24,6 @@ namespace GE
 		//Creates Vertex Array
 		s_Data->VertexArray = VertexArray::Create();
 
-		//Creates Vertex Buffer
-		/*float vertices[] = {
-			// Transform		// TextureCoord
-			0.5f, 0.5f, 0.0f,	1.0f, 1.0f,		// top right
-			0.5f, -0.5f, 0.0f,	1.0f, 0.0f,		// bottom right
-			-0.5f, -0.5f, 0.0f,	0.0f, 0.0f,		// bottom left
-			-0.5f, 0.5f, 0.0f,	0.0f, 1.0f		// top left
-		};*/
 		float vertices[] = {
 			// positions		// colors					// texture coords
 			0.5f, 0.5f, 0.0f,	1.0f, 0.0f, 0.0f, 0.0f,		1.0f, 1.0f,			// top right
@@ -61,8 +55,11 @@ namespace GE
 		s_Data->VertexArray->AddIndexBuffer(m_IndexBuffer);
 
 		uint32_t textureData = 0xFFFFFFFF;
-		s_Data->Texture = Texture2D::Create(1, 1, 4, &textureData, sizeof(uint32_t));
-		//s_Data->Texture->SetData(&textureData, sizeof(uint32_t));
+
+		//s_Data->Texture = Texture2D::Create(1, 1, 4, &textureData, sizeof(uint32_t));
+
+		s_Data->Texture = Texture2D::Create(1, 1, 4);
+		s_Data->Texture->SetData(&textureData, sizeof(uint32_t));
 
 		s_Data->Shader = Shader::Create("assets/shaders/Texture.glsl");
 		s_Data->Shader->Bind();
@@ -72,17 +69,22 @@ namespace GE
 
 	void Renderer2D::ShutDown()
 	{
-		delete s_Data;
+		GE_PROFILE_FUNCTION();
+
 		RenderCommand::ShutDown();
+		delete s_Data;
 	}
 
 	void Renderer2D::Start(const OrthographicCamera& orthoCamera)
 	{
+		GE_PROFILE_FUNCTION();
+
 		s_Data->Shader->SetMat4("u_ViewProjection", orthoCamera.GetViewProjectionMatrix());
 	}
 
 	void Renderer2D::End()
 	{
+		GE_PROFILE_FUNCTION();
 	}
 
 	void Renderer2D::FillQuadColor(const glm::vec3& position, const glm::vec2& size,

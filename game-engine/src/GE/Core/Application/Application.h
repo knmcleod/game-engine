@@ -1,7 +1,7 @@
 #pragma once
 
 #include "GE/Core/Core.h"
-#include "GE/Core/Timestep/Timestep.h"
+#include "GE/Core/Time/Time.h"
 
 #include "GE/Core/Application/Window/Window.h"
 #include "GE/Core/Application/Window/Layers/LayerStack.h"
@@ -33,6 +33,9 @@ namespace GE
 
 		void PushLayer(Layer* layer);
 		void PushOverlay(Layer* layer);
+
+		void PopLayer(Layer* layer);
+		void PopOverlay(Layer* layer);
 
 	private:
 		static Application* s_Instance;

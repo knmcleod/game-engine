@@ -1,7 +1,7 @@
 #pragma once
 
-//	-- Logging	--
-#include "GE/Core/Log/Log.h"
+//	-- Core	--
+#include "GE/Core/Core.h"
 
 //	--	Application	--
 #include "GE/Core/Application/Application.h"
@@ -9,18 +9,22 @@
 #include "GE/Core/Application/Window/Layers/LayerStack.h"
 #include "GE/Core/Application/Window/Layers/imgui/ImGuiLayer.h"
 
-//	--	Timestep	--
-#include "GE/Core/Timestep/Timestep.h"
+//	-- Debug	--
+#include "GE/Core/Debug/Instrumentor.h"
+#include "GE/Core/Debug/Log/Log.h"
+
+//	--	Events	--
+#include "GE/Core/Events/MouseEvent.h"
+#include "GE/Core/Events/KeyEvent.h"
+#include "GE/Core/Events/ApplicationEvent.h"
 
 //	--	Input	--
 #include "GE/Core/Input/Input.h"
 #include "GE/Core/Input/KeyCodes.h"
 #include "GE/Core/Input/MouseCodes.h"
 
-//	--	Events	--
-#include "GE/Core/Events/MouseEvent.h"
-#include "GE/Core/Events/KeyEvent.h"
-#include "GE/Core/Events/ApplicationEvent.h"
+//	--	Time	--
+#include "GE/Core/Time/Time.h"
 
 //	--	Rendering	--
 #include "GE/Rendering/RenderCommand.h"

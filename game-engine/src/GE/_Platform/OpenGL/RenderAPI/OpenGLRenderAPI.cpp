@@ -13,9 +13,9 @@ namespace GE
 
 	}
 
-	void OpenGLRenderAPI::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+	void OpenGLRenderAPI::SetViewport(uint32_t xOffset, uint32_t yOffset, uint32_t width, uint32_t height)
 	{
-		glViewport(x, y, width, height);
+		glViewport(xOffset, yOffset, width, height);
 	}
 
 	void OpenGLRenderAPI::Clear()

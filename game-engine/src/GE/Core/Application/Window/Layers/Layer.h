@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GE/Core/Timestep/Timestep.h"
+#include "GE/Core/Time/Time.h"
 
 #include "GE/Core/Events/Event.h"
 
@@ -15,8 +15,8 @@ namespace GE
 		virtual void OnAttach() {}
 		virtual void OnDetach() {}
 		virtual void OnUpdate(Timestep timestep) {}
-		virtual void OnImGuiRender() {}
 		virtual void OnEvent(Event& e) {}
+		virtual void OnImGuiRender() {}
 
 		inline const std::string& GetName() const { return m_DebugName;  }
 	protected:

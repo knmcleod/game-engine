@@ -33,46 +33,64 @@ namespace GE
 
 	void OpenGLShader::Bind() const
 	{
+		GE_PROFILE_FUNCTION();
+
 		glUseProgram(m_RendererID);
 	}
 
 	void OpenGLShader::Unbind() const
 	{
+		GE_PROFILE_FUNCTION();
+
 		glUseProgram(0);
 	}
 
 	void OpenGLShader::SetMat4(const std::string& name, const glm::mat4& value)
 	{
+		GE_PROFILE_FUNCTION();
+
 		UploadUniformMat4(name, value);
 	}
 
 	void OpenGLShader::SetFloat4(const std::string& name, const glm::vec4& value)
 	{
+		GE_PROFILE_FUNCTION();
+
 		UploadUniformFloat4(name, value);
 	}
 
 	void OpenGLShader::SetFloat3(const std::string& name, const glm::vec3& value)
 	{
+		GE_PROFILE_FUNCTION();
+
 		UploadUniformFloat3(name, value);
 	}
 
 	void OpenGLShader::SetFloat2(const std::string& name, const glm::vec2& value)
 	{
+		GE_PROFILE_FUNCTION();
+
 		UploadUniformFloat2(name, value);
 	}
 
 	void OpenGLShader::SetFloat(const std::string& name, const glm::vec1& value)
 	{
+		GE_PROFILE_FUNCTION();
+
 		UploadUniformFloat(name, value);
 	}
 
 	void OpenGLShader::SetInt(const std::string& name, const int value)
 	{
+		GE_PROFILE_FUNCTION();
+
 		UploadUniformInt(name, value);
 	}
 
 	std::string OpenGLShader::ReadFile(const std::string& path)
 	{
+		GE_PROFILE_FUNCTION();
+
 		std::string result;
 		std::ifstream in(path, std::ios::in | std::ios::binary);
 
@@ -96,6 +114,7 @@ namespace GE
 
 	std::unordered_map<GLenum, std::string> OpenGLShader::Preprocess(const std::string& src)
 	{
+		GE_PROFILE_FUNCTION();
 		std::unordered_map<GLenum, std::string> shaderSrc;
 
 		const char* typeToken = "#type";
@@ -122,6 +141,8 @@ namespace GE
 
 	void OpenGLShader::Compile(const std::unordered_map<GLenum, std::string>& shaderSrc)
 	{
+		GE_PROFILE_FUNCTION();
+
 		// Get a program object.
 		GLuint program = glCreateProgram();
 

@@ -7,6 +7,7 @@ Sandbox2D::Sandbox2D() : Layer("Sandbox2D"), m_OrthoCameraController(1280.0f / 7
 void Sandbox2D::OnAttach()
 {
 	GE::Renderer2D::Init();
+	GE::RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
 }
 
 void Sandbox2D::OnDetach()
@@ -18,9 +19,8 @@ void Sandbox2D::OnUpdate(GE::Timestep timestep)
 {
 	m_OrthoCameraController.OnUpdate(timestep);
 
-	GE::RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
 	GE::RenderCommand::Clear();
-
+	
 	GE::Renderer2D::Start(m_OrthoCameraController.GetCamera());
 
 	GE::Renderer2D::FillQuadColor({ 0.0f, 0.0f, -0.1f }, { 1.0f, 1.0f }, 0.0f, m_ShaderColor);
@@ -40,6 +40,7 @@ void Sandbox2D::OnImGuiRender()
 	ImGui::ColorEdit4("Shader Color", glm::value_ptr(m_ShaderColor));
 	ImGui::End();
 }
+
 
 /*
 class ExampleLayer : public GE::Layer

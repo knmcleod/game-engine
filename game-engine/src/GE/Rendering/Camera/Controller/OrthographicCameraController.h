@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GE/Core/Timestep/Timestep.h"
+#include "GE/Core/Time/Time.h"
 #include "GE/Rendering/Camera/OrthographicCamera.h"
 
 #include "GE/Core/Input/Input.h"

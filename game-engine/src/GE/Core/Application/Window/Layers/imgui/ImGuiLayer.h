@@ -20,8 +20,7 @@ namespace GE
 
 		virtual void OnAttach() override;
 		virtual void OnDetach() override;
-		virtual void OnImGuiRender() override;
-
+		
 	private:
 		float m_Time = 0.0f;
 	};

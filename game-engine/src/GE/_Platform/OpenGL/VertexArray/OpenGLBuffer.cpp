@@ -8,7 +8,7 @@ namespace GE
 	OpenGLVertexBuffer::OpenGLVertexBuffer(uint32_t size, float* vertices)
 	{
 		glCreateBuffers(1, &m_RendererID);
-		OpenGLVertexBuffer::Bind();
+		this->Bind();
 		glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
 	}
 	
@@ -19,11 +19,13 @@ namespace GE
 
 	void OpenGLVertexBuffer::Bind() const
 	{
+		GE_PROFILE_FUNCTION();
 		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
 	}
 
 	void OpenGLVertexBuffer::Unbind() const
 	{
+		GE_PROFILE_FUNCTION();
 		glDeleteBuffers(GL_ARRAY_BUFFER, 0);
 	}
 
@@ -34,7 +36,7 @@ namespace GE
 		: m_Count(count)
 	{
 		glCreateBuffers(1, &m_RendererID);
-		OpenGLIndexBuffer::Bind();
+		this->Bind();
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(uint32_t), indices, GL_STATIC_DRAW);
 	}
 
@@ -45,11 +47,13 @@ namespace GE
 
 	void OpenGLIndexBuffer::Bind() const
 	{
+		GE_PROFILE_FUNCTION();
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
 	}
 
 	void OpenGLIndexBuffer::Unbind() const
 	{
+		GE_PROFILE_FUNCTION();
 		glDeleteBuffers(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 	//	-- End Index Buffer --

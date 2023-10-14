@@ -5,16 +5,6 @@
 
 namespace GE
 {
-	Texture::~Texture()
-	{
-
-	}
-
-	Texture2D::~Texture2D()
-	{
-
-	}
-
 	Ref<Texture2D> Texture2D::Create(uint32_t width, uint32_t height, uint32_t channels, void* data, uint32_t size)
 	{
 		switch (RenderAPI::GetAPI())

@@ -25,8 +25,6 @@ namespace GE
 		// Ends renderer
 		static void End();
 
-		static void OnWindowResize(uint32_t width, uint32_t height);
-
 	private:
 		struct Data
 		{

@@ -33,20 +33,25 @@ namespace GE
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-		//glTextureStorage2D(m_RendererID, 0, m_InternalFormat, m_Width, m_Height);
-
-		uint32_t bpp = (m_DataFormat == GL_RGBA ? 4 : 3);
-		GE_CORE_ASSERT(size == m_Width * m_Height * bpp, "Texture size incorrect! Data must be the entire texture!");
-
-		glTexImage2D(GL_TEXTURE_2D, 0, m_InternalFormat, m_Width, m_Height, 0, m_DataFormat, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(GL_TEXTURE_2D);
+		if (data == NULL)
+		{
+			glTextureStorage2D(GL_TEXTURE_2D, 0, m_InternalFormat, m_Width, m_Height);
+		}
+		else
+		{
+			this->SetData(data, size);
+		}
 	}
 
 	OpenGLTexture2D::OpenGLTexture2D(const std::string& path): m_Path(path)
 	{
 		int width = 0, height = 0, channels = 4;
 		stbi_set_flip_vertically_on_load(1);
-		stbi_uc* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
+		stbi_uc* data = nullptr;
+		{
+			GE_PROFILE_SCOPE("stbi_load - OpenGLTexture2D::OpenGLTexture2D(const std::string&)");
+			data = stbi_load(path.c_str(), &width, &height, &channels, 0);
+		}
 		GE_CORE_ASSERT(data, "Failed to load image!");
 		
 		m_Width = width;
@@ -92,20 +97,26 @@ namespace GE
 	
 	void OpenGLTexture2D::SetData(void* data, uint32_t size)
 	{
+		GE_PROFILE_FUNCTION();
+
 		uint32_t bpp = (m_DataFormat == GL_RGBA ? 4 : 3);
 		GE_CORE_ASSERT(size == m_Width * m_Height * bpp, "Texture size incorrect! Data must be the entire texture!");
 
-		//glTexImage2D(m_RendererID, 0, m_InternalFormat, m_Width, m_Height, 0, m_DataFormat, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, m_InternalFormat, m_Width, m_Height, 0, m_DataFormat, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 
 	void OpenGLTexture2D::Bind(uint32_t slot) const
 	{
+		GE_PROFILE_FUNCTION();
+
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, m_RendererID);
 	}
 
 	void OpenGLTexture2D::Unbind() const
 	{
+		GE_PROFILE_FUNCTION();
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 }
