@@ -1,5 +1,6 @@
 #pragma once
 #include "GE/Rendering/RenderAPI.h"
+#include "GE/Rendering/Renderer/Renderer.h"
 
 namespace GE
 {
@@ -9,11 +10,13 @@ namespace GE
 		inline static void Init()
 		{
 			s_RenderAPI->Init();
+			Renderer::Init();
 		}
 
 		inline static void ShutDown()
 		{
-			Clear();
+			Renderer::ShutDown();
+			ClearAPI();
 		}
 
 		inline static void SetViewport(uint32_t xOffset, uint32_t yOffset, uint32_t width, uint32_t height)
@@ -22,7 +25,7 @@ namespace GE
 		}
 
 		// Clears RenderAPI in use
-		inline static void Clear()
+		inline static void ClearAPI()
 		{ 
 			s_RenderAPI->Clear(); 
 		}
@@ -33,9 +36,9 @@ namespace GE
 		}
 
 		// Draws elements to RenderAPI in use
-		inline static void DrawIndices(const Ref<VertexArray>& vertexArray)
+		inline static void DrawIndices(const Ref<VertexArray>& vertexArray, uint32_t indexCount = 0)
 		{
-			s_RenderAPI->DrawIndices(vertexArray);
+			s_RenderAPI->DrawIndices(vertexArray, indexCount);
 		}
 
 	private:

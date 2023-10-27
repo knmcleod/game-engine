@@ -24,7 +24,7 @@ namespace GE
 		virtual void SetClearColor(const glm::vec4& color) = 0;
 
 		//	Draws elements
-		virtual void DrawIndices(const Ref<VertexArray>& vertexArray) = 0;
+		virtual void DrawIndices(const Ref<VertexArray>& vertexArray, uint32_t indexCount = 0) = 0;
 	private:
 		static API s_API;
 	};

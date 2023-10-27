@@ -12,7 +12,8 @@ namespace GE
 	class OrthographicCameraController
 	{
 	public:
-		OrthographicCameraController(float aspectRatio, bool rotation);
+		OrthographicCameraController(float aspectRatio, bool useRotation = true);
+		OrthographicCameraController(uint32_t width, uint32_t height, bool useRotation = true);
 
 		void OnUpdate(Timestep timestep);
 		void OnEvent(Event& e);

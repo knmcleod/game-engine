@@ -4,8 +4,21 @@
 
 namespace GE
 {
-	OrthographicCameraController::OrthographicCameraController(float aspectRatio, bool rotation)
-		: m_AspectRatio(aspectRatio), m_OrthoCamera(-m_AspectRatio * m_ZoomLevel, m_AspectRatio * m_ZoomLevel, -m_ZoomLevel, m_ZoomLevel), m_Rotation(rotation)
+	OrthographicCameraController::OrthographicCameraController(uint32_t width, uint32_t height, bool useRotation) : m_Rotation(useRotation)
+	{
+		m_AspectRatio = (float)width / (float)height;
+
+		float camWidth = 8.0f;
+		float bottom = -camWidth;
+		float top = camWidth;
+		float left = bottom * m_AspectRatio;
+		float right = top * m_AspectRatio;
+		m_OrthoCamera = (OrthographicCamera&)OrthographicCamera(left, right, bottom, top);
+	}
+
+	OrthographicCameraController::OrthographicCameraController(float aspectRatio, bool useRotation)
+		: m_AspectRatio(aspectRatio), m_Rotation(useRotation),
+		m_OrthoCamera(-m_AspectRatio * m_ZoomLevel, m_AspectRatio * m_ZoomLevel, -m_ZoomLevel, m_ZoomLevel)
 	{
 
 	}
@@ -68,7 +81,7 @@ namespace GE
 
 	bool OrthographicCameraController::OnWindowResized(WindowResizeEvent& e)
 	{
-		m_AspectRatio -= (float)e.GetWidth() / (float)e.GetHeight();
+		m_AspectRatio = (float)e.GetWidth() / (float)e.GetHeight();
 		m_OrthoCamera.SetProjection(-m_AspectRatio * m_ZoomLevel, m_AspectRatio * m_ZoomLevel, -m_ZoomLevel, m_ZoomLevel);
 		return false;
 	}

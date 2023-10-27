@@ -13,6 +13,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+//	-- Entry Point	--
+#include "GE/Core/EntryPoint.h"
+
 //	-- Core	--
 #include "GE/Core/Core.h"
 

@@ -6,26 +6,26 @@ namespace GE
 {
 	OpenGLTexture2D::OpenGLTexture2D(uint32_t width, uint32_t height, uint32_t channels, void* data, uint32_t size) : m_Width(width), m_Height(height)
 	{
-		if (channels == 4)
+		switch (channels)
 		{
-			m_InternalFormat = GL_RGB8;
-			m_DataFormat = GL_RGBA;
-		}
-		else if (channels == 3)
-		{
+		case 3:
 			m_InternalFormat = GL_RGB8;
 			m_DataFormat = GL_RGB;
-		}
-		else
-		{
+			break;
+		case 4:
 			m_InternalFormat = GL_RGB8;
 			m_DataFormat = GL_RGBA;
+			break;
+		default:
+			m_InternalFormat = GL_RGB8;
+			m_DataFormat = GL_RGBA;
+			break;
 		}
-
+	
 		GE_CORE_ASSERT(m_InternalFormat && m_DataFormat, "Format not supported!");
 
 		glGenTextures(1, &m_RendererID);
-		this->Bind();
+		glBindTexture(GL_TEXTURE_2D, m_RendererID);
 
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -33,14 +33,10 @@ namespace GE
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-		if (data == NULL)
-		{
-			glTextureStorage2D(GL_TEXTURE_2D, 0, m_InternalFormat, m_Width, m_Height);
-		}
-		else
-		{
+		glTextureStorage2D(GL_TEXTURE_2D, 0, m_InternalFormat, m_Width, m_Height);
+		
+		if(data != nullptr)
 			this->SetData(data, size);
-		}
 	}
 
 	OpenGLTexture2D::OpenGLTexture2D(const std::string& path): m_Path(path)
@@ -57,26 +53,26 @@ namespace GE
 		m_Width = width;
 		m_Height = height;
 
-		if (channels == 4)
+		switch (channels)
 		{
-			m_InternalFormat = GL_RGB8;
-			m_DataFormat = GL_RGBA;
-		}
-		else if(channels == 3)
-		{
+		case 3:
 			m_InternalFormat = GL_RGB8;
 			m_DataFormat = GL_RGB;
-		}
-		else
-		{
+			break;
+		case 4:
 			m_InternalFormat = GL_RGB8;
 			m_DataFormat = GL_RGBA;
+			break;
+		default:
+			m_InternalFormat = GL_RGB8;
+			m_DataFormat = GL_RGBA;
+			break;
 		}
 
 		GE_CORE_ASSERT(m_InternalFormat && m_DataFormat, "Format not supported!");
 
 		glGenTextures(1, &m_RendererID);
-		this->Bind();
+		glBindTexture(GL_TEXTURE_2D, m_RendererID);
 
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -110,7 +106,7 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		glActiveTexture(GL_TEXTURE0);
+		glActiveTexture(GL_TEXTURE0 + slot);
 		glBindTexture(GL_TEXTURE_2D, m_RendererID);
 	}
 

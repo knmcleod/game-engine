@@ -1,22 +1,19 @@
 #include <GE/GE.h>
-#include "GE/Core/EntryPoint.h"
 
 #include "2D/Sandbox2D.h"
 
-class Sandbox : public GE::Application
+class SandboxApplication : public GE::Application
 {
 public:
-	Sandbox()
+	SandboxApplication()
 	{
 		PushLayer(new Sandbox2D());
 	}
 
-	~Sandbox()
+	~SandboxApplication()
 	{
 
 	}
-
-
 
 private:
 
@@ -24,5 +21,5 @@ private:
 
 GE::Application* GE::CreateApplication()
 {
-	return new Sandbox();
+	return new SandboxApplication();
 }

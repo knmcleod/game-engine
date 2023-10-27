@@ -36,22 +36,22 @@ namespace GE
 
 		void PopLayer(Layer* layer);
 		void PopOverlay(Layer* layer);
-
-	private:
-		static Application* s_Instance;
-
+	protected:
 		bool m_Running = true;
 		bool m_Minimized = false;
 
-		std::unique_ptr<Window> m_Window;
+		float m_LastFrameTime = 0.0f;
+
 		LayerStack m_LayerStack;
 
 		ImGuiLayer* m_ImGuiLayer;
 
-		float m_LastFrameTime = 0.0f;
-
 		bool OnWindowClose(WindowCloseEvent& e);
 		bool OnWindowResize(WindowResizeEvent& e);
+
+	private:
+		static Application* s_Instance;
+		Scope<Window> m_Window;
 	};
 
 	//Defined in Client

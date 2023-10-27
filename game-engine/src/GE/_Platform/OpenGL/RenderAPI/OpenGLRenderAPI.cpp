@@ -28,8 +28,10 @@ namespace GE
 		glClearColor(color.r, color.g, color.b, color.a);
 	}
 
-	void OpenGLRenderAPI::DrawIndices(const Ref<VertexArray>& vertexArray)
+	void OpenGLRenderAPI::DrawIndices(const Ref<VertexArray>& vertexArray, uint32_t indexCount)
 	{
-		glDrawElements(GL_TRIANGLES, vertexArray->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
+		uint32_t count = indexCount ? vertexArray->GetIndexBuffer()->GetCount() : indexCount;
+		glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, nullptr);
+		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 }

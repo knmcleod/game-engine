@@ -3,6 +3,7 @@
 #include "GE/Core/Time/Time.h"
 
 #include "GE/Core/Events/Event.h"
+#include "GE/Core/Events/ApplicationEvent.h"
 
 namespace GE
 {
@@ -16,6 +17,8 @@ namespace GE
 		virtual void OnDetach() {}
 		virtual void OnUpdate(Timestep timestep) {}
 		virtual void OnEvent(Event& e) {}
+		virtual void OnWindowResize(WindowResizeEvent& e) { }
+
 		virtual void OnImGuiRender() {}
 
 		inline const std::string& GetName() const { return m_DebugName;  }

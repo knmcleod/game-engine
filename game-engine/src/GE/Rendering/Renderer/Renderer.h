@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GE/Rendering/RenderCommand.h"
+#include "GE/Rendering/RenderAPI.h"
 
 #include "GE/Rendering/Camera/OrthographicCamera.h"
 
@@ -14,24 +14,7 @@ namespace GE
 
 		static void Init();
 		static void ShutDown();
-
-		// Starts renderer using given camera 
-		static void Start(OrthographicCamera& orthoCamera);
-
-		// Runs shader amd vertex array at given transform
-		static void Run(const Ref<Shader>& shader,
-						const Ref<VertexArray>& vertexArray,
-						const glm::mat4& transform = glm::mat4(1.0f));
-		// Ends renderer
-		static void End();
-
-	private:
-		struct Data
-		{
-			glm::mat4 ViewProjectionMatrix = glm::mat4(1.0f);
-		};
-
-		static Data* m_Data;
+		
 	};
 }
 

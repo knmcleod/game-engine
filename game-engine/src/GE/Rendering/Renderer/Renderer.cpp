@@ -1,40 +1,19 @@
 #include "GE/GEpch.h"
 
 #include "GE/Rendering/Renderer/Renderer.h"
+#include "2D/Renderer2D.h"
 
 namespace GE
 {
-	Renderer::Data* Renderer::m_Data = new Renderer::Data;
 
 	void Renderer::Init()
 	{
-		RenderCommand::Init();
+		Renderer2D::Init();
 	}
 
 	void Renderer::ShutDown()
 	{
-		RenderCommand::ShutDown();
-	}
-
-	void Renderer::Start(OrthographicCamera& orthoCamera)
-	{
-		m_Data->ViewProjectionMatrix = orthoCamera.GetViewProjectionMatrix();
-	}
-
-	void Renderer::End()
-	{
-
-	}
-
-	void Renderer::Run(const Ref<Shader>& shader, const Ref<VertexArray>& vertexArray,
-		const glm::mat4& transform)
-	{
-		shader->Bind();
-		shader->SetMat4("u_ViewProjection", m_Data->ViewProjectionMatrix);
-		shader->SetMat4("u_Transform", transform);
-
-		vertexArray->Bind();
-		RenderCommand::DrawIndices(vertexArray);
+		Renderer2D::ShutDown();
 	}
 
 }

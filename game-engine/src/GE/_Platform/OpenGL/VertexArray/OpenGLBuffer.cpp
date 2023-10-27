@@ -4,9 +4,20 @@
 
 namespace GE
 {
-	//	-- Vertex Buffer --
+#pragma region VertexBuffer
+	OpenGLVertexBuffer::OpenGLVertexBuffer(uint32_t size)
+	{
+		GE_PROFILE_FUNCTION();
+
+		glCreateBuffers(1, &m_RendererID);
+		this->Bind();
+		glBufferData(GL_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
+	}
+
 	OpenGLVertexBuffer::OpenGLVertexBuffer(uint32_t size, float* vertices)
 	{
+		GE_PROFILE_FUNCTION();
+
 		glCreateBuffers(1, &m_RendererID);
 		this->Bind();
 		glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
@@ -17,24 +28,34 @@ namespace GE
 		glDeleteBuffers(1, &m_RendererID);
 	}
 
+	void OpenGLVertexBuffer::SetData(const void* data, uint32_t size)
+	{
+		this->Bind();
+		glBufferSubData(GL_ARRAY_BUFFER, 0, size, data);
+	}
+
 	void OpenGLVertexBuffer::Bind() const
 	{
 		GE_PROFILE_FUNCTION();
+
 		glBindBuffer(GL_ARRAY_BUFFER, m_RendererID);
 	}
 
 	void OpenGLVertexBuffer::Unbind() const
 	{
 		GE_PROFILE_FUNCTION();
-		glDeleteBuffers(GL_ARRAY_BUFFER, 0);
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
-	//	-- End Vertex Buffer --
+#pragma endregion
 
-	//	-- Index Buffer --
+#pragma region IndexBuffer
 	OpenGLIndexBuffer::OpenGLIndexBuffer(uint32_t count, uint32_t* indices)
 		: m_Count(count)
 	{
+		GE_PROFILE_FUNCTION();
+
 		glCreateBuffers(1, &m_RendererID);
 		this->Bind();
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(uint32_t), indices, GL_STATIC_DRAW);
@@ -48,14 +69,16 @@ namespace GE
 	void OpenGLIndexBuffer::Bind() const
 	{
 		GE_PROFILE_FUNCTION();
+
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
 	}
 
 	void OpenGLIndexBuffer::Unbind() const
 	{
 		GE_PROFILE_FUNCTION();
-		glDeleteBuffers(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
-	//	-- End Index Buffer --
+#pragma endregion
 
 }

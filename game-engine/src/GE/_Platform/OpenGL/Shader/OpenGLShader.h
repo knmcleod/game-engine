@@ -84,8 +84,9 @@ namespace GE
 		virtual void SetFloat4(const std::string& name, const glm::vec4& value) override;
 		virtual void SetFloat3(const std::string& name, const glm::vec3& value) override;
 		virtual void SetFloat2(const std::string& name, const glm::vec2& value) override;
-		virtual void SetFloat(const std::string& name, const glm::vec1& value) override;
+		virtual void SetFloat(const std::string& name, const float& value) override;
 		virtual void SetInt(const std::string& name, const int value) override;
+		virtual void SetIntArray(const std::string& name, const int* values, uint32_t count) override;
 		
 	private:
 		uint32_t m_RendererID = 0;
@@ -98,14 +99,18 @@ namespace GE
 
 		// Compiles shader using OpenGL
 		void Compile(const std::unordered_map<GLenum, std::string>& shaderSrc);
-	
+		
+		// Uploads uniform int array to renderer using OpenGL
+		void UploadUniformIntArray(const std::string& name,
+			const int* values, uint32_t count);
+
 		// Uploads uniform int to renderer using OpenGL
 		void UploadUniformInt(const std::string& name,
 			int value);
 
 		// Uploads uniform float to renderer using OpenGL
 		void UploadUniformFloat(const std::string& name,
-			const glm::vec1& vector);
+			const float& vector);
 
 		// Uploads uniform 2d float to renderer using OpenGL
 		void UploadUniformFloat2(const std::string& name,

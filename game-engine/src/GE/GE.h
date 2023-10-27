@@ -1,5 +1,6 @@
 #pragma once
 
+#pragma region Core
 //	-- Core	--
 #include "GE/Core/Core.h"
 
@@ -25,7 +26,9 @@
 
 //	--	Time	--
 #include "GE/Core/Time/Time.h"
+#pragma endregion
 
+#pragma region Rendering
 //	--	Rendering	--
 #include "GE/Rendering/RenderCommand.h"
 #include "GE/Rendering/Renderer/Renderer.h"
@@ -39,3 +42,4 @@
 
 #include "GE/Rendering/Camera/OrthographicCamera.h"
 #include "GE/Rendering/Camera/Controller/OrthographicCameraController.h"
+#pragma endregion

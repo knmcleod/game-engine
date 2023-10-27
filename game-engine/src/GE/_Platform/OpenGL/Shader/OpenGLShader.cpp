@@ -73,7 +73,7 @@ namespace GE
 		UploadUniformFloat2(name, value);
 	}
 
-	void OpenGLShader::SetFloat(const std::string& name, const glm::vec1& value)
+	void OpenGLShader::SetFloat(const std::string& name, const float& value)
 	{
 		GE_PROFILE_FUNCTION();
 
@@ -85,6 +85,13 @@ namespace GE
 		GE_PROFILE_FUNCTION();
 
 		UploadUniformInt(name, value);
+	}
+
+	void OpenGLShader::SetIntArray(const std::string& name, const int* values, uint32_t count)
+	{
+		GE_PROFILE_FUNCTION();
+
+		UploadUniformIntArray(name, values, count);
 	}
 
 	std::string OpenGLShader::ReadFile(const std::string& path)
@@ -230,6 +237,12 @@ namespace GE
 
 		m_RendererID = program;
 	}
+
+	void OpenGLShader::UploadUniformIntArray(const std::string& name, const int* values, uint32_t count)
+	{
+		GLint location = glGetUniformLocation(m_RendererID, name.c_str());
+		glUniform1iv(location, count, values);
+	}
 	
 	void OpenGLShader::UploadUniformInt(const std::string& name, int value)
 	{
@@ -237,10 +250,10 @@ namespace GE
 		glUniform1i(location, value);
 	}
 
-	void OpenGLShader::UploadUniformFloat(const std::string& name, const glm::vec1& vector)
+	void OpenGLShader::UploadUniformFloat(const std::string& name, const float& value)
 	{
 		GLint location = glGetUniformLocation(m_RendererID, name.c_str());
-		glUniform1f(location, vector.x);
+		glUniform1f(location, value);
 	}
 
 	void OpenGLShader::UploadUniformFloat2(const std::string& name, const glm::vec2& vector)

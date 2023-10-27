@@ -19,7 +19,7 @@ namespace GE
 		virtual void SetClearColor(const glm::vec4& color) override;
 		
 		//	Draws elements using OpenGL
-		virtual void DrawIndices(const Ref<VertexArray>& vertexArray) override;
+		virtual void DrawIndices(const Ref<VertexArray>& vertexArray, uint32_t indexCount = 0) override;
 	};
 }
 
