@@ -1,6 +1,6 @@
 #include "GE/GEpch.h"
 
-#include "GE/Rendering/Texture/Texture.h"
+#include "GE/Rendering/Textures/Texture.h"
 #include "GE/_Platform/OpenGL/Texture/OpenGLTexture.h"
 
 namespace GE
@@ -14,7 +14,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return (Ref<Texture2D>) new OpenGLTexture2D(width, height, channels, data, size);
+			return CreateRef<OpenGLTexture2D>(width, height, channels, data, size);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");
@@ -30,7 +30,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return (Ref<Texture2D>) new OpenGLTexture2D(path);
+			return CreateRef<OpenGLTexture2D>(path);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");

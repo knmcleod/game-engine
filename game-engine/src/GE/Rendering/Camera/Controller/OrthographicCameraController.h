@@ -9,6 +9,15 @@
 
 namespace GE
 {
+	struct OrthographicCameraBounds
+	{
+		float Left, Right;
+		float Bottom, Top;
+
+		float GetWidth() { return Right - Left; }
+		float GetHeight() { return Top - Bottom; }
+	};
+
 	class OrthographicCameraController
 	{
 	public:
@@ -21,7 +30,7 @@ namespace GE
 		OrthographicCamera& GetCamera() { return m_OrthoCamera; }
 
 		float GetZoomLevel() { return m_ZoomLevel; }
-		void SetZoomLevel(float level) { m_ZoomLevel = level; }
+		void SetZoomLevel(float level) { m_ZoomLevel = level; RecalculateView(); }
 
 	private:
 		float m_AspectRatio = 1.0f;
@@ -36,8 +45,11 @@ namespace GE
 		float m_CameraRotationSpeed = 0.25;
 
 		OrthographicCamera m_OrthoCamera;
+		OrthographicCameraBounds m_OrthoCameraBounds;
 
 		bool OnMouseScrolled(MouseScrolledEvent& e);
 		bool OnWindowResized(WindowResizeEvent& e);
+
+		void RecalculateView();
 	};
 }

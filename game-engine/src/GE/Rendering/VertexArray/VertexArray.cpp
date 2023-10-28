@@ -15,7 +15,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return (Ref<VertexArray>) new OpenGLVertexArray();
+			return CreateRef<OpenGLVertexArray>();
 			break;
 		}
 

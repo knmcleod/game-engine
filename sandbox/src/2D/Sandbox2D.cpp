@@ -7,6 +7,11 @@ Sandbox2D::Sandbox2D(const std::string& name) : Layer(name), m_OrthoCameraContro
 void Sandbox2D::OnAttach()
 {
 	GE::RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
+
+	m_Texture = GE::Texture2D::Create("assets/textures/image.jpg");
+	m_SpriteSheet = GE::Texture2D::Create("assets/textures/inputSpriteSheet.png");
+
+	m_Sprite = GE::SubTexture2D::CreateFromCoords(m_SpriteSheet, { 1, 1 }, { 16, 16 });
 }
 
 void Sandbox2D::OnDetach()
@@ -27,7 +32,13 @@ void Sandbox2D::OnUpdate(GE::Timestep timestep)
 	GE::Renderer2D::Start(m_OrthoCameraController.GetCamera());
 
 	GE::Renderer2D::FillQuadColor({ 0.0f, 0.0f, -0.1f }, { 1.0f, 1.0f }, rotation, m_ShaderColor);
-	GE::Renderer2D::FillQuadTexture({ 0.0f, 0.0f, 0.0f }, { 0.5f, 0.5f }, 0.0f, GE::Texture2D::Create("assets/textures/image.jpg"));
+	GE::Renderer2D::FillQuadTexture({ 0.0f, 0.0f, 0.0f }, { 0.5f, 0.5f }, 0.0f, m_Texture);
+
+	GE::Renderer2D::End();
+
+	GE::Renderer2D::Start(m_OrthoCameraController.GetCamera());
+
+	GE::Renderer2D::FillQuadSubTexture({ 5.0f, 0.0f, 0.1f }, { 1.0f, 1.0f }, 0.0f, m_Sprite);
 
 	GE::Renderer2D::End();
 

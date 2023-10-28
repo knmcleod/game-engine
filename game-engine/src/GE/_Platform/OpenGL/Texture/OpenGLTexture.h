@@ -3,7 +3,7 @@
 #include <glad/glad.h>
 #include <stb_image.h>
 
-#include "GE/Rendering/Texture/Texture.h"
+#include "GE/Rendering/Textures/Texture.h"
 
 namespace GE
 {

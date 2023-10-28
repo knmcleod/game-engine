@@ -17,7 +17,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return (Ref<Shader>) new OpenGLShader(name, vertexSrc, fragmentSrc);
+			return CreateRef<OpenGLShader>(name, vertexSrc, fragmentSrc);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");
@@ -33,7 +33,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return (Ref<Shader>) new OpenGLShader(path);
+			return CreateRef<OpenGLShader>(path);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");

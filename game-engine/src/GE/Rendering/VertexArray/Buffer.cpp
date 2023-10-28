@@ -16,7 +16,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return (Ref<VertexBuffer>) new OpenGLVertexBuffer(size);
+			return CreateRef<OpenGLVertexBuffer>(size);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");
@@ -32,7 +32,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return (Ref<VertexBuffer>) new OpenGLVertexBuffer(size, vertices);
+			return CreateRef<OpenGLVertexBuffer>(size, vertices);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");
@@ -50,7 +50,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return (Ref<IndexBuffer>) new OpenGLIndexBuffer(size, indices);
+			return CreateRef<OpenGLIndexBuffer>(size, indices);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");

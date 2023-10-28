@@ -26,6 +26,7 @@ namespace GE
 
 		glGenTextures(1, &m_RendererID);
 		glBindTexture(GL_TEXTURE_2D, m_RendererID);
+		glTextureStorage2D(GL_TEXTURE_2D, 1, m_InternalFormat, m_Width, m_Height);
 
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -33,8 +34,6 @@ namespace GE
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-		glTextureStorage2D(GL_TEXTURE_2D, 0, m_InternalFormat, m_Width, m_Height);
-		
 		if(data != nullptr)
 			this->SetData(data, size);
 	}
@@ -73,6 +72,7 @@ namespace GE
 
 		glGenTextures(1, &m_RendererID);
 		glBindTexture(GL_TEXTURE_2D, m_RendererID);
+		glTextureStorage2D(GL_TEXTURE_2D, 1, m_InternalFormat, m_Width, m_Height);
 
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -107,12 +107,13 @@ namespace GE
 		GE_PROFILE_FUNCTION();
 
 		glActiveTexture(GL_TEXTURE0 + slot);
-		glBindTexture(GL_TEXTURE_2D, m_RendererID);
+		glBindTextureUnit(slot, m_RendererID);
 	}
 
 	void OpenGLTexture2D::Unbind() const
 	{
 		GE_PROFILE_FUNCTION();
+
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 }

@@ -1,7 +1,8 @@
 #pragma once
 
 #include "GE/Rendering/RenderCommand.h"
-#include "GE/Rendering/Texture/Texture.h"
+#include "GE/Rendering/Textures/Texture.h"
+#include "GE/Rendering/Textures/SubTexture.h"
 
 namespace GE
 {
@@ -20,10 +21,12 @@ namespace GE
 		static void FillQuadColor(const glm::vec3& position, const glm::vec2& size, const float rotation,
 			const glm::vec4& color);
 		static void FillQuadTexture(const glm::vec3& position, const glm::vec2& size, const float rotation,
-			const Ref<Texture2D> texture, const float& tilingFactor = 1.0f, const glm::vec4& tintColor = glm::vec4(1.0f));
-		
+			const Ref<Texture2D>& texture, const float& tilingFactor = 1.0f, const glm::vec4& tintColor = glm::vec4(1.0f));
+		static void FillQuadSubTexture(const glm::vec3& position, const glm::vec2& size, const float rotation,
+			const Ref<SubTexture2D>& subTexture, const float& tilingFactor = 1.0f, const glm::vec4& tintColor = glm::vec4(1.0f));
+
 		static void SetQuadData(const glm::vec3& position, const glm::vec2& size, const float& rotation,
-			const float& textureIndex, const float& tilingFactor, const glm::vec4& color);
+			const float& textureIndex, const glm::vec2 textureCoords[4], const float& tilingFactor, const glm::vec4& color);
 		static void ResetQuadData();
 
 		struct Statistics
