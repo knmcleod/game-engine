@@ -28,6 +28,7 @@ namespace GE
 
 		// Runs Window - Updates Layers and Timestep
 		void Run();
+		void Close();
 
 		void OnEvent(Event& e);
 

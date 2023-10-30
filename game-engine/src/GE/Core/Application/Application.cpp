@@ -76,6 +76,11 @@ namespace GE
 		}
 	}
 
+	void Application::Close()
+	{
+		m_Running = false;
+	}
+
 	void Application::OnEvent(Event& e)
 	{
 		GE_PROFILE_FUNCTION();
@@ -95,7 +100,7 @@ namespace GE
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)
 	{
-		m_Running = false;
+		this->Close();
 		return true;
 	}
 
