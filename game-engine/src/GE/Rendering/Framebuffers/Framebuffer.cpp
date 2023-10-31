@@ -1,12 +1,14 @@
 #include "GE/GEpch.h"
 
-#include "VertexArray.h"
-#include "GE/_Platform/OpenGL/VertexArray/OpenGLVertexArray.h"
+#include "Framebuffer.h"
+
 #include "GE/Rendering/Renderer/Renderer.h"
+
+#include "GE/_Platform/OpenGL/Framebuffers/OpenGLFramebuffer.h"
 
 namespace GE
 {
-	Ref<VertexArray> VertexArray::Create()
+	Ref<Framebuffer> Framebuffer::Create(const FramebufferSpecification& spec)
 	{
 		switch (Renderer::GetAPI())
 		{
@@ -15,12 +17,10 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return CreateRef<OpenGLVertexArray>();
+			return CreateRef<OpenGLFramebuffer>(spec);
 			break;
 		}
-
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");
 		return nullptr;
 	}
-
 }

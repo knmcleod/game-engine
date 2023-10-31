@@ -2,14 +2,14 @@
 
 #include "Buffer.h"
 #include "GE/_Platform/OpenGL/VertexArray/OpenGLBuffer.h"
-#include "GE/Rendering/RenderAPI.h"
+#include "GE/Rendering/Renderer/Renderer.h"
 
 namespace GE
 {
 #pragma region VertexBuffer
 	Ref<VertexBuffer> VertexBuffer::Create(uint32_t size)
 	{
-		switch (RenderAPI::GetAPI())
+		switch (Renderer::GetAPI())
 		{
 		case RenderAPI::API::None:
 			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");
@@ -25,7 +25,7 @@ namespace GE
 
 	Ref<VertexBuffer> VertexBuffer::Create(uint32_t size, float* vertices)
 	{
-		switch (RenderAPI::GetAPI())
+		switch (Renderer::GetAPI())
 		{
 		case RenderAPI::API::None:
 			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");
@@ -43,7 +43,7 @@ namespace GE
 #pragma region IndexBuffer
 	Ref<IndexBuffer> IndexBuffer::Create(uint32_t size, uint32_t* indices)
 	{
-		switch (RenderAPI::GetAPI())
+		switch (Renderer::GetAPI())
 		{
 		case RenderAPI::API::None:
 			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");

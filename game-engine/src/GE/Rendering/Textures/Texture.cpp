@@ -7,7 +7,7 @@ namespace GE
 {
 	Ref<Texture2D> Texture2D::Create(uint32_t width, uint32_t height, uint32_t channels, void* data, uint32_t size)
 	{
-		switch (RenderAPI::GetAPI())
+		switch (Renderer::GetAPI())
 		{
 		case RenderAPI::API::None:
 			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");
@@ -23,7 +23,7 @@ namespace GE
 
 	Ref<Texture2D> Texture2D::Create(const std::string& path)
 	{
-		switch (RenderAPI::GetAPI())
+		switch (Renderer::GetAPI())
 		{
 		case RenderAPI::API::None:
 			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");

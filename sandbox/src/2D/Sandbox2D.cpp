@@ -6,11 +6,14 @@ Sandbox2D::Sandbox2D(const std::string& name) : Layer(name), m_OrthoCameraContro
 
 void Sandbox2D::OnAttach()
 {
-	GE::RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
-
 	m_SpriteSheet = GE::Texture2D::Create("assets/textures/Tilemap/inputSpriteSheet.png");
 
 	m_Sprite = GE::SubTexture2D::CreateFromCoords(m_SpriteSheet, { 1, 1 }, { 16, 16 });
+
+	GE::FramebufferSpecification framebufferSpec;
+	framebufferSpec.Width = 1280;
+	framebufferSpec.Height = 72;
+	m_Framebuffer = GE::Framebuffer::Create(framebufferSpec);
 }
 
 void Sandbox2D::OnDetach()
@@ -23,6 +26,8 @@ void Sandbox2D::OnUpdate(GE::Timestep timestep)
 	m_OrthoCameraController.OnUpdate(timestep);
 
 	GE::Renderer2D::ResetStats();
+	m_Framebuffer->Bind();
+	GE::RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
 	GE::RenderCommand::ClearAPI();
 	
 	static float rotation = 0.0f;
@@ -39,6 +44,7 @@ void Sandbox2D::OnUpdate(GE::Timestep timestep)
 
 	GE::Renderer2D::FillQuadSubTexture({ 5.0f, 0.0f, 0.1f }, { 1.0f, 1.0f }, 0.0f, m_Sprite);
 
+	m_Framebuffer->Unbind();
 	GE::Renderer2D::End();
 
 }
@@ -50,7 +56,6 @@ void Sandbox2D::OnEvent(GE::Event& e)
 
 void Sandbox2D::OnImGuiRender()
 {
-	// Note: Switch this to true to enable dockspace
 	static bool dockingEnabled = true;
 	if (dockingEnabled)
 	{
@@ -112,25 +117,22 @@ void Sandbox2D::OnImGuiRender()
 			ImGui::EndMenuBar();
 		}
 
+	
 		ImGui::Begin("Settings");
+		GE::Renderer2D::Statistics stats = GE::Renderer2D::GetStats();
+		ImGui::Text("Renderer2D Stats: ");
+		ImGui::Text("Draw Calls - %d", stats.DrawCalls);
+		ImGui::Text("Quad Count - %d", stats.QuadCount);
+		ImGui::Text("Vertices - %d", stats.GetTotalVertexCount());
+		ImGui::Text("Indices - %d", stats.GetTotalIndexCount());
 
-	ImGui::Begin("Settings");
+		ImGui::ColorEdit4("Shader Color", glm::value_ptr(m_ShaderColor));
 	
-	GE::Renderer2D::Statistics stats = GE::Renderer2D::GetStats();
-	ImGui::Text("Renderer2D Stats: ");
-	ImGui::Text("Draw Calls - %d", stats.DrawCalls);
-	ImGui::Text("Quad Count - %d", stats.QuadCount);
-	ImGui::Text("Vertices - %d", stats.GetTotalVertexCount());
-	ImGui::Text("Indices - %d", stats.GetTotalIndexCount());
+		uint32_t textureID = m_Framebuffer->GetColorAttachment();
+		ImGui::Image((void*)textureID, ImVec2{ 1280.0f, 720.0f }, ImVec2{ 0,1 }, ImVec2{ 1,0 });
+		ImGui::End();
 
-	ImGui::ColorEdit4("Shader Color", glm::value_ptr(m_ShaderColor));
-	
-	ImGui::End();
-	uint32_t textureID = m_SpriteSheet->GetID();
-	ImGui::Image((void*)textureID, ImVec2{ 256.0f, 256.0f });
-	ImGui::End();
-
-	ImGui::End();
+		ImGui::End();
 	}
 	else
 	{
@@ -145,8 +147,8 @@ void Sandbox2D::OnImGuiRender()
 
 		ImGui::ColorEdit4("Shader Color", glm::value_ptr(m_ShaderColor));
 
-		uint32_t textureID = m_SpriteSheet->GetID();
-		ImGui::Image((void*)textureID, ImVec2{ 256.0f, 256.0f });
+		uint32_t textureID = m_Framebuffer->GetColorAttachment();
+		ImGui::Image((void*)textureID, ImVec2{ 1280.0f, 720.0f }, ImVec2{ 0,1 }, ImVec2{ 1,0 });
 		ImGui::End();
 	}
 }
