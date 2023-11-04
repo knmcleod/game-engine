@@ -5,7 +5,7 @@ namespace GE
 {
 	struct FramebufferSpecification
 	{
-		uint32_t Width, Height;
+		uint32_t Width = 1, Height = 1;
 		uint32_t Samples;
 
 		bool SwapChainTarget = false; 
@@ -16,9 +16,9 @@ namespace GE
 
 	class Framebuffer
 	{
-	protected:
-
 	public:
+		virtual ~Framebuffer() = default;
+
 		virtual inline const FramebufferSpecification& GetSpecification() = 0;
 		virtual inline void SetSpecification(const FramebufferSpecification& spec) = 0;
 		
@@ -26,6 +26,9 @@ namespace GE
 
 		virtual void Bind() = 0;
 		virtual void Unbind() = 0;
+
+		virtual void Resize(uint32_t width, uint32_t height) = 0;
+		virtual void Clean() = 0;
 
 		static Ref<Framebuffer> Create(const FramebufferSpecification& spec);
 	};

@@ -1,12 +1,13 @@
 #include "GE/GEpch.h"
 
-#include "WindowsInput.h"
+#include "GE/Core/Input/Input.h"
+#include "GE/Core/Application/Application.h"
+
+#include <GLFW/glfw3.h>
 
 namespace GE
 {
-	Input* Input::s_Instance = new WindowsInput();
-
-	bool WindowsInput::IsKeyPressedImpl(int keycode)
+	bool Input::IsKeyPressed(int keycode)
 	{
 		auto window = static_cast<GLFWwindow*>(Application::GetApplication().GetWindow().GetNativeWindow());
 
@@ -15,7 +16,7 @@ namespace GE
 		return state == GLFW_PRESS || state == GLFW_REPEAT;
 	}
 
-	bool WindowsInput::IsMouseButtonPressedImpl(int button)
+	bool Input::IsMouseButtonPressed(int button)
 	{
 		auto window = static_cast<GLFWwindow*>(Application::GetApplication().GetWindow().GetNativeWindow());
 
@@ -23,21 +24,21 @@ namespace GE
 		return state == GLFW_PRESS;
 	}
 
-	float WindowsInput::GetMouseXImpl()
+	float Input::GetMouseX()
 	{
-		auto [x, y] = GetMousePosImpl();
+		auto [x, y] = GetMousePosition();
 
 		return x;
 	}
 
-	float WindowsInput::GetMouseYImpl()
+	float Input::GetMouseY()
 	{
-		auto [x, y] = GetMousePosImpl();
+		auto [x, y] = GetMousePosition();
 
 		return y;
 	}
 
-	std::pair<float, float> WindowsInput::GetMousePosImpl()
+	std::pair<float, float> Input::GetMousePosition()
 	{
 		auto window = static_cast<GLFWwindow*>(Application::GetApplication().GetWindow().GetNativeWindow());
 		double xpos, ypos;

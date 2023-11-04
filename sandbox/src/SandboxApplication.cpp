@@ -5,7 +5,7 @@
 class SandboxApplication : public GE::Application
 {
 public:
-	SandboxApplication()
+	SandboxApplication() : Application("Sandbox")
 	{
 		PushLayer(new Sandbox2D());
 	}

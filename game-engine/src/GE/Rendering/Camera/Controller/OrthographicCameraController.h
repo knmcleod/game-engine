@@ -24,14 +24,15 @@ namespace GE
 		OrthographicCameraController(float aspectRatio, bool useRotation = true);
 		OrthographicCameraController(uint32_t width, uint32_t height, bool useRotation = true);
 
-		void OnUpdate(Timestep timestep);
-		void OnEvent(Event& e);
-
 		OrthographicCamera& GetCamera() { return m_OrthoCamera; }
 
 		float GetZoomLevel() { return m_ZoomLevel; }
 		void SetZoomLevel(float level) { m_ZoomLevel = level; RecalculateView(); }
+		
+		void OnUpdate(Timestep timestep);
+		void OnEvent(Event& e);
 
+		void ResizeBounds(float width, float height);
 	private:
 		float m_AspectRatio = 1.0f;
 		float m_ZoomLevel = 1.0f;

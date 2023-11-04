@@ -24,6 +24,4 @@ private:
 	glm::vec4 m_ShaderColor = { 0.2f, 0.3f, 0.8f, 1.0f };
 	GE::Ref<GE::Texture2D> m_SpriteSheet;
 	GE::Ref<GE::SubTexture2D> m_Sprite;
-
-	GE::Ref<GE::Framebuffer> m_Framebuffer;
 };

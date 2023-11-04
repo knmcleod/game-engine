@@ -92,6 +92,59 @@ project "game-engine"
 		runtime "Release"
 		optimize "On"
 
+project "editor"
+	location "editor"
+	kind "ConsoleApp"
+	language "C++"
+	cppdialect "C++17"
+	staticruntime "On"
+
+	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+	
+	files
+	{
+		"%{prj.name}/src/**.h",
+		"%{prj.name}/src/**.cpp"
+	}
+
+	includedirs
+	{
+		"game-engine/src",
+		"game-engine/vender",
+		"%{IncludeDir.spdlog}",
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.glm}"
+	}
+
+	links
+	{
+		"game-engine"
+	}
+
+	filter "system:windows"
+		systemversion "latest"
+
+		defines
+		{
+			"GE_PLATFORM_WINDOWS"
+		}
+
+	filter "configurations:Debug"
+		defines "GE_DEBUG"
+		runtime "Debug"
+		symbols "On"
+
+	filter "configurations:Release"
+		defines "GE_RELEASE"
+		runtime "Release"
+		optimize "On"
+
+	filter "configurations:Dist"
+		defines "GE_DIST"
+		runtime "Release"
+		optimize "On"
+
 project "sandbox"
 	location "sandbox"
 	kind "ConsoleApp"
@@ -111,7 +164,8 @@ project "sandbox"
 	includedirs
 	{
 		"game-engine/src",
-		"game-engine/vender/spdlog/include",
+		"game-engine/vender",
+		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}"
 	}

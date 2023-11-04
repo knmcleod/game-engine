@@ -4,8 +4,8 @@
 #include "GE/Core/Time/Time.h"
 
 #include "GE/Core/Application/Window/Window.h"
-#include "GE/Core/Application/Window/Layers/LayerStack.h"
-#include "GE/Core/Application/Window/Layers/imgui/ImGuiLayer.h"
+#include "GE/Core/Application/Layers/LayerStack.h"
+#include "GE/Core/ImGui/ImGuiLayer.h"
 
 #include "GE/Core/Events/ApplicationEvent.h"
 
@@ -20,11 +20,12 @@ namespace GE
 	class Application
 	{
 	public:
-		Application();
+		Application(const std::string& name);
 		virtual ~Application();
 
 		inline static Application& GetApplication() { return *s_Instance; };
 		inline Window& GetWindow() { return *m_Window; };
+		inline ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer; }
 
 		// Runs Window - Updates Layers and Timestep
 		void Run();

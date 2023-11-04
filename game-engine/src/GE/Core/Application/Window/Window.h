@@ -6,20 +6,20 @@ namespace GE
 {
 	struct WindowProps
 	{
-		std::string Title = "Window";
-		unsigned int Width = 1280;
-		unsigned int Height = 720;
+		std::string Title;
+		uint32_t Width;
+		uint32_t Height;
 
 		WindowProps(const std::string& title = "Window",
-			unsigned int width = 1280,
-			unsigned int height = 720)
+			uint32_t width = 1280,
+			uint32_t height = 720)
 			: Title(title), Width(width), Height(height)
 		{
 		}
 	};
 
 	//	Interface representing a desktop system based Window
-	class  Window
+	class Window
 	{
 	public:
 		using EventCallbackFn = std::function<void(Event&)>;

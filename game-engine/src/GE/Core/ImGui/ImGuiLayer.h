@@ -4,25 +4,29 @@
 #include <backends/imgui_impl_opengl3.h>
 #include <imgui.h>
 
-#include "GE/Core/Application/Window/Layers/Layer.h"
+#include "GE/Core/Application/Layers/Layer.h"
 
 
 namespace GE
 {
 	class  ImGuiLayer : public Layer
 	{
+	private:
+		bool m_BlockEvents = true;
+		float m_Time = 0.0f;
 	public:
 		ImGuiLayer();
-		~ImGuiLayer();
+		virtual ~ImGuiLayer();
+
+		virtual void OnAttach() override;
+		virtual void OnDetach() override;
+		virtual void OnEvent(Event& e) override;
+		
+		inline void BlockEvents(bool block) { m_BlockEvents = block; }
 
 		void Begin();
 		void End();
 
-		virtual void OnAttach() override;
-		virtual void OnDetach() override;
-		
-	private:
-		float m_Time = 0.0f;
 	};
 	
 }

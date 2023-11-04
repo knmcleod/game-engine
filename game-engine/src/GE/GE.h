@@ -6,9 +6,9 @@
 
 //	--	Application	--
 #include "GE/Core/Application/Application.h"
-#include "GE/Core/Application/Window/Layers/Layer.h"
-#include "GE/Core/Application/Window/Layers/LayerStack.h"
-#include "GE/Core/Application/Window/Layers/imgui/ImGuiLayer.h"
+#include "GE/Core/Application/Layers/Layer.h"
+#include "GE/Core/Application/Layers/LayerStack.h"
+#include "GE/Core/ImGui/ImGuiLayer.h"
 
 //	-- Debug	--
 #include "GE/Core/Debug/Instrumentor.h"

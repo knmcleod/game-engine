@@ -6,6 +6,8 @@
 
 namespace GE
 {
+	static const uint32_t s_MaxFramebufferSize = 8192;
+
 	OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& spec) : m_Spec(spec)
 	{
 		Invalidate();
@@ -13,12 +15,13 @@ namespace GE
 
 	OpenGLFramebuffer::~OpenGLFramebuffer()
 	{
-		glDeleteFramebuffers(1, &m_RendererID);
+		Clean();
 	}
 
 	void OpenGLFramebuffer::Bind()
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
+		glViewport(0, 0, m_Spec.Width, m_Spec.Height);
 	}
 
 	void OpenGLFramebuffer::Unbind()
@@ -26,8 +29,35 @@ namespace GE
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
+	void OpenGLFramebuffer::Resize(uint32_t width, uint32_t height)
+	{	
+		if (width == 0 || height == 0
+			|| width > s_MaxFramebufferSize || height > s_MaxFramebufferSize
+			|| ((m_Spec.Width == width) && (m_Spec.Height = height)))
+		{
+			GE_CORE_WARN("Attempted Framebuffer Resize. Size: {0}, {1}", width, height);
+			return;
+		}
+
+		m_Spec.Width = width;
+		m_Spec.Height = height;
+		Invalidate();
+	}
+
+	void OpenGLFramebuffer::Clean()
+	{
+		glDeleteFramebuffers(1, &m_RendererID);
+		glDeleteTextures(1, &m_ColorAttachment);
+		glDeleteTextures(1, &m_DepthAttachment);
+	}
+
 	void OpenGLFramebuffer::Invalidate()
 	{
+		if (m_RendererID)
+		{
+			Clean();
+		}
+
 		glCreateFramebuffers(1, &m_RendererID);
 		glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
 

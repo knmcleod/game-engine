@@ -1,8 +1,8 @@
 #include "GE/GEpch.h"
 
 #include "WindowsWindow.h"
-#include "WindowsInput.h"
 
+#include "GE/Core/Events/ApplicationEvent.h"
 #include "GE/Core/Events/KeyEvent.h"
 #include "GE/Core/Events/MouseEvent.h"
 
@@ -17,11 +17,6 @@ namespace GE
 
 	static bool s_GLFWInitialized = false;
 	static int s_GLFWWindowCount = 0;
-
-	Scope<Window> Window::Create(const WindowProps& props)
-	{
-		return (Scope<Window>) new WindowsWindow(props);
-	}
 
 	WindowsWindow::WindowsWindow(const WindowProps& props)
 	{

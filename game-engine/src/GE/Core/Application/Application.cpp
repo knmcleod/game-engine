@@ -12,7 +12,7 @@ namespace GE
 	
 	Application* Application::s_Instance = 0;
 
-	Application::Application()
+	Application::Application(const std::string& name)
 	{
 		GE_PROFILE_FUNCTION();
 
@@ -20,7 +20,7 @@ namespace GE
 		s_Instance = this;
 
 		//Creates Window and Binds Events
-		m_Window = std::unique_ptr<Window>(Window::Create());
+		m_Window = Window::Create(WindowProps(name));
 		m_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));
 		
 		RenderCommand::Init();

@@ -28,6 +28,20 @@ namespace GE
 		m_OrthoCameraBounds = { -m_AspectRatio * m_ZoomLevel, m_AspectRatio * m_ZoomLevel, -m_ZoomLevel, m_ZoomLevel };
 	}
 
+	bool OrthographicCameraController::OnMouseScrolled(MouseScrolledEvent& e)
+	{
+		m_ZoomLevel -= e.GetYOffset();
+		m_ZoomLevel = std::max(m_ZoomLevel, 0.25f);
+		RecalculateView();
+		return false;
+	}
+
+	bool OrthographicCameraController::OnWindowResized(WindowResizeEvent& e)
+	{
+		ResizeBounds((float)e.GetWidth(), (float)e.GetHeight());
+		return false;
+	}
+	
 	void OrthographicCameraController::OnUpdate(Timestep timestep)
 	{
 		//	Camera Movement
@@ -76,19 +90,10 @@ namespace GE
 
 	}
 
-	bool OrthographicCameraController::OnMouseScrolled(MouseScrolledEvent& e)
+	void OrthographicCameraController::ResizeBounds(float width, float height)
 	{
-		m_ZoomLevel -= e.GetYOffset();
-		m_ZoomLevel = std::max(m_ZoomLevel, 0.25f);
+		m_AspectRatio = width / height;
 		RecalculateView();
-		return false;
-	}
-
-	bool OrthographicCameraController::OnWindowResized(WindowResizeEvent& e)
-	{
-		m_AspectRatio = (float)e.GetWidth() / (float)e.GetHeight();
-		RecalculateView();
-		return false;
 	}
 
 	void OrthographicCameraController::RecalculateView()
