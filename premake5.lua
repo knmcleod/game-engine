@@ -18,6 +18,7 @@ IncludeDir["ImGui"] = "game-engine/vender/imgui"
 IncludeDir["glm"] = "game-engine/vender/glm"
 IncludeDir["spdlog"] = "game-engine/vender/spdlog/include"
 IncludeDir["stb"] = "game-engine/vender/stb"
+IncludeDir["entt"] = "game-engine/vender/entt/single_include"
 
 group "Dependencies"
 	include "game-engine/vender/glfw"
@@ -56,7 +57,8 @@ project "game-engine"
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.spdlog}",
-		"%{IncludeDir.stb}"
+		"%{IncludeDir.stb}",
+		"%{IncludeDir.entt}"
 	}
 
 	links
@@ -114,7 +116,8 @@ project "editor"
 		"game-engine/vender",
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.ImGui}",
-		"%{IncludeDir.glm}"
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.entt}"
 	}
 
 	links
@@ -167,7 +170,8 @@ project "sandbox"
 		"game-engine/vender",
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.ImGui}",
-		"%{IncludeDir.glm}"
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.entt}"
 	}
 
 	links

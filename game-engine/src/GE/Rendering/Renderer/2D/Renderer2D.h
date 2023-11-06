@@ -18,6 +18,9 @@ namespace GE
 		static void Flush();
 		static void FlushAndReset();
 
+		static void FillQuad(const glm::mat4& transform, const glm::vec4& color);
+		static void FillQuad(const glm::mat4& transform, const Ref<Texture2D>& texture, const float& tilingFactor = 1.0f, const glm::vec4& color = glm::vec4(1.0f));
+
 		static void FillQuadColor(const glm::vec3& position, const glm::vec2& size, const float rotation,
 			const glm::vec4& color);
 		static void FillQuadTexture(const glm::vec3& position, const glm::vec2& size, const float rotation,
@@ -25,8 +28,8 @@ namespace GE
 		static void FillQuadSubTexture(const glm::vec3& position, const glm::vec2& size, const float rotation,
 			const Ref<SubTexture2D>& subTexture, const float& tilingFactor = 1.0f, const glm::vec4& tintColor = glm::vec4(1.0f));
 
-		static void SetQuadData(const glm::vec3& position, const glm::vec2& size, const float& rotation,
-			const float& textureIndex, const glm::vec2 textureCoords[4], const float& tilingFactor, const glm::vec4& color);
+		static void SetQuadData(const glm::mat4& transform, const float& textureIndex, const glm::vec2 textureCoords[4],
+			const float& tilingFactor, const glm::vec4& color);
 		static void ResetQuadData();
 
 		struct Statistics

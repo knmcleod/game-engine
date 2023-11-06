@@ -162,9 +162,9 @@ namespace GE
 		
 		ResetQuadData();
 	}
+#pragma region Quad
 
-	void Renderer2D::FillQuadColor(const glm::vec3& position, const glm::vec2& size,
-		const float rotation, const glm::vec4& color)
+	void Renderer2D::FillQuad(const glm::mat4& transform, const glm::vec4& color)
 	{
 		GE_PROFILE_FUNCTION();
 
@@ -177,22 +177,18 @@ namespace GE
 		const float textureIndex = 0.0f; // White Texture
 		const float tilingFactor = 1.0f;
 
-		SetQuadData(position, size, rotation, textureIndex, textureCoords, tilingFactor, color);
+		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, color);
 
 	}
 
-	void Renderer2D::FillQuadTexture(const glm::vec3& position, const glm::vec2& size,
-		const float rotation, const Ref<Texture2D>& texture, const float& tilingFactor, const glm::vec4& tintColor)
+	void Renderer2D::FillQuad(const glm::mat4& transform, const Ref<Texture2D>& texture, const float& tilingFactor, const glm::vec4& color)
 	{
-		GE_PROFILE_FUNCTION();
-
-		const glm::vec2 textureCoords[] = { {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f} };
-
 		if (s_Data.QuadIndexCount >= s_Data.MaxIndices)
 		{
 			FlushAndReset();
 		}
 
+		const glm::vec2 textureCoords[] = { {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f} };
 		float textureIndex = 0.0f;
 
 		for (uint32_t i = 1; i < s_Data.TextureSlotIndex; i++)
@@ -214,8 +210,33 @@ namespace GE
 			s_Data.TextureSlotIndex++;
 		}
 
-		SetQuadData(position, size, rotation, textureIndex, textureCoords, tilingFactor, tintColor);
+		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, color);
 
+	}
+
+	void Renderer2D::FillQuadColor(const glm::vec3& position, const glm::vec2& size,
+		const float rotation, const glm::vec4& color)
+	{
+		GE_PROFILE_FUNCTION();
+
+		glm::mat4 transform = glm::translate(m_identityMat4, position)
+			* glm::rotate(m_identityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
+			* glm::scale(m_identityMat4, { size.x, size.y, 1.0f });
+
+		FillQuad(transform, color);
+
+	}
+
+	void Renderer2D::FillQuadTexture(const glm::vec3& position, const glm::vec2& size,
+		const float rotation, const Ref<Texture2D>& texture, const float& tilingFactor, const glm::vec4& tintColor)
+	{
+		GE_PROFILE_FUNCTION();
+
+		glm::mat4 transform = glm::translate(m_identityMat4, position)
+			* glm::rotate(m_identityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
+			* glm::scale(m_identityMat4, { size.x, size.y, 1.0f });
+
+		FillQuad(transform, texture, tilingFactor, tintColor);
 	}
 
 	void Renderer2D::FillQuadSubTexture(const glm::vec3& position, const glm::vec2& size, const float rotation,
@@ -227,6 +248,10 @@ namespace GE
 		{
 			FlushAndReset();
 		}
+
+		glm::mat4 transform = glm::translate(m_identityMat4, position)
+			* glm::rotate(m_identityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
+			* glm::scale(m_identityMat4, { size.x, size.y, 1.0f });
 
 		const glm::vec2* textureCoords = subTexture->GetTextureCoords();
 
@@ -255,16 +280,11 @@ namespace GE
 			s_Data.TextureSlotIndex++;
 		}
 
-		SetQuadData(position, size, rotation, textureIndex, textureCoords, tilingFactor, tintColor);
+		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, tintColor);
 	}
 
-	void Renderer2D::SetQuadData(const glm::vec3& position, const glm::vec2& size, const float& rotation,
-		const float& textureIndex, const glm::vec2 textureCoords[4], const float& tilingFactor, const glm::vec4& color)
+	void Renderer2D::SetQuadData(const glm::mat4& transform, const float& textureIndex, const glm::vec2 textureCoords[4], const float& tilingFactor, const glm::vec4& color)
 	{
-		glm::mat4 transform = glm::translate(m_identityMat4, position)
-			* glm::rotate(m_identityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
-			* glm::scale(m_identityMat4, { size.x, size.y, 1.0f });
-
 		s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertices[0];
 		s_Data.QuadVertexBufferPtr->Color = color;
 		s_Data.QuadVertexBufferPtr->TextureCoord = textureCoords[0];
@@ -296,7 +316,7 @@ namespace GE
 		s_Data.QuadIndexCount += 6;
 		s_Data.Stats.QuadCount++;
 	}
-
+	
 	void Renderer2D::ResetQuadData()
 	{
 		s_Data.QuadIndexCount = 0;
@@ -304,6 +324,8 @@ namespace GE
 
 		s_Data.TextureSlotIndex = 1;
 	}
+
+#pragma endregion
 
 #pragma region Statistics
 	Renderer2D::Statistics Renderer2D::GetStats()

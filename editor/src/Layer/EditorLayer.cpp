@@ -8,14 +8,14 @@ namespace GE
 
 	void EditorLayer::OnAttach()
 	{
-		m_SpriteSheet = Texture2D::Create("assets/textures/Tilemap/inputSpriteSheet.png");
-
-		m_Sprite = SubTexture2D::CreateFromCoords(m_SpriteSheet, { 1, 1 }, { 16, 16 });
-
 		FramebufferSpecification framebufferSpec;
 		framebufferSpec.Width = 1280;
 		framebufferSpec.Height = 72;
 		m_Framebuffer = Framebuffer::Create(framebufferSpec);
+
+		m_ActiveScene = CreateRef<Scene>();
+		m_Entity = m_ActiveScene->CreateEntity();
+		m_Entity.AddComponent<SpriteRendererComponent>(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
 	}
 
 	void EditorLayer::OnDetach()
@@ -33,23 +33,12 @@ namespace GE
 		RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
 		RenderCommand::ClearAPI();
 
-		static float rotation = 0.0f;
-		rotation += timestep * 20.0f;
-
 		Renderer2D::Start(m_OrthoCameraController.GetCamera());
 
-		Renderer2D::FillQuadColor({ 0.0f, 0.0f, -0.1f }, { 1.0f, 1.0f }, rotation, m_ShaderColor);
-		Renderer2D::FillQuadTexture({ 0.0f, 0.0f, 0.0f }, { 0.5f, 0.5f }, 0.0f, m_SpriteSheet);
+		m_ActiveScene->OnUpdate(timestep);
 
 		Renderer2D::End();
-
-		Renderer2D::Start(m_OrthoCameraController.GetCamera());
-
-		Renderer2D::FillQuadSubTexture({ 5.0f, 0.0f, 0.1f }, { 1.0f, 1.0f }, 0.0f, m_Sprite);
-
 		m_Framebuffer->Unbind();
-		Renderer2D::End();
-
 	}
 
 	void EditorLayer::OnEvent(Event& e)
@@ -119,7 +108,7 @@ namespace GE
 		}
 
 		{
-			ImGui::Begin("Settings");
+			ImGui::Begin("Statistics");
 
 			Renderer2D::Statistics stats = Renderer2D::GetStats();
 			ImGui::Text("Renderer2D Stats: ");
@@ -128,8 +117,14 @@ namespace GE
 			ImGui::Text("Vertices - %d", stats.GetTotalVertexCount());
 			ImGui::Text("Indices - %d", stats.GetTotalIndexCount());
 
-			ImGui::ColorEdit4("Shader Color", glm::value_ptr(m_ShaderColor));
+			ImGui::End();
+		}
 
+		{
+			ImGui::Begin("Entity Editor");
+			ImGui::Text("%s", m_Entity.GetComponent<TagComponent>().Tag.c_str());
+			auto& entityColor = m_Entity.GetComponent<SpriteRendererComponent>().Color;
+			ImGui::ColorEdit4("Entity Color", glm::value_ptr(entityColor));
 			ImGui::End();
 		}
 

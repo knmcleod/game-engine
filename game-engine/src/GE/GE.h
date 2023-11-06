@@ -45,3 +45,9 @@
 #include "GE/Rendering/Camera/OrthographicCamera.h"
 #include "GE/Rendering/Camera/Controller/OrthographicCameraController.h"
 #pragma endregion
+
+#pragma region Scene
+#include "GE/Scene/Scene.h"
+#include "GE/Scene/Entity/Entity.h"
+#include "GE/Scene/Components/Components.h"
+#pragma endregion
