@@ -2,29 +2,54 @@
 
 namespace GE
 {
-	EditorLayer::EditorLayer(const std::string& name) : Layer(name), m_OrthoCameraController(Application::GetApplication().GetWindow().GetWidth(), Application::GetApplication().GetWindow().GetHeight())
+	EditorLayer::EditorLayer(const std::string& name)
+		: Layer(name),
+		m_OrthoCameraController(1280.0f / 720.0f)
 	{
 	}
 
 	void EditorLayer::OnAttach()
 	{
+		GE_PROFILE_FUNCTION();
+
 		FramebufferSpecification framebufferSpec;
 		framebufferSpec.Width = 1280;
 		framebufferSpec.Height = 72;
 		m_Framebuffer = Framebuffer::Create(framebufferSpec);
 
 		m_ActiveScene = CreateRef<Scene>();
+
+		m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
+		m_CameraEntityPrimary.AddComponent<CameraComponent>();
+		m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = true;
+
+		m_CameraEntitySecondary = m_ActiveScene->CreateEntity("Secondary Camera Entity");
+		m_CameraEntitySecondary.AddComponent<CameraComponent>();
+	
 		m_Entity = m_ActiveScene->CreateEntity();
 		m_Entity.AddComponent<SpriteRendererComponent>(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+
 	}
 
 	void EditorLayer::OnDetach()
 	{
+		GE_PROFILE_FUNCTION();
 		RenderCommand::ShutDown();
 	}
 
 	void EditorLayer::OnUpdate(Timestep timestep)
 	{
+		// Resize
+		if (FramebufferSpecification spec = m_Framebuffer->GetSpecification();
+			m_ViewportSize.x > 0.0f && m_ViewportSize.y > 0.0f && // zero sized framebuffer is invalid
+			(spec.Width != m_ViewportSize.x || spec.Height != m_ViewportSize.y))
+		{
+			m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+			m_OrthoCameraController.ResizeBounds(m_ViewportSize.x, m_ViewportSize.y);
+
+			m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+		}
+
 		if(m_ViewportFocused)
 			m_OrthoCameraController.OnUpdate(timestep);
 
@@ -33,11 +58,8 @@ namespace GE
 		RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
 		RenderCommand::ClearAPI();
 
-		Renderer2D::Start(m_OrthoCameraController.GetCamera());
-
 		m_ActiveScene->OnUpdate(timestep);
 
-		Renderer2D::End();
 		m_Framebuffer->Unbind();
 	}
 
@@ -122,9 +144,37 @@ namespace GE
 
 		{
 			ImGui::Begin("Entity Editor");
-			ImGui::Text("%s", m_Entity.GetComponent<TagComponent>().Tag.c_str());
-			auto& entityColor = m_Entity.GetComponent<SpriteRendererComponent>().Color;
-			ImGui::ColorEdit4("Entity Color", glm::value_ptr(entityColor));
+
+			ImGui::Separator();
+			if (ImGui::Checkbox("Primary/Secondary Camera", &m_CameraPrimary))
+			{
+				m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = m_CameraPrimary;
+				m_CameraEntitySecondary.GetComponent<CameraComponent>().Primary = !m_CameraPrimary;
+			}
+			
+			{
+				ImGui::DragFloat3("Primary Camera Transform", glm::value_ptr(m_CameraEntityPrimary.GetComponent<TransformComponent>().Transform[3]));
+			}
+
+			{
+				auto& camera = m_CameraEntitySecondary.GetComponent<CameraComponent>().Camera;
+				float orthoSize = camera.GetOrthographicSize();
+				if (ImGui::DragFloat("Secondary Camera Size", &orthoSize))
+				{
+					camera.SetOrthographicSize(orthoSize);
+				}
+			}
+			ImGui::Separator();
+
+			if (m_Entity)
+			{
+				ImGui::Separator();
+				ImGui::Text("%s", m_Entity.GetComponent<TagComponent>().Tag.c_str());
+				auto& entityColor = m_Entity.GetComponent<SpriteRendererComponent>().Color;
+				ImGui::ColorEdit4("Entity Color", glm::value_ptr(entityColor));
+				ImGui::Separator();
+			}
+
 			ImGui::End();
 		}
 
@@ -137,20 +187,13 @@ namespace GE
 			Application::GetApplication().GetImGuiLayer()->BlockEvents(!m_ViewportFocused || !m_ViewportHovered);
 	
 			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-			if (m_ViewportSize != *(glm::vec2*)&viewportSize)
-			{
-				m_ViewportSize = { viewportSize.x, viewportSize.y };
-
-				m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-
-				m_OrthoCameraController.ResizeBounds(m_ViewportSize.x, m_ViewportSize.y);
-			}
+			m_ViewportSize = { viewportSize.x, viewportSize.y };
 	
 			uint32_t textureID = m_Framebuffer->GetColorAttachment();
 			ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
-			ImGui::PopStyleVar();
 			ImGui::End();
+			ImGui::PopStyleVar();
 		}
 
 		ImGui::End();

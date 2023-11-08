@@ -1,6 +1,8 @@
 #pragma once
 
 #include "GE/Rendering/RenderCommand.h"
+#include "GE/Rendering/Camera/Camera.h"
+
 #include "GE/Rendering/Textures/Texture.h"
 #include "GE/Rendering/Textures/SubTexture.h"
 
@@ -13,6 +15,7 @@ namespace GE
 		static void ShutDown();
 
 		static void Start(const OrthographicCamera& orthoCamera);
+		static void Start(const Camera& camera, const glm::mat4 transform);
 		static void End();
 
 		static void Flush();

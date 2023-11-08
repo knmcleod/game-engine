@@ -129,6 +129,16 @@ namespace GE
 		ResetQuadData();
 	}
 
+	void Renderer2D::Start(const Camera& camera, const glm::mat4 transform)
+	{
+		GE_PROFILE_FUNCTION();
+
+		glm::mat4 viewProjection = camera.GetProjection() * glm::inverse(transform);
+		s_Data.Shader->SetMat4("u_ViewProjection", viewProjection);
+
+		ResetQuadData();
+	}
+
 	void Renderer2D::End()
 	{
 		GE_PROFILE_FUNCTION();

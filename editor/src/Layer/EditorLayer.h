@@ -32,6 +32,9 @@ namespace GE
 
 		// TEMP
 		Entity m_Entity;
+		Entity m_CameraEntityPrimary;
+		Entity m_CameraEntitySecondary;
+		bool m_CameraPrimary = false;
 
 	};
 }

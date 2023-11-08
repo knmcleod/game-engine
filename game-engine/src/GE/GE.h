@@ -42,6 +42,7 @@
 
 #include "GE/Rendering/Framebuffers/Framebuffer.h"
 
+#include "GE/Rendering/Camera/Camera.h"
 #include "GE/Rendering/Camera/OrthographicCamera.h"
 #include "GE/Rendering/Camera/Controller/OrthographicCameraController.h"
 #pragma endregion
