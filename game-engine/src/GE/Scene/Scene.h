@@ -1,7 +1,6 @@
 #pragma once
 #include <entt/entt.hpp>
 
-#include "Components/Components.h"
 namespace GE
 {
 	class Scene

@@ -43,6 +43,7 @@
 #include "GE/Rendering/Framebuffers/Framebuffer.h"
 
 #include "GE/Rendering/Camera/Camera.h"
+#include "GE/Rendering/Camera/Controller/CameraController.h"
 #include "GE/Rendering/Camera/OrthographicCamera.h"
 #include "GE/Rendering/Camera/Controller/OrthographicCameraController.h"
 #pragma endregion
@@ -50,5 +51,6 @@
 #pragma region Scene
 #include "GE/Scene/Scene.h"
 #include "GE/Scene/Entity/Entity.h"
+#include "GE/Scene/Entity/ScriptableEntity.h"
 #include "GE/Scene/Components/Components.h"
 #pragma endregion

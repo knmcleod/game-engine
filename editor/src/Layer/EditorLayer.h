@@ -9,7 +9,7 @@ namespace GE
 	class EditorLayer : public Layer
 	{
 	public:
-		EditorLayer(const std::string& name = "EditorLayer");
+		EditorLayer(const std::string& name = "Editor Layer");
 		virtual ~EditorLayer() = default;
 
 		virtual void OnAttach() override;
@@ -31,10 +31,10 @@ namespace GE
 		Ref<Scene> m_ActiveScene;
 
 		// TEMP
-		Entity m_Entity;
+		Entity m_SquareEntity;
 		Entity m_CameraEntityPrimary;
 		Entity m_CameraEntitySecondary;
-		bool m_CameraPrimary = false;
+		bool m_CameraPrimary = true;
 
 	};
 }

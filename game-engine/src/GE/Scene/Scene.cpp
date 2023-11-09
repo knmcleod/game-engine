@@ -1,8 +1,9 @@
 #include "GE/GEpch.h"
 #include "Scene.h"
+#include "Components/Components.h"
 #include "Entity/Entity.h"
 #include "GE/Rendering/Renderer/2D/Renderer2D.h"
-#include "GE/Rendering/Camera/Camera.h"
+
 namespace GE
 {
 	Entity Scene::CreateEntity(const std::string& name)
@@ -36,36 +37,57 @@ namespace GE
 
 	void Scene::OnUpdate(Timestep timestep)
 	{
-		// Render 2D
-		Camera* mainCamera = nullptr;
-		glm::mat4* cameraTransform = nullptr;
+		// Update Scripts
 		{
-			auto group = m_Registry.group<CameraComponent>(entt::get<TransformComponent>);
-			for (auto entity : group)
-			{
-				auto& [transform, camera] = group.get<TransformComponent, CameraComponent>(entity);
-				if (camera.Primary)
+			GE_PROFILE_SCOPE("Scene::OnUpdate -- Scripts");
+			m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc) 
 				{
-					mainCamera = &camera.Camera;
-					cameraTransform = &transform.Transform;
-					break;
+					// TO DO: Move to Scene::Start()
+					if (!nsc.Instance)
+					{
+						nsc.Instance = nsc.InstantiateScript();
+						nsc.Instance->m_Entity = { entity, this };
+						nsc.Instance->OnCreate();
+					}
+
+					nsc.Instance->OnUpdate(timestep);
+				});
+		}
+
+		// Update 2D Renderer
+		{
+			GE_PROFILE_SCOPE("Scene::OnUpdate -- 2D Renderer");
+			Camera* mainCamera = nullptr;
+			glm::mat4* cameraTransform = nullptr;
+			{
+				auto group = m_Registry.group<CameraComponent>(entt::get<TransformComponent>);
+				for (auto entity : group)
+				{
+					auto [transform, camera] = group.get<TransformComponent, CameraComponent>(entity);
+					if (camera.Primary)
+					{
+						mainCamera = &camera.Camera;
+						cameraTransform = &transform.Transform;
+						break;
+					}
 				}
 			}
-		}
 
-		if (mainCamera)
-		{
-			Renderer2D::Start(*mainCamera, *cameraTransform);
-
-			auto group = m_Registry.group<SpriteRendererComponent>(entt::get<TransformComponent>);
-			for (auto entity : group)
+			if (mainCamera)
 			{
-				auto& [transform, sprite] = group.get<TransformComponent, SpriteRendererComponent>(entity);
+				Renderer2D::Start(*mainCamera, *cameraTransform);
 
-				Renderer2D::FillQuad(transform.Transform, sprite.Color);
+				auto group = m_Registry.group<SpriteRendererComponent>(entt::get<TransformComponent>);
+				for (auto entity : group)
+				{
+					auto [transform, sprite] = group.get<TransformComponent, SpriteRendererComponent>(entity);
+
+					Renderer2D::FillQuad(transform.Transform, sprite.Color);
+				}
+
+				Renderer2D::End();
 			}
-
-			Renderer2D::End();
 		}
+
 	}
 }

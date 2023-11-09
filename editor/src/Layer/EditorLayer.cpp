@@ -1,10 +1,8 @@
 #include "EditorLayer.h"
-
 namespace GE
 {
 	EditorLayer::EditorLayer(const std::string& name)
-		: Layer(name),
-		m_OrthoCameraController(1280.0f / 720.0f)
+		: Layer(name), m_OrthoCameraController(1280.0f / 720.0f)
 	{
 	}
 
@@ -22,12 +20,15 @@ namespace GE
 		m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
 		m_CameraEntityPrimary.AddComponent<CameraComponent>();
 		m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = true;
+		m_CameraEntityPrimary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
+
 
 		m_CameraEntitySecondary = m_ActiveScene->CreateEntity("Secondary Camera Entity");
 		m_CameraEntitySecondary.AddComponent<CameraComponent>();
-	
-		m_Entity = m_ActiveScene->CreateEntity();
-		m_Entity.AddComponent<SpriteRendererComponent>(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+		m_CameraEntitySecondary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
+
+		m_SquareEntity = m_ActiveScene->CreateEntity();
+		m_SquareEntity.AddComponent<SpriteRendererComponent>(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
 
 	}
 
@@ -166,11 +167,11 @@ namespace GE
 			}
 			ImGui::Separator();
 
-			if (m_Entity)
+			if (m_SquareEntity)
 			{
 				ImGui::Separator();
-				ImGui::Text("%s", m_Entity.GetComponent<TagComponent>().Tag.c_str());
-				auto& entityColor = m_Entity.GetComponent<SpriteRendererComponent>().Color;
+				ImGui::Text("%s", m_SquareEntity.GetComponent<TagComponent>().Tag.c_str());
+				auto& entityColor = m_SquareEntity.GetComponent<SpriteRendererComponent>().Color;
 				ImGui::ColorEdit4("Entity Color", glm::value_ptr(entityColor));
 				ImGui::Separator();
 			}

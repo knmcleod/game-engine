@@ -1,7 +1,7 @@
 #pragma once
 #include <entt/entt.hpp>
 
-#include "../Scene.h"
+#include "GE/Scene/Scene.h"
 
 namespace GE
 {

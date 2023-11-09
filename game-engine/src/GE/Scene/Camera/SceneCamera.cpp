@@ -2,6 +2,8 @@
 
 #include "SceneCamera.h"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 namespace GE
 {
 	SceneCamera::SceneCamera()

@@ -1,5 +1,4 @@
 #include <GE/GE.h>
-
 #include "Layer/EditorLayer.h"
 
 namespace GE
