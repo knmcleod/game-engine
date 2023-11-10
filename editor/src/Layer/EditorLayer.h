@@ -4,6 +4,8 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+#include "../UIPanels/SceneHierarchyPanel.h"
+
 namespace GE
 {
 	class EditorLayer : public Layer
@@ -27,10 +29,9 @@ namespace GE
 		glm::vec2 m_ViewportSize = { 0.0f, 0.0f };
 
 		Ref<Framebuffer> m_Framebuffer;
-
 		Ref<Scene> m_ActiveScene;
+		Ref<SceneHierarchyPanel> m_ScenePanel;
 
-		// TEMP
 		Entity m_SquareEntity;
 		Entity m_CameraEntityPrimary;
 		Entity m_CameraEntitySecondary;

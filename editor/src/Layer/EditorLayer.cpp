@@ -16,6 +16,7 @@ namespace GE
 		m_Framebuffer = Framebuffer::Create(framebufferSpec);
 
 		m_ActiveScene = CreateRef<Scene>();
+		m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_ActiveScene);
 
 		m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
 		m_CameraEntityPrimary.AddComponent<CameraComponent>();
@@ -70,8 +71,7 @@ namespace GE
 	}
 
 	void EditorLayer::OnImGuiRender()
-	{
-		
+	{		
 		static bool dockspaceOpen = true;
 		static bool opt_fullscreen_persistant = true;
 		bool opt_fullscreen = opt_fullscreen_persistant;
@@ -177,6 +177,13 @@ namespace GE
 			}
 
 			ImGui::End();
+		}
+
+		{
+			if (m_ScenePanel)
+			{
+				m_ScenePanel->OnImGuiRender();
+			}
 		}
 
 		{
