@@ -5,7 +5,7 @@
 
 #include "GE/Core/Application/Window/Window.h"
 #include "GE/Core/Application/Layers/LayerStack.h"
-#include "GE/Core/ImGui/ImGuiLayer.h"
+#include "GE/ImGui/ImGuiLayer.h"
 
 #include "GE/Core/Events/ApplicationEvent.h"
 

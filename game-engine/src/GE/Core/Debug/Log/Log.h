@@ -1,24 +1,12 @@
 #pragma once
-#include "spdlog/spdlog.h"
-#include "spdlog/fmt/ostr.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+// This ignores all warnings raised inside External headers
+#pragma warning(push, 0)
+#include <spdlog/spdlog.h>
+#include <spdlog/fmt/ostr.h>
+#pragma warning(pop)
 
 namespace GE
 {
-	// Core Log Macros
-#define GE_CORE_TRACE(...) GE::Log::GetCoreLogger()->trace(__VA_ARGS__)
-#define GE_CORE_INFO(...) GE::Log::GetCoreLogger()->info(__VA_ARGS__)
-#define GE_CORE_WARN(...) GE::Log::GetCoreLogger()->warn(__VA_ARGS__)
-#define GE_CORE_ERROR(...) GE::Log::GetCoreLogger()->error(__VA_ARGS__)
-#define GE_CORE_FATAL(...) GE::Log::GetCoreLogger()->fatal(__VA_ARGS__)
-
-// Client Log Macros
-#define GE_TRACE(...) GE::Log::GetClientLogger()->trace(__VA_ARGS__)
-#define GE_INFO(...) GE::Log::GetClientLogger()->info(__VA_ARGS__)
-#define GET_WARN(...) GE::Log::GetClientLogger()->warn(__VA_ARGS__)
-#define GE_ERROR(...) GE::Log::GetClientLogger()->error(__VA_ARGS__)
-#define GE_FATAL(...) GE::Log::GetClientLogger()->fatal(__VA_ARGS__)
-
 	class Log
 	{
 	public: 
@@ -35,4 +23,3 @@ namespace GE
 		static std::shared_ptr<spdlog::logger> s_ClientLogger;
 	};
 }
-

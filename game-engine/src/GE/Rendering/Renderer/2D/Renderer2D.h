@@ -15,7 +15,7 @@ namespace GE
 		static void ShutDown();
 
 		static void Start(const OrthographicCamera& orthoCamera);
-		static void Start(const Camera& camera, const glm::mat4 transform);
+		static void Start(const Camera& camera, const glm::mat4& transform);
 		static void End();
 
 		static void Flush();

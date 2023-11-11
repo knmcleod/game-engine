@@ -144,42 +144,6 @@ namespace GE
 		}
 
 		{
-			ImGui::Begin("Entity Editor");
-
-			ImGui::Separator();
-			if (ImGui::Checkbox("Primary/Secondary Camera", &m_CameraPrimary))
-			{
-				m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = m_CameraPrimary;
-				m_CameraEntitySecondary.GetComponent<CameraComponent>().Primary = !m_CameraPrimary;
-			}
-			
-			{
-				ImGui::DragFloat3("Primary Camera Transform", glm::value_ptr(m_CameraEntityPrimary.GetComponent<TransformComponent>().Transform[3]));
-			}
-
-			{
-				auto& camera = m_CameraEntitySecondary.GetComponent<CameraComponent>().Camera;
-				float orthoSize = camera.GetOrthographicSize();
-				if (ImGui::DragFloat("Secondary Camera Size", &orthoSize))
-				{
-					camera.SetOrthographicSize(orthoSize);
-				}
-			}
-			ImGui::Separator();
-
-			if (m_SquareEntity)
-			{
-				ImGui::Separator();
-				ImGui::Text("%s", m_SquareEntity.GetComponent<TagComponent>().Tag.c_str());
-				auto& entityColor = m_SquareEntity.GetComponent<SpriteRendererComponent>().Color;
-				ImGui::ColorEdit4("Entity Color", glm::value_ptr(entityColor));
-				ImGui::Separator();
-			}
-
-			ImGui::End();
-		}
-
-		{
 			if (m_ScenePanel)
 			{
 				m_ScenePanel->OnImGuiRender();

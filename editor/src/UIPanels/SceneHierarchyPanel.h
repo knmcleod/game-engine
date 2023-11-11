@@ -1,6 +1,7 @@
 #pragma once
 
 #include <imgui/imgui.h>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "GE/Core/Core.h"
 #include "GE/Scene/Scene.h"
@@ -15,6 +16,7 @@ namespace GE
 		Entity m_SelectedEntity;
 
 		void DrawEntity(Entity entity);
+		void DrawComponents(Entity entity);
 	public:
 		SceneHierarchyPanel(const Ref<Scene>& scene);
 

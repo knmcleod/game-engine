@@ -1,6 +1,6 @@
 #include "GE/GEpch.h"
 
-#include "GE/Core/ImGui/ImGuiLayer.h"
+#include "GE/ImGui/ImGuiLayer.h"
 #include "GE/Core/Application/Application.h"
 
 #include <GLFW/glfw3.h>
@@ -36,12 +36,12 @@ namespace GE
 		{
 			style.WindowRounding = 0.0f;
 			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+			SetDarkTheme(style);
 		}
 
 		Application& application = Application::GetApplication();
 		GLFWwindow* window = static_cast<GLFWwindow*>(application.GetWindow().GetNativeWindow());
-
-
+		
 		//	Platform/Renderer bindings Setup
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init("#version 410");
@@ -91,4 +91,36 @@ namespace GE
 		}
 	}
 
+	void ImGuiLayer::SetDarkTheme(ImGuiStyle& style)
+	{
+		auto& colors = style.Colors;
+		colors[ImGuiCol_WindowBg] = ImVec4{ 0.095f, 0.095f, 0.095f, 1.0f };
+
+		// Headers
+		colors[ImGuiCol_Header] =			ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_HeaderHovered] =	ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_HeaderActive] =		ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Buttons
+		colors[ImGuiCol_Button] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_ButtonHovered] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_ButtonActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Frame BG
+		colors[ImGuiCol_FrameBg] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_FrameBgHovered] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_FrameBgActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Tab
+		colors[ImGuiCol_Tab] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_TabHovered] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_TabActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+		colors[ImGuiCol_TabUnfocused] = ImVec4{ 0.45f, 0.45f, 0.45f, 1.0f };
+		colors[ImGuiCol_TabUnfocusedActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Title
+		colors[ImGuiCol_TitleBg] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_TitleBgActive] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+	}
 }

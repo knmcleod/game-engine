@@ -129,7 +129,7 @@ namespace GE
 		ResetQuadData();
 	}
 
-	void Renderer2D::Start(const Camera& camera, const glm::mat4 transform)
+	void Renderer2D::Start(const Camera& camera, const glm::mat4& transform)
 	{
 		GE_PROFILE_FUNCTION();
 

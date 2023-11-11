@@ -6,6 +6,44 @@
 
 namespace GE
 {
+#pragma region OnComponentAdded
+
+	template<typename T>
+	void Scene::OnComponentAdded(Entity entity)
+	{
+		static_assert(false);
+	}
+
+	template<>
+	void Scene::OnComponentAdded<TagComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<TransformComponent>(Entity entity)
+	{
+
+	}
+
+	template<>
+	void Scene::OnComponentAdded<CameraComponent>(Entity entity)
+	{
+		entity.GetComponent<CameraComponent>().Camera.SetViewport(m_ViewportWidth, m_ViewportHeight);
+	}
+
+	template<>
+	void Scene::OnComponentAdded<SpriteRendererComponent>(Entity entity)
+	{
+
+	}
+
+	template<>
+	void Scene::OnComponentAdded<NativeScriptComponent>(Entity entity)
+	{
+	}
+
+#pragma endregion
+
 	Entity Scene::CreateEntity(const std::string& name)
 	{
 		Entity entity = { m_Registry.create(), this };
@@ -16,6 +54,11 @@ namespace GE
 		tag.Tag = name.empty() ? "Entity" : name;
 			
 		return entity;
+	}
+
+	void Scene::DestroyEntity(Entity entity)
+	{
+		m_Registry.destroy(entity.GetEntityID());
 	}
 
 	void Scene::ResizeViewport(uint32_t width, uint32_t height)
@@ -58,16 +101,16 @@ namespace GE
 		{
 			GE_PROFILE_SCOPE("Scene::OnUpdate -- 2D Renderer");
 			Camera* mainCamera = nullptr;
-			glm::mat4* cameraTransform = nullptr;
+			glm::mat4* cameraTransform;
 			{
-				auto group = m_Registry.group<CameraComponent>(entt::get<TransformComponent>);
-				for (auto entity : group)
+				auto view = m_Registry.view<TransformComponent, CameraComponent>();
+				for (auto entity : view)
 				{
-					auto [transform, camera] = group.get<TransformComponent, CameraComponent>(entity);
+					auto [transform, camera] = view.get<TransformComponent, CameraComponent>(entity);
 					if (camera.Primary)
 					{
 						mainCamera = &camera.Camera;
-						cameraTransform = &transform.Transform;
+						cameraTransform = &transform.GetTransform();
 						break;
 					}
 				}
@@ -77,12 +120,12 @@ namespace GE
 			{
 				Renderer2D::Start(*mainCamera, *cameraTransform);
 
-				auto group = m_Registry.group<SpriteRendererComponent>(entt::get<TransformComponent>);
-				for (auto entity : group)
+				auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
+				for (auto entity : view)
 				{
-					auto [transform, sprite] = group.get<TransformComponent, SpriteRendererComponent>(entity);
+					auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
 
-					Renderer2D::FillQuad(transform.Transform, sprite.Color);
+					Renderer2D::FillQuad(transform.GetTransform(), sprite.Color);
 				}
 
 				Renderer2D::End();

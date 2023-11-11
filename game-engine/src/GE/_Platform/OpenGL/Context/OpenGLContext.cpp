@@ -16,9 +16,9 @@ namespace GE
 		GE_CORE_ASSERT(status, "Failed to initialize Glad!");
 
 		GE_CORE_INFO("--	OpenGL Info		--");
-		GE_CORE_INFO("	Vender: {0}", (void*)glGetString(GL_VENDOR));
-		GE_CORE_INFO("	Renderer: {0}", (void*)glGetString(GL_RENDERER));
-		GE_CORE_INFO("	Version: {0}", (void*)glGetString(GL_VERSION));
+		GE_CORE_INFO("	Vender: {0}", (void*)(glGetString(GL_VENDOR)));
+		GE_CORE_INFO("	Renderer: {0}", (void*)(glGetString(GL_RENDERER)));
+		GE_CORE_INFO("	Version: {0}", (void*)(glGetString(GL_VERSION)));
 	
 		#ifdef GE_ENABLE_ASSERTS
 			int versionMajor;
