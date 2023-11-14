@@ -70,6 +70,7 @@ namespace GE
 	void SceneHierarchyPanel::SetScene(const Ref<Scene>& scene)
 	{
 		m_Scene = scene;
+		m_SelectedEntity = {};
 	}
 
 	void SceneHierarchyPanel::OnImGuiRender()

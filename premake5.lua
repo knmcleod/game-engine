@@ -1,6 +1,6 @@
 workspace "game-engine"
-	architecture "x64"
-	startproject "sandbox"
+	architecture "x86_64"
+	startproject "editor"
 	
 	configurations
 	{
@@ -19,11 +19,13 @@ IncludeDir["glm"] = "game-engine/vender/glm"
 IncludeDir["spdlog"] = "game-engine/vender/spdlog/include"
 IncludeDir["stb"] = "game-engine/vender/stb"
 IncludeDir["entt"] = "game-engine/vender/entt/single_include"
+IncludeDir["yaml_cpp"] = "game-engine/vender/yaml-cpp/include"
 
 group "Dependencies"
 	include "game-engine/vender/glfw"
 	include "game-engine/vender/GLAD"
 	include "game-engine/vender/imgui"
+	include "game-engine/vender/yaml-cpp"
 group ""
 
 project "game-engine"
@@ -58,7 +60,8 @@ project "game-engine"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
-		"%{IncludeDir.entt}"
+		"%{IncludeDir.entt}",
+		"%{IncludeDir.yaml_cpp}"
 	}
 
 	links
@@ -66,6 +69,7 @@ project "game-engine"
 		"glfw",
 		"GLAD",
 		"ImGui",
+		"yaml-cpp",
 		"opengl32.lib",
 		"dwmapi.lib"
 	}
@@ -117,7 +121,8 @@ project "editor"
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}",
-		"%{IncludeDir.entt}"
+		"%{IncludeDir.entt}",
+		"%{IncludeDir.yaml_cpp}"
 	}
 
 	links

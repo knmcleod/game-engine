@@ -2,6 +2,7 @@
 
 #include <GE/GE.h>
 
+#include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "../UIPanels/SceneHierarchyPanel.h"
@@ -20,6 +21,12 @@ namespace GE
 		virtual void OnEvent(Event& e) override;
 		virtual void OnImGuiRender() override;
 		virtual void OnWindowResize(WindowResizeEvent& e) override;
+	private:
+		bool OnKeyPressed(KeyPressedEvent& e);
+
+		void LoadScene();
+		void SaveSceneAs();
+		void NewScene();
 
 	private:
 		OrthographicCameraController m_OrthoCameraController;

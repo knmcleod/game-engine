@@ -8,6 +8,7 @@
 
 #include <string>
 #include <sstream> 
+#include <fstream>
 #include <array>
 #include <vector>
 #include <unordered_map>
@@ -25,5 +26,6 @@
 
 #ifdef GE_PLATFORM_WINDOWS
 	#include <Windows.h>
+	#include <commdlg.h>
 #endif // GE_PLATFORM_WINDOWS
 

@@ -17,6 +17,14 @@ namespace GE
 		entt::entity GetEntityID() { return m_EntityID; }
 
 		template<typename T, typename... Args>
+		T& GetOrAddComponent(Args&&... args)
+		{
+			if (!HasComponent<T>())
+				return AddComponent<T>();
+			return GetComponent<T>();
+		}
+
+		template<typename T, typename... Args>
 		T& AddComponent(Args&&... args)
 		{
 			GE_CORE_ASSERT(!HasComponent<T>(), "Component already exists on Entity!");

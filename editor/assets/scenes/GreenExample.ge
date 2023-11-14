@@ -1,0 +1,41 @@
+Scene: Name
+Entities:
+  - Entity: 12837192831273
+    TagComponent:
+      Tag: Entity
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    SpriteRendererComponent:
+      Color: [0, 0.458823532, 0, 1]
+  - Entity: 12837192831273
+    TagComponent:
+      Tag: Secondary Camera Entity
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      FixedAspectRatio: false
+      Primary: false
+      Camera:
+        Far: 1
+        Near: -1
+        FOV: 10
+        Type: 1
+  - Entity: 12837192831273
+    TagComponent:
+      Tag: Primary Camera Entity
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      FixedAspectRatio: false
+      Primary: true
+      Camera:
+        Far: 1
+        Near: -1
+        FOV: 10
+        Type: 1

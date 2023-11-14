@@ -1,4 +1,8 @@
 #include "EditorLayer.h"
+
+#include "GE/Scene/Serializer/SceneSerializer.h"
+#include "GE/Core/Util/PlatformUtils.h"
+
 namespace GE
 {
 	EditorLayer::EditorLayer(const std::string& name)
@@ -10,19 +14,21 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
+		// Framebuffer
 		FramebufferSpecification framebufferSpec;
 		framebufferSpec.Width = 1280;
 		framebufferSpec.Height = 72;
 		m_Framebuffer = Framebuffer::Create(framebufferSpec);
 
+		//Scene
 		m_ActiveScene = CreateRef<Scene>();
 		m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_ActiveScene);
 
+		// Entities
 		m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
 		m_CameraEntityPrimary.AddComponent<CameraComponent>();
 		m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = true;
 		m_CameraEntityPrimary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
-
 
 		m_CameraEntitySecondary = m_ActiveScene->CreateEntity("Secondary Camera Entity");
 		m_CameraEntitySecondary.AddComponent<CameraComponent>();
@@ -68,6 +74,9 @@ namespace GE
 	void EditorLayer::OnEvent(Event& e)
 	{
 		m_OrthoCameraController.OnEvent(e);
+
+		EventDispatcher dispatcher(e);
+		dispatcher.Dispatch<KeyPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnKeyPressed));
 	}
 
 	void EditorLayer::OnImGuiRender()
@@ -124,6 +133,10 @@ namespace GE
 				// which we can't undo at the moment without finer window depth/z control.
 				//ImGui::MenuItem("Fullscreen", NULL, &opt_fullscreen_persistant);
 
+				if (ImGui::MenuItem("New", "Ctrl+N")) NewScene();
+				if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S")) SaveSceneAs();
+				if (ImGui::MenuItem("Load", "Ctrl+O")) LoadScene();
+				ImGui::Separator();
 				if (ImGui::MenuItem("Exit")) Application::GetApplication().Close();
 				ImGui::EndMenu();
 			}
@@ -176,5 +189,72 @@ namespace GE
 	{
 		RenderCommand::SetViewport(m_OrthoCameraController.GetCamera().GetPosition().x, m_OrthoCameraController.GetCamera().GetPosition().y, e.GetWidth(), e.GetHeight());
 
+	}
+
+	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
+	{
+		if (e.GetRepeatCount() > 0)
+			return false;
+
+		bool control = Input::IsKeyPressed(GE_KEY_LEFT_CONTROL) || Input::IsKeyPressed(GE_KEY_RIGHT_CONTROL);
+		bool shift = Input::IsKeyPressed(GE_KEY_LEFT_SHIFT) || Input::IsKeyPressed(GE_KEY_RIGHT_SHIFT);
+
+		switch (e.GetKeyCode())
+		{
+		case GE_KEY_N:
+		{
+			if (control)
+			{
+				NewScene();
+			}
+			break;
+		}
+		case GE_KEY_O:
+		{
+			if (control)
+			{
+				LoadScene();
+			}
+		}
+		case GE_KEY_S:
+		{
+			if (control && shift)
+			{
+				SaveSceneAs();
+			}
+			break;
+		}
+		default:
+			break;
+		}
+	}
+
+	void EditorLayer::LoadScene()
+	{
+		std::string filePath = FileDialogs::LoadFile("GE Scene (*.ge)\0*.ge\0");
+		if (!filePath.empty())
+		{
+			NewScene();
+
+			SceneSerializer serializer(m_ActiveScene);
+			serializer.DeserializeText(filePath);
+		}
+	}
+
+	void EditorLayer::SaveSceneAs()
+	{
+		std::string filePath = FileDialogs::SaveFile("GE Scene (*.ge)\0*.ge\0");
+		if (!filePath.empty())
+		{
+			SceneSerializer serializer(m_ActiveScene);
+			serializer.SerializeText(filePath);
+		}
+	}
+
+	void EditorLayer::NewScene()
+	{
+		m_ActiveScene = CreateRef<Scene>();
+		m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+		m_ScenePanel->SetScene(m_ActiveScene);
 	}
 }

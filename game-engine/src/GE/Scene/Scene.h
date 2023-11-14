@@ -1,10 +1,12 @@
 #pragma once
 #include <entt/entt.hpp>
 #include "GE/Core/Time/Time.h"
+
 namespace GE
 {
 	class Scene
 	{
+		friend class SceneSerializer;
 		friend class Entity;
 		friend class SceneHierarchyPanel;
 	private:
