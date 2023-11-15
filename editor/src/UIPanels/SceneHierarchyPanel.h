@@ -21,6 +21,7 @@ namespace GE
 		SceneHierarchyPanel(const Ref<Scene>& scene);
 
 		void SetScene(const Ref<Scene>& scene);
+		Entity GetSelectedEntity() const { return m_SelectedEntity; }
 
 		void OnImGuiRender();
 	};

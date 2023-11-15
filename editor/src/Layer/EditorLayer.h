@@ -2,10 +2,11 @@
 
 #include <GE/GE.h>
 
+#include "../UIPanels/SceneHierarchyPanel.h"
+
+// TEMP
 #include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
-
-#include "../UIPanels/SceneHierarchyPanel.h"
 
 namespace GE
 {
@@ -29,7 +30,7 @@ namespace GE
 		void NewScene();
 
 	private:
-		OrthographicCameraController m_OrthoCameraController;
+		EditorCamera m_EditorCamera;
 
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;

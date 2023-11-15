@@ -120,6 +120,16 @@ namespace GE
 		delete[] s_Data.QuadVertexBufferBase;
 	}
 
+	void Renderer2D::Start(const EditorCamera& camera)
+	{
+		GE_PROFILE_FUNCTION();
+
+		glm::mat4 viewProjection = camera.GetViewProjection();
+		s_Data.Shader->SetMat4("u_ViewProjection", viewProjection);
+
+		ResetQuadData();
+	}
+
 	void Renderer2D::Start(const OrthographicCamera& orthoCamera)
 	{
 		GE_PROFILE_FUNCTION();
@@ -143,7 +153,7 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		uint32_t dataSize = (uint8_t*)s_Data.QuadVertexBufferPtr - (uint8_t*)s_Data.QuadVertexBufferBase;
+		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.QuadVertexBufferPtr - (uint8_t*)s_Data.QuadVertexBufferBase);
 		s_Data.QuadVertexBuffer->SetData(s_Data.QuadVertexBufferBase, dataSize);
 
 		Flush();
@@ -216,7 +226,7 @@ namespace GE
 				FlushAndReset();
 
 			textureIndex = (float)s_Data.TextureSlotIndex;
-			s_Data.TextureSlots[textureIndex] = texture;
+			s_Data.TextureSlots[(int)textureIndex] = texture;
 			s_Data.TextureSlotIndex++;
 		}
 
@@ -286,7 +296,7 @@ namespace GE
 				s_Data.TextureSlotIndex++;
 			}
 			textureIndex = (float)s_Data.TextureSlotIndex;
-			s_Data.TextureSlots[textureIndex] = subTexture->GetTexture();
+			s_Data.TextureSlots[(int)textureIndex] = subTexture->GetTexture();
 			s_Data.TextureSlotIndex++;
 		}
 

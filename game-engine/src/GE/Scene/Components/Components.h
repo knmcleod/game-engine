@@ -2,6 +2,9 @@
 
 #include <glm/glm.hpp>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
+
 #include "GE/Scene/Camera/SceneCamera.h"
 #include "GE/Scene/Entity/ScriptableEntity.h"
 

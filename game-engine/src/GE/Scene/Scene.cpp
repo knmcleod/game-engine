@@ -44,6 +44,18 @@ namespace GE
 
 #pragma endregion
 
+	Entity Scene::GetPrimaryCameraEntity()
+	{
+		auto view = m_Registry.view<CameraComponent>();
+		for (auto entity : view)
+		{
+			const auto& camera = view.get<CameraComponent>(entity);
+			if (camera.Primary)
+				return Entity(entity, this);
+		}
+		return { };
+	}
+
 	Entity Scene::CreateEntity(const std::string& name)
 	{
 		Entity entity = { m_Registry.create(), this };
@@ -78,7 +90,7 @@ namespace GE
 		}
 	}
 
-	void Scene::OnUpdate(Timestep timestep)
+	void Scene::OnUpdateRuntime(Timestep timestep)
 	{
 		// Update Scripts
 		{
@@ -132,5 +144,23 @@ namespace GE
 			}
 		}
 
+	}
+
+	void Scene::OnUpdateEditor(Timestep timestep, EditorCamera& camera)
+	{
+		if (&camera)
+		{
+			Renderer2D::Start(camera);
+
+			auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
+			for (auto entity : view)
+			{
+				auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
+
+				Renderer2D::FillQuad(transform.GetTransform(), sprite.Color);
+			}
+
+			Renderer2D::End();
+		}
 	}
 }

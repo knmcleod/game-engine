@@ -1,12 +1,9 @@
 #include "EditorLayer.h"
 
-#include "GE/Scene/Serializer/SceneSerializer.h"
-#include "GE/Core/Util/PlatformUtils.h"
-
 namespace GE
 {
 	EditorLayer::EditorLayer(const std::string& name)
-		: Layer(name), m_OrthoCameraController(1280.0f / 720.0f)
+		: Layer(name)
 	{
 	}
 
@@ -23,6 +20,8 @@ namespace GE
 		//Scene
 		m_ActiveScene = CreateRef<Scene>();
 		m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_ActiveScene);
+
+		m_EditorCamera = EditorCamera(45.0f, 1.778f, 0.1f, 100.0f);
 
 		// Entities
 		m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
@@ -53,27 +52,27 @@ namespace GE
 			(spec.Width != m_ViewportSize.x || spec.Height != m_ViewportSize.y))
 		{
 			m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-			m_OrthoCameraController.ResizeBounds(m_ViewportSize.x, m_ViewportSize.y);
-
+			
+			m_EditorCamera.SetViewport(m_ViewportSize.x, m_ViewportSize.y);
 			m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 		}
 
 		if(m_ViewportFocused)
-			m_OrthoCameraController.OnUpdate(timestep);
+			m_EditorCamera.OnUpdate(timestep);
 
 		Renderer2D::ResetStats();
 		m_Framebuffer->Bind();
 		RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
 		RenderCommand::ClearAPI();
 
-		m_ActiveScene->OnUpdate(timestep);
+		m_ActiveScene->OnUpdateEditor(timestep, m_EditorCamera);
 
 		m_Framebuffer->Unbind();
 	}
 
 	void EditorLayer::OnEvent(Event& e)
 	{
-		m_OrthoCameraController.OnEvent(e);
+		m_EditorCamera.OnEvent(e);
 
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<KeyPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnKeyPressed));
@@ -169,7 +168,7 @@ namespace GE
 
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			m_ViewportHovered = ImGui::IsWindowHovered();
-			Application::GetApplication().GetImGuiLayer()->BlockEvents(!m_ViewportFocused || !m_ViewportHovered);
+			Application::GetApplication().GetImGuiLayer()->BlockEvents(!m_ViewportFocused && !m_ViewportHovered);
 	
 			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 			m_ViewportSize = { viewportSize.x, viewportSize.y };
@@ -187,8 +186,7 @@ namespace GE
 
 	void EditorLayer::OnWindowResize(WindowResizeEvent& e)
 	{
-		RenderCommand::SetViewport(m_OrthoCameraController.GetCamera().GetPosition().x, m_OrthoCameraController.GetCamera().GetPosition().y, e.GetWidth(), e.GetHeight());
-
+		RenderCommand::SetViewport((uint32_t)m_EditorCamera.GetPosition().x, (uint32_t)m_EditorCamera.GetPosition().y, e.GetWidth(), e.GetHeight());
 	}
 
 	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
@@ -201,32 +199,29 @@ namespace GE
 
 		switch (e.GetKeyCode())
 		{
+		// File
 		case GE_KEY_N:
 		{
 			if (control)
-			{
 				NewScene();
-			}
 			break;
 		}
 		case GE_KEY_O:
 		{
 			if (control)
-			{
 				LoadScene();
-			}
+			break;
 		}
 		case GE_KEY_S:
 		{
 			if (control && shift)
-			{
 				SaveSceneAs();
-			}
 			break;
 		}
 		default:
 			break;
 		}
+		return true;
 	}
 
 	void EditorLayer::LoadScene()

@@ -1,6 +1,7 @@
 #pragma once
 #include <entt/entt.hpp>
 #include "GE/Core/Time/Time.h"
+#include "GE/Rendering/Camera/EditorCamera.h"
 
 namespace GE
 {
@@ -19,11 +20,14 @@ namespace GE
 		Scene() = default;
 		~Scene() = default;
 
+		Entity GetPrimaryCameraEntity();
+
 		Entity CreateEntity(const std::string& name = "");
 		void DestroyEntity(Entity entity);
 
 		void ResizeViewport(uint32_t width, uint32_t height);
 
-		void OnUpdate(Timestep timestep);
+		void OnUpdateEditor(Timestep timestep, EditorCamera& camera);
+		void OnUpdateRuntime(Timestep timestep);
 	};
 }

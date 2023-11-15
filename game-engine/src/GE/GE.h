@@ -26,6 +26,9 @@
 
 //	--	Time	--
 #include "GE/Core/Time/Time.h"
+
+//	--	Util	--
+#include "GE/Core/Util/PlatformUtils.h"
 #pragma endregion
 
 #pragma region Rendering
@@ -53,4 +56,6 @@
 #include "GE/Scene/Entity/Entity.h"
 #include "GE/Scene/Entity/ScriptableEntity.h"
 #include "GE/Scene/Components/Components.h"
+
+#include "GE/Scene/Serializer/SceneSerializer.h"
 #pragma endregion
