@@ -1,5 +1,7 @@
 #include "EditorLayer.h"
 
+//#define ENTITYTEST
+
 namespace GE
 {
 	EditorLayer::EditorLayer(const std::string& name)
@@ -13,6 +15,7 @@ namespace GE
 
 		// Framebuffer
 		FramebufferSpecification framebufferSpec;
+		framebufferSpec.AttachmentSpecification = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::RED_INTEGER, FramebufferTextureFormat::DEPTH24STENCIL8 };
 		framebufferSpec.Width = 1280;
 		framebufferSpec.Height = 72;
 		m_Framebuffer = Framebuffer::Create(framebufferSpec);
@@ -23,19 +26,19 @@ namespace GE
 
 		m_EditorCamera = EditorCamera(45.0f, 1.778f, 0.1f, 100.0f);
 
-		// Entities
-		m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
-		m_CameraEntityPrimary.AddComponent<CameraComponent>();
-		m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = true;
-		m_CameraEntityPrimary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
+		#if ENTITYTEST
+			m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
+			m_CameraEntityPrimary.AddComponent<CameraComponent>();
+			m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = true;
+			m_CameraEntityPrimary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
 
-		m_CameraEntitySecondary = m_ActiveScene->CreateEntity("Secondary Camera Entity");
-		m_CameraEntitySecondary.AddComponent<CameraComponent>();
-		m_CameraEntitySecondary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
+			m_CameraEntitySecondary = m_ActiveScene->CreateEntity("Secondary Camera Entity");
+			m_CameraEntitySecondary.AddComponent<CameraComponent>();
+			m_CameraEntitySecondary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
 
-		m_SquareEntity = m_ActiveScene->CreateEntity();
-		m_SquareEntity.AddComponent<SpriteRendererComponent>(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
-
+			m_SquareEntity = m_ActiveScene->CreateEntity();
+			m_SquareEntity.AddComponent<SpriteRendererComponent>(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+		#endif
 	}
 
 	void EditorLayer::OnDetach()
@@ -65,7 +68,27 @@ namespace GE
 		RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
 		RenderCommand::ClearAPI();
 
+		// Clear attachmentIndex = 1 - RED_INTEGER / entityID
+		m_Framebuffer->ClearAttachment(1, -1);
+
 		m_ActiveScene->OnUpdateEditor(timestep, m_EditorCamera);
+
+		{
+			auto [mx, my] = ImGui::GetMousePos();
+			mx -= m_ViewportBounds[0].x;
+			my -= m_ViewportBounds[0].y;
+			glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
+			my = viewportSize.y - my;
+
+			int mouseX = (int)mx;
+			int mouseY = (int)my;
+
+			if (mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
+			{
+				m_Framebuffer->ReadPixel(1, mouseX, mouseY); // attachmentIndex = 1 - RED_INTEGER
+				GE_CORE_INFO("Viewport Mouse - ({0}, {1})", mouseX, mouseY);
+			}
+		}
 
 		m_Framebuffer->Unbind();
 	}
@@ -166,6 +189,8 @@ namespace GE
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 			ImGui::Begin("Viewport");
 
+			auto viewportOffset = ImGui::GetCursorPos();
+
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			m_ViewportHovered = ImGui::IsWindowHovered();
 			Application::GetApplication().GetImGuiLayer()->BlockEvents(!m_ViewportFocused && !m_ViewportHovered);
@@ -173,8 +198,17 @@ namespace GE
 			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 			m_ViewportSize = { viewportSize.x, viewportSize.y };
 	
-			uint32_t textureID = m_Framebuffer->GetColorAttachment();
+			uint32_t textureID = m_Framebuffer->GetColorAttachmentID();
 			ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
+			auto windowSize = ImGui::GetWindowSize();
+			ImVec2 minBound = ImGui::GetWindowPos();
+			minBound.x += viewportOffset.x;
+			minBound.y += viewportOffset.y;
+
+			ImVec2 maxBound = { minBound.x + windowSize.x, minBound.y + windowSize.y };
+			m_ViewportBounds[0] = { minBound.x, minBound.y };
+			m_ViewportBounds[1] = { maxBound.x, maxBound.y };
 
 			ImGui::End();
 			ImGui::PopStyleVar();

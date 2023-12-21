@@ -51,7 +51,7 @@ namespace GE
 		//Sets up Layout using Vertex Buffer
 		BufferLayout layout =
 		{
-			{ GE::Shader::ShaderDataType::Float3, "a_Transform" },
+			{ GE::Shader::ShaderDataType::Float3, "a_Position" },
 			{ GE::Shader::ShaderDataType::Float4, "a_Color" },
 			{ GE::Shader::ShaderDataType::Float2, "a_TextureCoord" },
 			{ GE::Shader::ShaderDataType::Float, "a_TextureIndex" },

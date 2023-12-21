@@ -1,6 +1,5 @@
 #pragma once
 #include <entt/entt.hpp>
-
 #include "GE/Scene/Scene.h"
 
 namespace GE

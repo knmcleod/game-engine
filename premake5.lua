@@ -17,7 +17,7 @@ IncludeDir["GLAD"] = "game-engine/vender/GLAD/include"
 IncludeDir["ImGui"] = "game-engine/vender/imgui"
 IncludeDir["glm"] = "game-engine/vender/glm"
 IncludeDir["spdlog"] = "game-engine/vender/spdlog/include"
-IncludeDir["stb"] = "game-engine/vender/stb"
+IncludeDir["stb"] = "game-engine/vender/stb_image"
 IncludeDir["entt"] = "game-engine/vender/entt/single_include"
 IncludeDir["yaml_cpp"] = "game-engine/vender/yaml-cpp/include"
 
@@ -45,8 +45,8 @@ project "game-engine"
 	{
 		"%{prj.name}/src/**.h",
 		"%{prj.name}/src/**.cpp",
-		"%{prj.name}/vender/stb/stb_image.h",
-		"%{prj.name}/vender/stb/stb_image.cpp",
+		"%{prj.name}/vender/stb_image/stb_image.h",
+		"%{prj.name}/vender/stb_image/stb_image.cpp",
 		"%{prj.name}/vender/glm/glm/**.hpp",
 		"%{prj.name}/vender/glm/glm/**.inl"
 	}
