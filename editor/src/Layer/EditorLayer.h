@@ -24,6 +24,7 @@ namespace GE
 		virtual void OnWindowResize(WindowResizeEvent& e) override;
 	private:
 		bool OnKeyPressed(KeyPressedEvent& e);
+		bool OnMousePressed(MouseButtonPressedEvent& e);
 
 		void LoadScene();
 		void SaveSceneAs();
@@ -41,10 +42,11 @@ namespace GE
 		Ref<Scene> m_ActiveScene;
 		Ref<SceneHierarchyPanel> m_ScenePanel;
 
+		Entity m_HoveredEntity;
 		Entity m_SquareEntity;
 		Entity m_CameraEntityPrimary;
 		Entity m_CameraEntitySecondary;
 		bool m_CameraPrimary = true;
-
+		
 	};
 }

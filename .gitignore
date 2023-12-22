@@ -7,3 +7,14 @@
 *.vsidx
 *.db
 *.vcxproj
+*.filters
+*.pdb
+*.lib
+*.idb
+*.recipe
+*.user
+*.pch
+*.ilk
+*.db-wal
+*.opendb
+*.db-shm

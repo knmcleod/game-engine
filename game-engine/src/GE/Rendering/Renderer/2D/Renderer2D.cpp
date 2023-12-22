@@ -6,11 +6,13 @@ namespace GE
 {
 	struct QuadVertex
 	{
-		glm::vec3 Position = glm::vec3(0.0f);;
+		glm::vec3 Position = glm::vec3(0.0f);
 		glm::vec4 Color = glm::vec4(1.0f);
 		glm::vec2 TextureCoord = glm::vec2(0.0f);
 		float TextureIndex = 0;
 		float TilingFactor = 1.0f;
+
+		int EntityID = -1;
 	};
 
 	struct Renderer2DData
@@ -55,7 +57,8 @@ namespace GE
 			{ GE::Shader::ShaderDataType::Float4, "a_Color" },
 			{ GE::Shader::ShaderDataType::Float2, "a_TextureCoord" },
 			{ GE::Shader::ShaderDataType::Float, "a_TextureIndex" },
-			{ GE::Shader::ShaderDataType::Float, "a_TilingFactor" }
+			{ GE::Shader::ShaderDataType::Float, "a_TilingFactor" },
+			{ GE::Shader::ShaderDataType::Int, "a_EntityID" }
 		};
 		s_Data.QuadVertexBuffer->SetLayout(layout);
 
@@ -184,7 +187,7 @@ namespace GE
 	}
 #pragma region Quad
 
-	void Renderer2D::FillQuad(const glm::mat4& transform, const glm::vec4& color)
+	void Renderer2D::FillQuad(const glm::mat4& transform, const glm::vec4& color, const int entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
@@ -197,11 +200,12 @@ namespace GE
 		const float textureIndex = 0.0f; // White Texture
 		const float tilingFactor = 1.0f;
 
-		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, color);
+		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, color, entityID);
 
 	}
 
-	void Renderer2D::FillQuad(const glm::mat4& transform, const Ref<Texture2D>& texture, const float& tilingFactor, const glm::vec4& color)
+	void Renderer2D::FillQuad(const glm::mat4& transform, const Ref<Texture2D>& texture,
+		const float& tilingFactor, const glm::vec4& color, const int entityID)
 	{
 		if (s_Data.QuadIndexCount >= s_Data.MaxIndices)
 		{
@@ -230,12 +234,12 @@ namespace GE
 			s_Data.TextureSlotIndex++;
 		}
 
-		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, color);
+		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, color, entityID);
 
 	}
 
 	void Renderer2D::FillQuadColor(const glm::vec3& position, const glm::vec2& size,
-		const float rotation, const glm::vec4& color)
+		const float rotation, const glm::vec4& color, const int entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
@@ -243,12 +247,12 @@ namespace GE
 			* glm::rotate(m_identityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
 			* glm::scale(m_identityMat4, { size.x, size.y, 1.0f });
 
-		FillQuad(transform, color);
+		FillQuad(transform, color, entityID);
 
 	}
 
 	void Renderer2D::FillQuadTexture(const glm::vec3& position, const glm::vec2& size,
-		const float rotation, const Ref<Texture2D>& texture, const float& tilingFactor, const glm::vec4& tintColor)
+		const float rotation, const Ref<Texture2D>& texture, const float& tilingFactor, const glm::vec4& tintColor, const int entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
@@ -256,11 +260,11 @@ namespace GE
 			* glm::rotate(m_identityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
 			* glm::scale(m_identityMat4, { size.x, size.y, 1.0f });
 
-		FillQuad(transform, texture, tilingFactor, tintColor);
+		FillQuad(transform, texture, tilingFactor, tintColor, entityID);
 	}
 
 	void Renderer2D::FillQuadSubTexture(const glm::vec3& position, const glm::vec2& size, const float rotation,
-		const Ref<SubTexture2D>& subTexture, const float& tilingFactor, const glm::vec4& tintColor)
+		const Ref<SubTexture2D>& subTexture, const float& tilingFactor, const glm::vec4& tintColor, const int entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
@@ -300,39 +304,25 @@ namespace GE
 			s_Data.TextureSlotIndex++;
 		}
 
-		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, tintColor);
+		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, tintColor, entityID);
 	}
 
-	void Renderer2D::SetQuadData(const glm::mat4& transform, const float& textureIndex, const glm::vec2 textureCoords[4], const float& tilingFactor, const glm::vec4& color)
+	void Renderer2D::SetQuadData(const glm::mat4& transform, const float& textureIndex,
+		const glm::vec2 textureCoords[4], const float& tilingFactor, const glm::vec4& color, const int entityID)
 	{
-		s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertices[0];
-		s_Data.QuadVertexBufferPtr->Color = color;
-		s_Data.QuadVertexBufferPtr->TextureCoord = textureCoords[0];
-		s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-		s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-		s_Data.QuadVertexBufferPtr++;
+		constexpr size_t quadVertexCount = 4;
 
-		s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertices[1];
-		s_Data.QuadVertexBufferPtr->Color = color;
-		s_Data.QuadVertexBufferPtr->TextureCoord = textureCoords[1];
-		s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-		s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-		s_Data.QuadVertexBufferPtr++;
-
-		s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertices[2];
-		s_Data.QuadVertexBufferPtr->Color = color;
-		s_Data.QuadVertexBufferPtr->TextureCoord = textureCoords[2];
-		s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-		s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-		s_Data.QuadVertexBufferPtr++;
-
-		s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertices[3];
-		s_Data.QuadVertexBufferPtr->Color = color;
-		s_Data.QuadVertexBufferPtr->TextureCoord = textureCoords[3];
-		s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-		s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-		s_Data.QuadVertexBufferPtr++;
-
+		for (size_t i = 0; i < quadVertexCount; i++)
+		{
+			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertices[i];
+			s_Data.QuadVertexBufferPtr->Color = color;
+			s_Data.QuadVertexBufferPtr->TextureCoord = textureCoords[i];
+			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
+			s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+			s_Data.QuadVertexBufferPtr->EntityID = entityID;
+			s_Data.QuadVertexBufferPtr++;
+		}
+		
 		s_Data.QuadIndexCount += 6;
 		s_Data.Stats.QuadCount++;
 	}
@@ -345,6 +335,15 @@ namespace GE
 		s_Data.TextureSlotIndex = 1;
 	}
 
+#pragma endregion
+
+#pragma region Sprite
+	void Renderer2D::DrawSprite(const glm::mat4& transform, SpriteRendererComponent& component, int entityID)
+	{
+		GE_PROFILE_FUNCTION();
+
+		FillQuad(transform, component.Color, entityID);
+	}
 #pragma endregion
 
 #pragma region Statistics

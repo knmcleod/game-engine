@@ -157,7 +157,8 @@ namespace GE
 			{
 				auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
 
-				Renderer2D::FillQuad(transform.GetTransform(), sprite.Color);
+				//Renderer2D::FillQuad(transform.GetTransform(), sprite.Color);
+				Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
 			}
 
 			Renderer2D::End();

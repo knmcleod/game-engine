@@ -1,6 +1,6 @@
 #include "EditorLayer.h"
 
-//#define ENTITYTEST
+#define ENTITYTEST
 
 namespace GE
 {
@@ -26,7 +26,7 @@ namespace GE
 
 		m_EditorCamera = EditorCamera(45.0f, 1.778f, 0.1f, 100.0f);
 
-		#if ENTITYTEST
+		#ifdef ENTITYTEST
 			m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
 			m_CameraEntityPrimary.AddComponent<CameraComponent>();
 			m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = true;
@@ -85,8 +85,8 @@ namespace GE
 
 			if (mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
 			{
-				m_Framebuffer->ReadPixel(1, mouseX, mouseY); // attachmentIndex = 1 - RED_INTEGER
-				GE_CORE_INFO("Viewport Mouse - ({0}, {1})", mouseX, mouseY);
+				int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY); // attachmentIndex = 1 - RED_INTEGER
+				m_HoveredEntity = (pixelData == -1) ? Entity() : Entity{ (entt::entity)pixelData, m_ActiveScene.get() };
 			}
 		}
 
@@ -99,6 +99,8 @@ namespace GE
 
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<KeyPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnKeyPressed));
+		dispatcher.Dispatch<MouseButtonPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnMousePressed));
+	
 	}
 
 	void EditorLayer::OnImGuiRender()
@@ -175,6 +177,13 @@ namespace GE
 			ImGui::Text("Vertices - %d", stats.GetTotalVertexCount());
 			ImGui::Text("Indices - %d", stats.GetTotalIndexCount());
 
+			ImGui::Separator();
+
+			std::string name = "None";
+			if (m_HoveredEntity && m_HoveredEntity.HasComponent<TagComponent>())
+				name = m_HoveredEntity.GetComponent<TagComponent>().Tag;
+			ImGui::Text("Hovered Entity - %s", name.c_str());
+
 			ImGui::End();
 		}
 
@@ -189,7 +198,11 @@ namespace GE
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 			ImGui::Begin("Viewport");
 
-			auto viewportOffset = ImGui::GetCursorPos();
+			auto viewportOffset = ImGui::GetWindowPos();
+			auto viewportMin = ImGui::GetWindowContentRegionMin();
+			auto viewportMax = ImGui::GetWindowContentRegionMax();
+			m_ViewportBounds[0] = { viewportMin.x + viewportOffset.x, viewportMin.y + viewportOffset.y };
+			m_ViewportBounds[1] = { viewportMax.x + viewportOffset.x, viewportMax.y + viewportOffset.y };
 
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			m_ViewportHovered = ImGui::IsWindowHovered();
@@ -200,15 +213,6 @@ namespace GE
 	
 			uint32_t textureID = m_Framebuffer->GetColorAttachmentID();
 			ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
-
-			auto windowSize = ImGui::GetWindowSize();
-			ImVec2 minBound = ImGui::GetWindowPos();
-			minBound.x += viewportOffset.x;
-			minBound.y += viewportOffset.y;
-
-			ImVec2 maxBound = { minBound.x + windowSize.x, minBound.y + windowSize.y };
-			m_ViewportBounds[0] = { minBound.x, minBound.y };
-			m_ViewportBounds[1] = { maxBound.x, maxBound.y };
 
 			ImGui::End();
 			ImGui::PopStyleVar();
@@ -257,6 +261,25 @@ namespace GE
 		}
 		return true;
 	}
+	
+	bool EditorLayer::OnMousePressed(MouseButtonPressedEvent& e)
+	{
+		switch (e.GetMouseButton())
+		{
+		case GE_MOUSE_BUTTON_1:
+			if(m_ViewportHovered)
+				m_ScenePanel->SetSelectedEntity(m_HoveredEntity);
+			break;
+		case GE_MOUSE_BUTTON_2:
+			break;
+		default:
+			GE_CORE_WARN("Mouse Button not bound.");
+			break;
+		}
+		return true;
+	}
+
+#pragma region Scene
 
 	void EditorLayer::LoadScene()
 	{
@@ -286,4 +309,6 @@ namespace GE
 		m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 		m_ScenePanel->SetScene(m_ActiveScene);
 	}
+
+#pragma endregion
 }

@@ -29,22 +29,70 @@ namespace GE
 
 	void OpenGLVertexArray::AddVertexBuffer(const Ref<VertexBuffer>& vertexBuffer)
 	{
-		this->Bind();
+		GE_PROFILE_FUNCTION();
+		GE_CORE_ASSERT(vertexBuffer->GetLayout().GetElements().size(), "Vertex Buffer has no Layout.");
 
+		this->Bind();
 		vertexBuffer->Bind();
 
 		uint32_t index = 0;
 		auto& layout = vertexBuffer->GetLayout();
 		for (auto& element : layout)
 		{
-			glEnableVertexAttribArray(index);
-			glVertexAttribPointer(index,
-				element.GetComponentCount(),
-				OpenGLShader::ShaderDataTypeToOpenGLBaseType(element.Type),
-				element.Normalized ? GL_TRUE : GL_FALSE,
-				layout.GetStride(),
-				(const void*)(UINT_PTR)element.Offset);
-			index++;
+			switch (element.Type)
+			{
+			case Shader::ShaderDataType::Float:
+			case Shader::ShaderDataType::Float2:
+			case Shader::ShaderDataType::Float3:
+			case Shader::ShaderDataType::Float4:
+			{
+				glEnableVertexAttribArray(index);
+				glVertexAttribPointer(index,
+					element.GetComponentCount(),
+					OpenGLShader::ShaderDataTypeToOpenGLBaseType(element.Type),
+					element.Normalized ? GL_TRUE : GL_FALSE,
+					layout.GetStride(),
+					(const void*)(UINT_PTR)element.Offset);
+				index++;
+				break;
+			}
+			case Shader::ShaderDataType::Int:
+			case Shader::ShaderDataType::Int2:
+			case Shader::ShaderDataType::Int3:
+			case Shader::ShaderDataType::Int4:
+			case Shader::ShaderDataType::Bool:
+			{
+				glEnableVertexAttribArray(index);
+				glVertexAttribIPointer(index,
+					element.GetComponentCount(),
+					OpenGLShader::ShaderDataTypeToOpenGLBaseType(element.Type),
+					layout.GetStride(),
+					(const void*)(UINT_PTR)element.Offset);
+				index++;
+				break;
+			}
+			case Shader::ShaderDataType::Mat3:
+			case Shader::ShaderDataType::Mat4:
+			{
+				uint8_t count = element.GetComponentCount();
+				for (uint8_t i = 0; i < count; i++)
+				{
+					glEnableVertexAttribArray(index);
+					glVertexAttribPointer(index,
+						count,
+						OpenGLShader::ShaderDataTypeToOpenGLBaseType(element.Type),
+						element.Normalized ? GL_TRUE : GL_FALSE,
+						layout.GetStride(),
+						(const void*)(element.Offset + sizeof(float) * count * i));
+					index++;
+				}
+				break;
+			}
+			default:
+				GE_CORE_ASSERT(false, "Unknown Vertex Buffer Layout Type.");
+				break;
+			}
+			
 		}
 		m_VertexBuffers.push_back(vertexBuffer);
 	}

@@ -7,6 +7,8 @@
 #include "GE/Rendering/Textures/Texture.h"
 #include "GE/Rendering/Textures/SubTexture.h"
 
+#include "GE/Scene/Components/Components.h"
+
 namespace GE
 {
 	class Renderer2D
@@ -23,20 +25,26 @@ namespace GE
 		static void Flush();
 		static void FlushAndReset();
 
-		static void FillQuad(const glm::mat4& transform, const glm::vec4& color);
-		static void FillQuad(const glm::mat4& transform, const Ref<Texture2D>& texture, const float& tilingFactor = 1.0f, const glm::vec4& color = glm::vec4(1.0f));
+		static void FillQuad(const glm::mat4& transform, const glm::vec4& color, const int entityID = -1);
+		static void FillQuad(const glm::mat4& transform, const Ref<Texture2D>& texture,
+			const float& tilingFactor = 1.0f, const glm::vec4& color = glm::vec4(1.0f), const int entityID = -1);
 
 		static void FillQuadColor(const glm::vec3& position, const glm::vec2& size, const float rotation,
-			const glm::vec4& color);
+			const glm::vec4& color, const int entityID = -1);
 		static void FillQuadTexture(const glm::vec3& position, const glm::vec2& size, const float rotation,
-			const Ref<Texture2D>& texture, const float& tilingFactor = 1.0f, const glm::vec4& tintColor = glm::vec4(1.0f));
+			const Ref<Texture2D>& texture, const float& tilingFactor = 1.0f, const glm::vec4& tintColor = glm::vec4(1.0f),
+			const int entityID = -1);
 		static void FillQuadSubTexture(const glm::vec3& position, const glm::vec2& size, const float rotation,
-			const Ref<SubTexture2D>& subTexture, const float& tilingFactor = 1.0f, const glm::vec4& tintColor = glm::vec4(1.0f));
+			const Ref<SubTexture2D>& subTexture, const float& tilingFactor = 1.0f, const glm::vec4& tintColor = glm::vec4(1.0f),
+			const int entityID = -1);
 
 		static void SetQuadData(const glm::mat4& transform, const float& textureIndex, const glm::vec2 textureCoords[4],
-			const float& tilingFactor, const glm::vec4& color);
+			const float& tilingFactor, const glm::vec4& color, const int entityID = -1);
 		static void ResetQuadData();
 
+		static void DrawSprite(const glm::mat4& transform, SpriteRendererComponent& component, int entityID);
+
+#pragma region Statistics
 		struct Statistics
 		{
 			uint32_t DrawCalls = 0;
@@ -48,6 +56,7 @@ namespace GE
 
 		static Statistics GetStats();
 		static void ResetStats();
+#pragma endregion
 
 	};
 }
