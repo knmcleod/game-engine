@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GE/Rendering/Renderer/UniformBuffer/UniformBuffer.h"
 #include "GE/Rendering/RenderCommand.h"
 #include "GE/Rendering/Camera/Camera.h"
 #include "GE/Rendering/Camera/EditorCamera.h"
@@ -17,9 +18,9 @@ namespace GE
 		static void Init();
 		static void ShutDown();
 
+		static void Start(const Camera& camera, const glm::mat4& transform);
 		static void Start(const EditorCamera& camera);
 		static void Start(const OrthographicCamera& camera);
-		static void Start(const Camera& camera, const glm::mat4& transform);
 		static void End();
 
 		static void Flush();
@@ -44,7 +45,17 @@ namespace GE
 
 		static void DrawSprite(const glm::mat4& transform, SpriteRendererComponent& component, int entityID);
 
-#pragma region Statistics
+		struct QuadVertex
+		{
+			glm::vec3 Position = glm::vec3(0.0f);
+			glm::vec4 Color = glm::vec4(1.0f);
+			glm::vec2 TextureCoord = glm::vec2(0.0f);
+			float TextureIndex = 0;
+			float TilingFactor = 1.0f;
+
+			int EntityID = -1;
+		};
+
 		struct Statistics
 		{
 			uint32_t DrawCalls = 0;
@@ -54,9 +65,33 @@ namespace GE
 			uint32_t GetTotalIndexCount() { return QuadCount * 6; }
 		};
 
+		struct Renderer2DData
+		{
+			static const uint32_t MaxQuads = 10000;
+			static const uint32_t MaxVertices = MaxQuads * 4;
+			static const uint32_t MaxIndices = MaxQuads * 6;
+			static const uint32_t MaxTextureSlots = 32;
+
+			glm::vec4 QuadVertices[4];
+			uint32_t QuadIndexCount = 0;
+			QuadVertex* QuadVertexBufferBase = nullptr;
+			QuadVertex* QuadVertexBufferPtr = nullptr;
+
+			uint32_t TextureSlotIndex = 1;
+			std::array<Ref<Texture2D>, MaxTextureSlots> TextureSlots;
+
+			Ref<VertexArray> QuadVertexArray;
+			Ref<VertexBuffer> QuadVertexBuffer;
+			Ref<Shader> Shader;
+			Ref<Texture2D> EmptyTexture;
+
+			Renderer2D::Statistics Stats;
+
+			Camera::CameraData CameraBuffer;
+			Ref<UniformBuffer> CameraUniformBuffer;
+		};
+
 		static Statistics GetStats();
 		static void ResetStats();
-#pragma endregion
-
 	};
 }

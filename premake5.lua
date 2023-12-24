@@ -1,3 +1,5 @@
+include "Dependencies.lua"
+
 workspace "game-engine"
 	architecture "x86_64"
 	startproject "editor"
@@ -11,16 +13,6 @@ workspace "game-engine"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
-IncludeDir = {}
-IncludeDir["glfw"] = "game-engine/vender/glfw/include"
-IncludeDir["GLAD"] = "game-engine/vender/GLAD/include"
-IncludeDir["ImGui"] = "game-engine/vender/imgui"
-IncludeDir["glm"] = "game-engine/vender/glm"
-IncludeDir["spdlog"] = "game-engine/vender/spdlog/include"
-IncludeDir["stb"] = "game-engine/vender/stb_image"
-IncludeDir["entt"] = "game-engine/vender/entt/single_include"
-IncludeDir["yaml_cpp"] = "game-engine/vender/yaml-cpp/include"
-
 group "Dependencies"
 	include "game-engine/vender/glfw"
 	include "game-engine/vender/GLAD"
@@ -33,7 +25,7 @@ project "game-engine"
 	kind "StaticLib"
 	language "C++"
 	cppdialect "C++17"
-	staticruntime "On"
+	staticruntime "off"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -61,7 +53,9 @@ project "game-engine"
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.entt}",
-		"%{IncludeDir.yaml_cpp}"
+		"%{IncludeDir.yaml_cpp}",
+		"%{IncludeDir.shaderc}",
+		"%{IncludeDir.VulkanSDK}"
 	}
 
 	links
@@ -87,23 +81,41 @@ project "game-engine"
 		defines "GE_DEBUG"
 		runtime "Debug"
 		symbols "On"
+		links
+		{
+			"%{Library.ShaderC_Debug}",
+			"%{Library.SPIRV_Cross_Debug}",
+			"%{Library.SPIRV_Cross_GLSL_Debug}"
+		}
 
 	filter "configurations:Release"
 		defines "GE_RELEASE"
 		runtime "Release"
 		optimize "On"
+		links
+		{
+			"%{Library.ShaderC_Release}",
+			"%{Library.SPIRV_Cross_Release}",
+			"%{Library.SPIRV_Cross_GLSL_Release}"
+		}
 
 	filter "configurations:Dist"
 		defines "GE_DIST"
 		runtime "Release"
 		optimize "On"
+		links
+		{
+			"%{Library.ShaderC_Release}",
+			"%{Library.SPIRV_Cross_Release}",
+			"%{Library.SPIRV_Cross_GLSL_Release}"
+		}
 
 project "editor"
 	location "editor"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++17"
-	staticruntime "On"
+	staticruntime "off"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")

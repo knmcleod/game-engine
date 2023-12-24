@@ -49,7 +49,7 @@ namespace GE
 				glEnableVertexAttribArray(index);
 				glVertexAttribPointer(index,
 					element.GetComponentCount(),
-					OpenGLShader::ShaderDataTypeToOpenGLBaseType(element.Type),
+					Utils::ShaderDataTypeToOpenGLBaseType(element.Type),
 					element.Normalized ? GL_TRUE : GL_FALSE,
 					layout.GetStride(),
 					(const void*)(UINT_PTR)element.Offset);
@@ -65,7 +65,7 @@ namespace GE
 				glEnableVertexAttribArray(index);
 				glVertexAttribIPointer(index,
 					element.GetComponentCount(),
-					OpenGLShader::ShaderDataTypeToOpenGLBaseType(element.Type),
+					Utils::ShaderDataTypeToOpenGLBaseType(element.Type),
 					layout.GetStride(),
 					(const void*)(UINT_PTR)element.Offset);
 				index++;
@@ -80,7 +80,7 @@ namespace GE
 					glEnableVertexAttribArray(index);
 					glVertexAttribPointer(index,
 						count,
-						OpenGLShader::ShaderDataTypeToOpenGLBaseType(element.Type),
+						Utils::ShaderDataTypeToOpenGLBaseType(element.Type),
 						element.Normalized ? GL_TRUE : GL_FALSE,
 						layout.GetStride(),
 						(const void*)(element.Offset + sizeof(float) * count * i));

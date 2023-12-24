@@ -22,6 +22,7 @@ namespace GE
 
 	void SceneCamera::SetViewport(uint32_t width, uint32_t height)
 	{
+		GE_CORE_ASSERT(width > 0 && height > 0, "Attempted to set Scene Camera Viewport with (x, y) <= 0");
 		m_AspectRatio = (float)width / (float)height;
 
 		RecalculateProjection();

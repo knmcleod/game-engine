@@ -37,6 +37,8 @@
 #include "GE/Rendering/Renderer/Renderer.h"
 #include "GE/Rendering/Renderer/2D/Renderer2D.h"
 
+#include "GE/Rendering/Renderer/UniformBuffer/UniformBuffer.h"
+
 #include "GE/Rendering/Shader/Shader.h"
 #include "GE/Rendering/VertexArray/VertexArray.h"
 #include "GE/Rendering/VertexArray/Buffer.h"

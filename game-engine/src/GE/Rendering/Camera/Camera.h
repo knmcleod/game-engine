@@ -10,6 +10,10 @@ namespace GE
 		Camera(const glm::mat4& projection) : m_Projection(projection) {}
 		virtual ~Camera() = default;
 
+		struct CameraData
+		{
+			glm::mat4 ViewProjection;
+		};
 		const glm::mat4& GetProjection() const { return m_Projection; }
 		
 		enum class ProjectionType { Perspective = 0, Orthographic = 1 };

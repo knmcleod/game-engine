@@ -4,41 +4,7 @@
 
 namespace GE
 {
-	struct QuadVertex
-	{
-		glm::vec3 Position = glm::vec3(0.0f);
-		glm::vec4 Color = glm::vec4(1.0f);
-		glm::vec2 TextureCoord = glm::vec2(0.0f);
-		float TextureIndex = 0;
-		float TilingFactor = 1.0f;
-
-		int EntityID = -1;
-	};
-
-	struct Renderer2DData
-	{
-		static const uint32_t MaxQuads = 10000;
-		static const uint32_t MaxVertices = MaxQuads * 4;
-		static const uint32_t MaxIndices = MaxQuads * 6;
-		static const uint32_t MaxTextureSlots = 32;
-
-		glm::vec4 QuadVertices[4];
-		uint32_t QuadIndexCount = 0;
-		QuadVertex* QuadVertexBufferBase = nullptr;
-		QuadVertex* QuadVertexBufferPtr = nullptr;
-
-		uint32_t TextureSlotIndex = 1;
-		std::array<Ref<Texture2D>, MaxTextureSlots> TextureSlots;
-
-		Ref<VertexArray> QuadVertexArray;
-		Ref<VertexBuffer> QuadVertexBuffer;
-		Ref<Shader> Shader;
-		Ref<Texture2D> EmptyTexture;
-
-		Renderer2D::Statistics Stats;
-	};
-
-	static Renderer2DData s_Data;
+	static Renderer2D::Renderer2DData s_Data;
 
 	static const glm::mat4 m_identityMat4(1.0f);
 
@@ -93,10 +59,9 @@ namespace GE
 
 		// Texture Creation
 		uint32_t textureData = 0xFFFFFFFF;
-		//s_Data.Texture = Texture2D::Create(1, 1, 4, &textureData, sizeof(uint32_t));
 		s_Data.EmptyTexture = Texture2D::Create(1, 1, 4);
 		s_Data.EmptyTexture->SetData(&textureData, sizeof(uint32_t));
-
+		
 		int32_t samplers[s_Data.MaxTextureSlots];
 		for (uint32_t i = 0; i < s_Data.MaxTextureSlots; i++)
 		{
@@ -104,8 +69,8 @@ namespace GE
 		}
 
 		s_Data.Shader = Shader::Create("assets/shaders/Texture.glsl");
-		s_Data.Shader->Bind();
-		s_Data.Shader->SetIntArray("u_Textures", samplers, s_Data.MaxTextureSlots);
+		//s_Data.Shader->Bind();
+		//s_Data.Shader->SetIntArray("u_Textures", samplers, s_Data.MaxTextureSlots);
 
 		s_Data.TextureSlots[0] = s_Data.EmptyTexture;
 
@@ -114,6 +79,7 @@ namespace GE
 		s_Data.QuadVertices[2] = { 0.5f, 0.5f, 0.0f, 1.0f };
 		s_Data.QuadVertices[3] = { -0.5f, 0.5f, 0.0f, 1.0f };
 
+		s_Data.CameraUniformBuffer = UniformBuffer::Create(sizeof(UniformBuffer), 0);
 	}
 
 	void Renderer2D::ShutDown()
@@ -123,12 +89,26 @@ namespace GE
 		delete[] s_Data.QuadVertexBufferBase;
 	}
 
+	void Renderer2D::Start(const Camera& camera, const glm::mat4& transform)
+	{
+		GE_PROFILE_FUNCTION();
+
+		s_Data.CameraBuffer.ViewProjection = camera.GetProjection() * glm::inverse(transform);
+		s_Data.CameraUniformBuffer->SetData(&s_Data.CameraBuffer, sizeof(Camera::CameraData));
+
+		//s_Data.Shader->SetMat4("u_ViewProjection", viewProjection);
+
+		ResetQuadData();
+	}
+
 	void Renderer2D::Start(const EditorCamera& camera)
 	{
 		GE_PROFILE_FUNCTION();
 
-		glm::mat4 viewProjection = camera.GetViewProjection();
-		s_Data.Shader->SetMat4("u_ViewProjection", viewProjection);
+		s_Data.CameraBuffer.ViewProjection = camera.GetProjection();
+		s_Data.CameraUniformBuffer->SetData(&s_Data.CameraBuffer, sizeof(Camera::CameraData));
+
+		//s_Data.Shader->SetMat4("u_ViewProjection", viewProjection);
 
 		ResetQuadData();
 	}
@@ -139,16 +119,6 @@ namespace GE
 
 		s_Data.Shader->SetMat4("u_ViewProjection", orthoCamera.GetViewProjectionMatrix());
 	
-		ResetQuadData();
-	}
-
-	void Renderer2D::Start(const Camera& camera, const glm::mat4& transform)
-	{
-		GE_PROFILE_FUNCTION();
-
-		glm::mat4 viewProjection = camera.GetProjection() * glm::inverse(transform);
-		s_Data.Shader->SetMat4("u_ViewProjection", viewProjection);
-
 		ResetQuadData();
 	}
 
