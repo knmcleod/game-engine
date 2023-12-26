@@ -3,8 +3,8 @@
 #include <GE/GE.h>
 
 #include "../UIPanels/SceneHierarchyPanel.h"
+#include "../UIPanels/AssetPanel.h"
 
-// TEMP
 #include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -27,6 +27,7 @@ namespace GE
 		bool OnMousePressed(MouseButtonPressedEvent& e);
 
 		void LoadScene();
+		void LoadScene(const std::filesystem::path& path);
 		void SaveSceneAs();
 		void NewScene();
 
@@ -41,6 +42,7 @@ namespace GE
 		Ref<Framebuffer> m_Framebuffer;
 		Ref<Scene> m_ActiveScene;
 		Ref<SceneHierarchyPanel> m_ScenePanel;
+		Ref<AssetPanel> m_AssetPanel;
 
 		Entity m_HoveredEntity;
 		Entity m_SquareEntity;

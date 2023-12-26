@@ -1,9 +1,11 @@
 #include "EditorLayer.h"
 
-#define ENTITYTEST
+//#define ENTITYTEST
 
 namespace GE
 {
+	extern const std::filesystem::path g_AssetsPath;
+
 	EditorLayer::EditorLayer(const std::string& name)
 		: Layer(name)
 	{
@@ -23,22 +25,23 @@ namespace GE
 		//Scene
 		m_ActiveScene = CreateRef<Scene>();
 		m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_ActiveScene);
+		m_AssetPanel = CreateRef<AssetPanel>();
 
 		m_EditorCamera = EditorCamera(45.0f, 1.778f, 0.1f, 100.0f);
 
-		#ifdef ENTITYTEST
-			m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
-			m_CameraEntityPrimary.AddComponent<CameraComponent>();
-			m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = true;
-			m_CameraEntityPrimary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
+#ifdef ENTITYTEST
+		m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
+		m_CameraEntityPrimary.AddComponent<CameraComponent>();
+		m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = true;
+		m_CameraEntityPrimary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
 
-			m_CameraEntitySecondary = m_ActiveScene->CreateEntity("Secondary Camera Entity");
-			m_CameraEntitySecondary.AddComponent<CameraComponent>();
-			m_CameraEntitySecondary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
+		m_CameraEntitySecondary = m_ActiveScene->CreateEntity("Secondary Camera Entity");
+		m_CameraEntitySecondary.AddComponent<CameraComponent>();
+		m_CameraEntitySecondary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
 
-			m_SquareEntity = m_ActiveScene->CreateEntity();
-			m_SquareEntity.AddComponent<SpriteRendererComponent>(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
-		#endif
+		m_SquareEntity = m_ActiveScene->CreateEntity();
+		m_SquareEntity.AddComponent<SpriteRendererComponent>(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+#endif
 	}
 
 	void EditorLayer::OnDetach()
@@ -55,12 +58,12 @@ namespace GE
 			(spec.Width != m_ViewportSize.x || spec.Height != m_ViewportSize.y))
 		{
 			m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-			
+
 			m_EditorCamera.SetViewport(m_ViewportSize.x, m_ViewportSize.y);
 			m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 		}
 
-		if(m_ViewportFocused)
+		if (m_ViewportFocused)
 			m_EditorCamera.OnUpdate(timestep);
 
 		Renderer2D::ResetStats();
@@ -100,11 +103,11 @@ namespace GE
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<KeyPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnKeyPressed));
 		dispatcher.Dispatch<MouseButtonPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnMousePressed));
-	
+
 	}
 
 	void EditorLayer::OnImGuiRender()
-	{		
+	{
 		static bool dockspaceOpen = true;
 		static bool opt_fullscreen_persistant = true;
 		bool opt_fullscreen = opt_fullscreen_persistant;
@@ -189,9 +192,10 @@ namespace GE
 
 		{
 			if (m_ScenePanel)
-			{
 				m_ScenePanel->OnImGuiRender();
-			}
+
+			if (m_AssetPanel)
+				m_AssetPanel->OnImGuiRender();
 		}
 
 		{
@@ -207,19 +211,30 @@ namespace GE
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			m_ViewportHovered = ImGui::IsWindowHovered();
 			Application::GetApplication().GetImGuiLayer()->BlockEvents(!m_ViewportFocused && !m_ViewportHovered);
-	
+
 			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 			m_ViewportSize = { viewportSize.x, viewportSize.y };
-	
+
 			uint32_t textureID = m_Framebuffer->GetColorAttachmentID();
 			ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
+			if (ImGui::BeginDragDropTarget())
+			{
+				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+				{
+					const wchar_t* path = (const wchar_t*)payload->Data;
+
+					LoadScene(std::filesystem::path(g_AssetsPath) / path);
+				}
+				ImGui::EndDragDropTarget();
+			}
 
 			ImGui::End();
 			ImGui::PopStyleVar();
 		}
 
 		ImGui::End();
-		
+
 	}
 
 	void EditorLayer::OnWindowResize(WindowResizeEvent& e)
@@ -237,7 +252,7 @@ namespace GE
 
 		switch (e.GetKeyCode())
 		{
-		// File
+			// File
 		case GE_KEY_N:
 		{
 			if (control)
@@ -261,13 +276,13 @@ namespace GE
 		}
 		return true;
 	}
-	
+
 	bool EditorLayer::OnMousePressed(MouseButtonPressedEvent& e)
 	{
 		switch (e.GetMouseButton())
 		{
 		case GE_MOUSE_BUTTON_1:
-			if(m_ViewportHovered)
+			if (m_ViewportHovered)
 				m_ScenePanel->SetSelectedEntity(m_HoveredEntity);
 			break;
 		case GE_MOUSE_BUTTON_2:
@@ -279,18 +294,21 @@ namespace GE
 		return true;
 	}
 
-#pragma region Scene
+#pragma region Scene Controlling Functions
 
 	void EditorLayer::LoadScene()
 	{
 		std::string filePath = FileDialogs::LoadFile("GE Scene (*.ge)\0*.ge\0");
 		if (!filePath.empty())
-		{
-			NewScene();
+			LoadScene(filePath);
+	}
 
-			SceneSerializer serializer(m_ActiveScene);
-			serializer.DeserializeText(filePath);
-		}
+	void EditorLayer::LoadScene(const std::filesystem::path& path)
+	{
+		NewScene();
+
+		SceneSerializer serializer(m_ActiveScene);
+		serializer.DeserializeText(path.string());
 	}
 
 	void EditorLayer::SaveSceneAs()
