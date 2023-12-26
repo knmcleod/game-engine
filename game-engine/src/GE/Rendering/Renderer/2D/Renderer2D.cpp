@@ -342,7 +342,10 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		FillQuad(transform, component.Color, entityID);
+		if (component.Texture)
+			FillQuad(transform, component.Texture, component.TilingFactor, component.Color, entityID);
+		else
+			FillQuad(transform, component.Color, entityID);
 	}
 #pragma endregion
 

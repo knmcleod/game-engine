@@ -1,12 +1,13 @@
 #pragma once
 
+#include "GE/Scene/Camera/SceneCamera.h"
+#include "GE/Scene/Entity/ScriptableEntity.h"
+#include "GE/Rendering/Textures/Texture.h"
+
 #include <glm/glm.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
-
-#include "GE/Scene/Camera/SceneCamera.h"
-#include "GE/Scene/Entity/ScriptableEntity.h"
 
 namespace GE
 {
@@ -45,6 +46,8 @@ namespace GE
 	struct SpriteRendererComponent
 	{
 		glm::vec4 Color = glm::vec4(1.0f);
+		Ref<Texture2D> Texture;
+		float TilingFactor = 1.0f;
 
 		SpriteRendererComponent() = default;
 		SpriteRendererComponent(const SpriteRendererComponent&) = default;
