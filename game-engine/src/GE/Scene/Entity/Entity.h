@@ -1,7 +1,8 @@
 #pragma once
-#include <entt/entt.hpp>
+#include "GE/Core/UUID/UUID.h"
 #include "GE/Scene/Scene.h"
 
+#include <entt/entt.hpp>
 namespace GE
 {
 	class Entity
@@ -52,13 +53,13 @@ namespace GE
 			return m_Scene->m_Registry.all_of<T>(m_EntityID);
 		}
 
-		//operator entt::entity() const { return m_EntityID; }
-
+		operator entt::entity() const { return m_EntityID; }
 		operator bool() const { return m_EntityID != entt::null; }
 		operator uint32_t() const { return (uint32_t)m_EntityID; }
 
 		bool operator ==(const Entity& other) const { return m_EntityID == other.m_EntityID && m_Scene == other.m_Scene; }
 		bool operator !=(const Entity& other) const { return !operator==(other); }
-	
+		
+		UUID GetUUID() { return GetComponent<IDComponent>().ID; }
 	};
 }

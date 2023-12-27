@@ -1,7 +1,9 @@
 #pragma once
-#include <entt/entt.hpp>
 #include "GE/Core/Time/Time.h"
 #include "GE/Rendering/Camera/EditorCamera.h"
+#include "Components/Components.h"
+
+#include <entt/entt.hpp>
 
 namespace GE
 {
@@ -32,7 +34,8 @@ namespace GE
 
 		Entity GetPrimaryCameraEntity();
 
-		Entity CreateEntity(const std::string& name = "");
+		Entity CreateEntity(const std::string& name = std::string());
+		Entity CreateEntityWithUUID(UUID uuid, const std::string& name = std::string());
 		void DestroyEntity(Entity entity);
 
 		void ResizeViewport(uint32_t width, uint32_t height);

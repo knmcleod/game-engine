@@ -1,7 +1,8 @@
 #pragma once
 
+#include "GE/Core/UUID/UUID.h"
+#include "GE/Scene/Scene.h"
 #include "GE/Scene/Camera/SceneCamera.h"
-#include "GE/Scene/Entity/ScriptableEntity.h"
 #include "GE/Rendering/Textures/Texture.h"
 
 #include <glm/glm.hpp>
@@ -11,6 +12,14 @@
 
 namespace GE
 {
+	struct IDComponent
+	{
+		UUID ID;
+
+		IDComponent() = default;
+		IDComponent(const IDComponent&) = default;
+	};
+
 	struct TagComponent
 	{
 		std::string Tag = "";
@@ -65,6 +74,7 @@ namespace GE
 		CameraComponent(const SceneCamera camera) : Camera(camera) {}
 	};
 
+	class ScriptableEntity;
 	struct NativeScriptComponent
 	{
 		ScriptableEntity* Instance = nullptr;

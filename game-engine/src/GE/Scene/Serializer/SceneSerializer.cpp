@@ -1,5 +1,6 @@
 #include "GE/GEpch.h"
 #include "SceneSerializer.h"
+#include "GE/Scene/Entity/Entity.h"
 #include "GE/Scene/Components/Components.h"
 
 #include <yaml-cpp/yaml.h>
@@ -134,7 +135,7 @@ namespace GE
 
 				GE_CORE_TRACE("Deserializing entity with\n\tID = {0},\n\tName = {1}", uuID, name);
 
-				Entity deserializedEntity = m_Scene->CreateEntity(name);
+				Entity deserializedEntity = m_Scene->CreateEntityWithUUID(uuID, name);
 
 				// TransformComponent
 				auto transformComponent = entity["TransformComponent"];
@@ -186,8 +187,10 @@ namespace GE
 
 	static void SerializeEntity(YAML::Emitter& out, Entity entity)
 	{
+		GE_CORE_ASSERT(entity.HasComponent<IDComponent>(), "Cannot serialize Entity without ID.");
+
 		out << YAML::BeginMap; // Entity
-		out << YAML::Key << "Entity" << YAML::Value << "12837192831273"; // Entity ID
+		out << YAML::Key << "Entity" << YAML::Value << entity.GetUUID();
 
 		if (entity.HasComponent<TagComponent>())
 		{
