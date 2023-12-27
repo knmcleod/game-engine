@@ -1,7 +1,7 @@
-// Basic Texture Shader
+// Texture Shader
 
 #type vertex
-#version 330 core
+#version 450 core
 
 layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec4 a_Color;
@@ -10,42 +10,57 @@ layout(location = 3) in float a_TextureIndex;
 layout(location = 4) in float a_TilingFactor;
 layout(location = 5) in int a_EntityID;
 
-out vec4 v_Color;
-out vec2 v_TextureCoord;
-flat out float v_TextureIndex;
-out float v_TilingFactor;	
-flat out int v_EntityID;
+// Camera Uniform Buffer
+layout(std140, binding = 0) uniform Camera
+{
+	mat4 u_ViewProjection;
+};
 
-uniform mat4 u_ViewProjection;
+struct VertexOutput
+{
+	vec4 Color;
+	vec2 TextureCoord;
+	float TilingFactor;	
+};
+
+layout(location = 0) out VertexOutput Output;
+layout(location = 3) out flat float v_TextureIndex;
+layout(location = 4) out flat int v_EntityID;
 
 void main()
 {
-	v_Color = a_Color;
-	v_TextureCoord = a_TextureCoord;
-	v_TextureIndex = a_TextureIndex;
-	v_TilingFactor = a_TilingFactor;
+	Output.Color = a_Color;
+	Output.TextureCoord = a_TextureCoord;
+	Output.TilingFactor = a_TilingFactor;
+	 v_TextureIndex = a_TextureIndex;
 	v_EntityID = a_EntityID;
+
 	gl_Position = u_ViewProjection * vec4(a_Position, 1.0f);
 }
 
 #type fragment
-#version 330 core
+#version 450 core
 
 layout(location = 0) out vec4 color;
 layout(location = 1) out int entityID;
 
-in vec4 v_Color;
-in vec2 v_TextureCoord;
-flat in float v_TextureIndex;
-in float v_TilingFactor;
-flat in int v_EntityID;
+struct VertexOutput
+{
+	vec4 Color;
+	vec2 TextureCoord;
+	float TilingFactor;	
+};
 
-uniform sampler2D u_Textures[32];
+layout(location = 0) in VertexOutput Input;
+layout(location = 3) in flat float v_TextureIndex;
+layout(location = 4) in flat int v_EntityID;
+
+layout(binding = 0) uniform sampler2D u_Textures[32];
 
 void main()
 {
-	vec4 texColor = v_Color;
-	texColor *= texture(u_Textures[int(v_TextureIndex)], v_TextureCoord * v_TilingFactor);
+	vec4 texColor = Input.Color;
+	texColor *= texture(u_Textures[int(v_TextureIndex)], Input.TextureCoord * Input.TilingFactor);
 	
 	color = texColor;
 	entityID = v_EntityID;

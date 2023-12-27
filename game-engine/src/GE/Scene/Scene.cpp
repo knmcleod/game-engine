@@ -28,7 +28,8 @@ namespace GE
 	template<>
 	void Scene::OnComponentAdded<CameraComponent>(Entity entity)
 	{
-		entity.GetComponent<CameraComponent>().Camera.SetViewport(m_ViewportWidth, m_ViewportHeight);
+		if(m_ViewportWidth > 0 && m_ViewportHeight > 0)
+			entity.GetComponent<CameraComponent>().Camera.SetViewport(m_ViewportWidth, m_ViewportHeight);
 	}
 
 	template<>

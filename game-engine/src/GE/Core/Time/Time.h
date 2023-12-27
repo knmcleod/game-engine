@@ -46,12 +46,19 @@ namespace GE
 
 			m_Stopped = true;
 
-			float duration = (end - start) * 0.001f;
+			m_Time = (end - start) * 0.001f;
 		}
+
+		operator float() const { return m_Time; }
+
+		float GetSeconds() const { return m_Time; }
+		float GetMilliSeconds() const { return m_Time * 1000.0f; }
+
 	private:
 		bool m_Stopped;
 		const char* m_Name;
 		std::chrono::time_point<std::chrono::steady_clock> m_StartTime;	
+		float m_Time;
 	};
 }
 
