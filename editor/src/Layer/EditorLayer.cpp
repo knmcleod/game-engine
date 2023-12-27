@@ -185,6 +185,7 @@ namespace GE
 			ImGui::EndMenuBar();
 		}
 
+		// Statistics
 		{
 			ImGui::Begin("Statistics");
 
@@ -205,6 +206,7 @@ namespace GE
 			ImGui::End();
 		}
 
+		// Scene & Asset Panels
 		{
 			if (m_ScenePanel)
 				m_ScenePanel->OnImGuiRender();
@@ -213,6 +215,7 @@ namespace GE
 				m_AssetPanel->OnImGuiRender();
 		}
 
+		//	Viewport
 		{
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 			ImGui::Begin("Viewport");
@@ -316,12 +319,12 @@ namespace GE
 
 	void EditorLayer::OnScenePlay()
 	{
-		m_ActiveScene->m_SceneState = Scene::SceneState::Play;
+		m_ActiveScene->OnRuntimeStart();
 	}
 
 	void EditorLayer::OnSceneStop()
 	{
-		m_ActiveScene->m_SceneState = Scene::SceneState::Stop;
+		m_ActiveScene->OnRuntimeStop();
 	}
 
 	void EditorLayer::LoadScene()

@@ -2,8 +2,6 @@
 
 #include <string>
 
-#include "GE/Core/Core.h"
-
 #include "GE/Rendering/Renderer/Renderer.h"
 
 namespace GE

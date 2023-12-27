@@ -1,0 +1,55 @@
+Scene: Name
+Entities:
+  - Entity: 14512584758152237757
+    TagComponent:
+      Tag: Dynamic Physics Entity
+    TransformComponent:
+      Translation: [2.85203787e-05, 1.01497006, 0]
+      Rotation: [0, 0, 3.74332922e-06]
+      Scale: [1, 1, 1]
+    SpriteRendererComponent:
+      Color: [1, 1, 1, 1]
+    Rigidbody2DComponent:
+      Type: Dynamic
+      FixedRotation: false
+    BoxCollider2DComponent:
+      Offset: [0, 0]
+      Size: [0.5, 0.5]
+      Density: 1
+      Friction: 0.5
+      Restitution: 0
+      RestitutionThreshold: 0.5
+  - Entity: 5960055730190129779
+    TagComponent:
+      Tag: Static Physics Entity
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [6, 1, 1]
+    SpriteRendererComponent:
+      Color: [0.160784319, 1, 1, 1]
+    Rigidbody2DComponent:
+      Type: Static
+      FixedRotation: false
+    BoxCollider2DComponent:
+      Offset: [0, 0]
+      Size: [3.5, 0.5]
+      Density: 1
+      Friction: 0.5
+      Restitution: 0
+      RestitutionThreshold: 0.5
+  - Entity: 5631396502145290917
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      FixedAspectRatio: false
+      Primary: true
+      Camera:
+        Far: 1
+        Near: -1
+        FOV: 10
+        Type: 1

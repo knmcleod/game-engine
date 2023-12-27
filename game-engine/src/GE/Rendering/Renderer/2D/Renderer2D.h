@@ -2,7 +2,7 @@
 
 #include "GE/Rendering/RenderCommand.h"
 #include "GE/Rendering/Camera/Camera.h"
-#include "GE/Rendering/Camera/EditorCamera.h"
+#include "GE/Rendering/Camera//Editor/EditorCamera.h"
 
 #include "GE/Rendering/Textures/Texture.h"
 #include "GE/Rendering/Textures/SubTexture.h"

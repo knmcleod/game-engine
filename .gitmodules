@@ -16,3 +16,6 @@
 [submodule "game-engine/vender/yaml-cpp"]
 	path = game-engine/vender/yaml-cpp
 	url = https://github.com/knmcleod/yaml-cpp.git
+[submodule "game-engine/vender/box2d"]
+	path = game-engine/vender/box2d
+	url = https://github.com/knmcleod/box2d.git

@@ -20,12 +20,14 @@ IncludeDir["spdlog"] = "game-engine/vender/spdlog/include"
 IncludeDir["stb"] = "game-engine/vender/stb_image"
 IncludeDir["entt"] = "game-engine/vender/entt/single_include"
 IncludeDir["yaml_cpp"] = "game-engine/vender/yaml-cpp/include"
+IncludeDir["box2d"] = "game-engine/vender/box2d/include"
 
 group "Dependencies"
 	include "game-engine/vender/glfw"
 	include "game-engine/vender/GLAD"
 	include "game-engine/vender/imgui"
 	include "game-engine/vender/yaml-cpp"
+	include "game-engine/vender/box2d"
 group ""
 
 project "game-engine"
@@ -61,7 +63,8 @@ project "game-engine"
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.entt}",
-		"%{IncludeDir.yaml_cpp}"
+		"%{IncludeDir.yaml_cpp}",
+		"%{IncludeDir.box2d}"
 	}
 
 	links
@@ -70,6 +73,7 @@ project "game-engine"
 		"GLAD",
 		"ImGui",
 		"yaml-cpp",
+		"box2d",
 		"opengl32.lib",
 		"dwmapi.lib"
 	}

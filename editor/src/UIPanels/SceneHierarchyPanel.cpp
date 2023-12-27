@@ -1,4 +1,5 @@
 #include "SceneHierarchyPanel.h"
+
 #include <filesystem>
 
 namespace GE
@@ -8,13 +9,13 @@ namespace GE
 	template<typename T, typename UIFunction>
 	static void DrawComponent(const std::string& name, Entity entity, UIFunction function)
 	{
-		const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen
-												| ImGuiTreeNodeFlags_AllowItemOverlap
-												| ImGuiTreeNodeFlags_Framed
-												| ImGuiTreeNodeFlags_SpanAvailWidth;
-
 		if (entity.HasComponent<T>())
 		{
+			const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen
+				| ImGuiTreeNodeFlags_AllowItemOverlap
+				| ImGuiTreeNodeFlags_Framed
+				| ImGuiTreeNodeFlags_SpanAvailWidth;
+
 			auto& component = entity.GetComponent<T>();
 
 			bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), treeNodeFlags, name.c_str());
@@ -44,7 +45,7 @@ namespace GE
 	template<typename T>
 	static void DrawAddComponent(const std::string& name, Entity entity)
 	{
-		if (ImGui::MenuItem(name.c_str()))
+		if (!entity.HasComponent<T>() && ImGui::MenuItem(name.c_str()))
 		{
 			entity.AddComponent<T>();
 
@@ -180,6 +181,8 @@ namespace GE
 				DrawAddComponent<CameraComponent>("Camera", entity);
 				DrawAddComponent<SpriteRendererComponent>("Sprite Renderer", entity);
 				DrawAddComponent<NativeScriptComponent>("Native Script", entity);
+				DrawAddComponent<Rigidbody2DComponent>("Rigidbody 2D", entity);
+				DrawAddComponent<BoxCollider2DComponent>("Box Collider 2D", entity);
 
 			});
 
@@ -254,6 +257,44 @@ namespace GE
 		DrawComponent<NativeScriptComponent>("Native Script", entity,
 			[](auto& component)
 			{
+			});
+
+		DrawComponent<Rigidbody2DComponent>("Rigidbody 2D", entity,
+			[](auto& component)
+			{
+				const char* bodyTypeStrings[] = {"Static", "Dynamic", "Kinematic"};
+				const char* currentBodyTypeString = bodyTypeStrings[(int)component.Type];
+
+				if (ImGui::BeginCombo("Type", currentBodyTypeString))
+				{
+					for (int i = 0; i < 2; i++)
+					{
+						bool isSelected = currentBodyTypeString == bodyTypeStrings[i];
+						if (ImGui::Selectable(bodyTypeStrings[i], isSelected))
+						{
+							currentBodyTypeString = bodyTypeStrings[i];
+							component.Type = (Rigidbody2DComponent::BodyType)i;
+						}
+
+						if (isSelected)
+							ImGui::SetItemDefaultFocus();
+					}
+
+					ImGui::EndCombo();
+				}
+
+				ImGui::Checkbox("Fixed Rotation", &component.FixedRotation);
+			});
+
+		DrawComponent<BoxCollider2DComponent>("Box Collider 2D", entity,
+			[](auto& component)
+			{
+				ImGui::DragFloat2("Offset", glm::value_ptr(component.Offset));
+				ImGui::DragFloat2("Size", glm::value_ptr(component.Size));
+				ImGui::DragFloat("Density", &component.Density);
+				ImGui::DragFloat("Friction", &component.Friction);
+				ImGui::DragFloat("Restitution", &component.Restitution);
+				ImGui::DragFloat("Restitution Threshold", &component.RestitutionThreshold);
 
 			});
 	}

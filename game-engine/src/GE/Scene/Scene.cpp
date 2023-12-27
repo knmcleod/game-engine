@@ -4,6 +4,11 @@
 #include "Entity/ScriptableEntity.h"
 #include "GE/Rendering/Renderer/2D/Renderer2D.h"
 
+#include <box2d/b2_world.h>
+#include <box2d/b2_body.h>
+#include <box2d/b2_polygon_shape.h>
+#include <box2d/b2_fixture.h>
+
 namespace GE
 {
 #pragma region OnComponentAdded
@@ -47,6 +52,36 @@ namespace GE
 	{
 	}
 
+	template<>
+	void Scene::OnComponentAdded<Rigidbody2DComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<BoxCollider2DComponent>(Entity entity)
+	{
+	}
+
+#pragma endregion
+
+#pragma region Physics Utils
+	static b2BodyType GetBox2DType(Rigidbody2DComponent::BodyType type)
+	{
+		switch (type)
+		{
+		case GE::Rigidbody2DComponent::BodyType::Static:
+			return b2_staticBody;
+			break;
+		case GE::Rigidbody2DComponent::BodyType::Dynamic:
+			return b2_dynamicBody;
+			break;
+		case GE::Rigidbody2DComponent::BodyType::Kinematic:
+			return b2_kinematicBody;
+			break;
+		}
+		GE_CORE_ASSERT(false, "Unsupported Rigidbody2D type.");
+		return b2_staticBody;
+	}
 #pragma endregion
 
 	Entity Scene::GetPrimaryCameraEntity()
@@ -101,6 +136,56 @@ namespace GE
 		}
 	}
 
+	void Scene::OnRuntimeStart()
+	{
+		m_SceneState = Scene::SceneState::Play;
+
+		m_PhysicsWorld = new b2World({ 0.0f, -9.8f });
+		auto view = m_Registry.view<Rigidbody2DComponent>();
+		for (auto e : view)
+		{
+			Entity entity = { e, this };
+			auto& transformComponent = entity.GetComponent<TransformComponent>();
+			auto& rb2D = entity.GetComponent<Rigidbody2DComponent>();
+
+			b2BodyDef bodyDef;
+			bodyDef.type = GetBox2DType(rb2D.Type);
+			bodyDef.position.Set(transformComponent.Translation.x, transformComponent.Translation.y);
+			bodyDef.angle = transformComponent.Rotation.z;
+
+			b2Body* body = m_PhysicsWorld->CreateBody(&bodyDef);
+			body->SetFixedRotation(rb2D.FixedRotation);
+
+			rb2D.RuntimeBody = body;
+
+			if (entity.HasComponent<BoxCollider2DComponent>())
+			{
+				auto& bc2D = entity.GetComponent<BoxCollider2DComponent>();
+
+				b2PolygonShape polygonShape;
+				polygonShape.SetAsBox(bc2D.Size.x * transformComponent.Scale.x,
+					bc2D.Size.y * transformComponent.Scale.y);
+
+				b2FixtureDef fixtureDef;
+				fixtureDef.shape = &polygonShape;
+				fixtureDef.density = bc2D.Density;
+				fixtureDef.friction = bc2D.Friction;
+				fixtureDef.restitution = bc2D.Restitution;
+				fixtureDef.restitutionThreshold = bc2D.RestitutionThreshold;
+
+				body->CreateFixture(&fixtureDef);
+			}
+		}
+	}
+
+	void Scene::OnRuntimeStop()
+	{
+		m_SceneState = Scene::SceneState::Stop;
+
+		delete m_PhysicsWorld;
+		m_PhysicsWorld = nullptr;
+	}
+
 	void Scene::OnUpdateRuntime(Timestep timestep)
 	{
 		// Update Scripts
@@ -118,6 +203,29 @@ namespace GE
 
 					nsc.Instance->OnUpdate(timestep);
 				});
+		}
+
+		// Update Physics
+		{
+			const int32_t velocityInteration = 5;
+			const int32_t positionInteration = 5;
+			m_PhysicsWorld->Step(timestep, velocityInteration, positionInteration);
+
+			auto view = m_Registry.view<Rigidbody2DComponent>();
+			for (auto e : view)
+			{
+				Entity entity = { e, this };
+				auto& transformComponent = entity.GetComponent<TransformComponent>();
+				auto& rb2D = entity.GetComponent<Rigidbody2DComponent>();
+
+				GE_CORE_ASSERT(rb2D.RuntimeBody != nullptr, "Rigidbody2DComponent has no Runtime Body.");
+				b2Body* body = (b2Body*)rb2D.RuntimeBody;
+				const auto& position = body->GetPosition();
+				transformComponent.Translation.x = position.x;
+				transformComponent.Translation.y = position.y;
+
+				transformComponent.Rotation.z = body->GetAngle();
+			}
 		}
 
 		// Update 2D Renderer
@@ -174,6 +282,7 @@ namespace GE
 				}
 
 				Renderer2D::End();
+
 			}
 		}
 	}

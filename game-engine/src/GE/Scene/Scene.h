@@ -1,9 +1,11 @@
 #pragma once
 #include "GE/Core/Time/Time.h"
-#include "GE/Rendering/Camera/EditorCamera.h"
+#include "GE/Rendering/Camera/Editor/EditorCamera.h"
 #include "Components/Components.h"
 
 #include <entt/entt.hpp>
+
+class b2World;
 
 namespace GE
 {
@@ -14,6 +16,8 @@ namespace GE
 		friend class SceneHierarchyPanel;
 		friend class EditorLayer;
 	private:
+		b2World* m_PhysicsWorld = nullptr;
+
 		entt::registry m_Registry;
 		uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
 
@@ -39,6 +43,9 @@ namespace GE
 		void DestroyEntity(Entity entity);
 
 		void ResizeViewport(uint32_t width, uint32_t height);
+
+		void OnRuntimeStart();
+		void OnRuntimeStop();
 
 		void OnUpdateEditor(Timestep timestep, EditorCamera& camera);
 		void OnUpdateRuntime(Timestep timestep);

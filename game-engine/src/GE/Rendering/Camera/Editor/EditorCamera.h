@@ -1,5 +1,8 @@
 #pragma once
-#include "Camera.h"
+
+#include "GE/Rendering/Camera/Camera.h"
+#include "GE/Core/Core.h"
+#include "GE/Core/Time/Time.h"
 #include "GE/Core/Events/MouseEvent.h"
 
 #define GLM_ENABLE_EXPERIMENTAL

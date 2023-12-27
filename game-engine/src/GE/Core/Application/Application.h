@@ -1,6 +1,5 @@
 #pragma once
 
-#include "GE/Core/Core.h"
 #include "GE/Core/Time/Time.h"
 
 #include "GE/Core/Application/Window/Window.h"
