@@ -10,12 +10,22 @@ namespace GE
 		friend class SceneSerializer;
 		friend class Entity;
 		friend class SceneHierarchyPanel;
+		friend class EditorLayer;
 	private:
 		entt::registry m_Registry;
 		uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
 
+		enum class SceneState
+		{
+			Play = 0,
+			Simulate = 1,
+			Stop = 2
+		};
+		SceneState m_SceneState = SceneState::Stop;
+
 		template<typename T>
 		void OnComponentAdded(Entity entity);
+
 	public:
 		Scene() = default;
 		~Scene() = default;

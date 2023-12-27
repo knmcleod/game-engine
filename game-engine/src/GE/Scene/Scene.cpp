@@ -148,20 +148,22 @@ namespace GE
 
 	void Scene::OnUpdateEditor(Timestep timestep, EditorCamera& camera)
 	{
-		if (&camera)
 		{
-			Renderer2D::Start(camera);
-
-			auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
-			for (auto entity : view)
+			GE_PROFILE_SCOPE();
+			if (&camera)
 			{
-				auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
+				Renderer2D::Start(camera);
 
-				//Renderer2D::FillQuad(transform.GetTransform(), sprite.Color);
-				Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+				auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
+				for (auto entity : view)
+				{
+					auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
+
+					Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+				}
+
+				Renderer2D::End();
 			}
-
-			Renderer2D::End();
 		}
 	}
 }

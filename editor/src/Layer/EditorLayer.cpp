@@ -1,6 +1,6 @@
 #include "EditorLayer.h"
 
-//#define ENTITYTEST
+#define ENTITYTEST
 
 namespace GE
 {
@@ -28,6 +28,9 @@ namespace GE
 		m_AssetPanel = CreateRef<AssetPanel>();
 
 		m_EditorCamera = EditorCamera(45.0f, 1.778f, 0.1f, 100.0f);
+
+		m_PlayButtonTexture = Texture2D::Create("assets/textures/UI/Play_Button.png");
+		m_PauseButtonTexture = Texture2D::Create("assets/textures/UI/Pause_Button.png");
 
 #ifdef ENTITYTEST
 		m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
@@ -63,9 +66,6 @@ namespace GE
 			m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 		}
 
-		if (m_ViewportFocused)
-			m_EditorCamera.OnUpdate(timestep);
-
 		Renderer2D::ResetStats();
 		m_Framebuffer->Bind();
 		RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
@@ -74,7 +74,22 @@ namespace GE
 		// Clear attachmentIndex = 1 - RED_INTEGER / entityID
 		m_Framebuffer->ClearAttachment(1, -1);
 
-		m_ActiveScene->OnUpdateEditor(timestep, m_EditorCamera);
+		switch (m_ActiveScene->m_SceneState)
+		{
+		case Scene::SceneState::Stop:
+		{
+			if (m_ViewportFocused)
+				m_EditorCamera.OnUpdate(timestep);
+
+			m_ActiveScene->OnUpdateEditor(timestep, m_EditorCamera);
+			break;
+		}
+		case Scene::SceneState::Play:
+		{
+			m_ActiveScene->OnUpdateRuntime(timestep);
+			break;
+		}
+		}
 
 		{
 			auto [mx, my] = ImGui::GetMousePos();
@@ -229,8 +244,11 @@ namespace GE
 				ImGui::EndDragDropTarget();
 			}
 
+			UI_Toolbar();
+
 			ImGui::End();
 			ImGui::PopStyleVar();
+
 		}
 
 		ImGui::End();
@@ -294,7 +312,17 @@ namespace GE
 		return true;
 	}
 
-#pragma region Scene Controlling Functions
+#pragma region Scene Functions
+
+	void EditorLayer::OnScenePlay()
+	{
+		m_ActiveScene->m_SceneState = Scene::SceneState::Play;
+	}
+
+	void EditorLayer::OnSceneStop()
+	{
+		m_ActiveScene->m_SceneState = Scene::SceneState::Stop;
+	}
 
 	void EditorLayer::LoadScene()
 	{
@@ -329,4 +357,25 @@ namespace GE
 	}
 
 #pragma endregion
+
+#pragma region UI Panel Functions
+	void EditorLayer::UI_Toolbar()
+	{
+		ImGui::Begin("##UItoolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+		float size = ImGui::GetWindowHeight() - 5.0f;
+		ImGui::SameLine((ImGui::GetWindowContentRegionMax().x * 0.5f) - (size *0.5f));
+		Ref<Texture2D> icon = m_ActiveScene->m_SceneState == Scene::SceneState::Play ? m_PauseButtonTexture : m_PlayButtonTexture;
+		if (ImGui::ImageButton((ImTextureID)icon->GetID(), ImVec2(10.0f, 10.0f)))
+		{
+			if (m_ActiveScene->m_SceneState == Scene::SceneState::Play)
+				OnSceneStop();
+			else if (m_ActiveScene->m_SceneState == Scene::SceneState::Stop)
+				OnScenePlay();
+		}
+
+		ImGui::End();
+	}
+#pragma endregion
+
 }

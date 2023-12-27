@@ -26,10 +26,17 @@ namespace GE
 		bool OnKeyPressed(KeyPressedEvent& e);
 		bool OnMousePressed(MouseButtonPressedEvent& e);
 
+		// Scene
 		void LoadScene();
 		void LoadScene(const std::filesystem::path& path);
 		void SaveSceneAs();
 		void NewScene();
+
+		void OnScenePlay();
+		void OnSceneStop();
+
+		// UI 
+		void UI_Toolbar();
 
 	private:
 		EditorCamera m_EditorCamera;
@@ -43,6 +50,8 @@ namespace GE
 		Ref<Scene> m_ActiveScene;
 		Ref<SceneHierarchyPanel> m_ScenePanel;
 		Ref<AssetPanel> m_AssetPanel;
+
+		Ref<Texture2D> m_PlayButtonTexture, m_PauseButtonTexture;
 
 		Entity m_HoveredEntity;
 		Entity m_SquareEntity;
