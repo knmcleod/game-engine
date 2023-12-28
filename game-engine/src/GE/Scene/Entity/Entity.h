@@ -17,6 +17,14 @@ namespace GE
 		entt::entity GetEntityID() { return m_EntityID; }
 
 		template<typename T, typename... Args>
+		T& AddOrReplaceComponent(Args&&... args)
+		{
+			T& component = m_Scene->m_Registry.emplace_or_replace<T>(m_EntityID, std::forward<Args>(args)...);
+			m_Scene->OnComponentAdded<T>(*this);
+			return component;
+		}
+
+		template<typename T, typename... Args>
 		T& GetOrAddComponent(Args&&... args)
 		{
 			if (!HasComponent<T>())
@@ -61,5 +69,6 @@ namespace GE
 		bool operator !=(const Entity& other) const { return !operator==(other); }
 		
 		UUID GetUUID() { return GetComponent<IDComponent>().ID; }
+		const std::string& GetName() { return GetComponent<TagComponent>().Tag; }
 	};
 }

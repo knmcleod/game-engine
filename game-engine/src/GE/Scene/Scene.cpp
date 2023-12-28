@@ -11,59 +11,6 @@
 
 namespace GE
 {
-#pragma region OnComponentAdded
-
-	template<typename T>
-	void Scene::OnComponentAdded(Entity entity)
-	{
-		static_assert(false);
-	}
-
-	template<>
-	void Scene::OnComponentAdded<IDComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<TagComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<TransformComponent>(Entity entity)
-	{
-
-	}
-
-	template<>
-	void Scene::OnComponentAdded<CameraComponent>(Entity entity)
-	{
-		entity.GetComponent<CameraComponent>().Camera.SetViewport(m_ViewportWidth, m_ViewportHeight);
-	}
-
-	template<>
-	void Scene::OnComponentAdded<SpriteRendererComponent>(Entity entity)
-	{
-
-	}
-
-	template<>
-	void Scene::OnComponentAdded<NativeScriptComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<Rigidbody2DComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<BoxCollider2DComponent>(Entity entity)
-	{
-	}
-
-#pragma endregion
-
 #pragma region Physics Utils
 	static b2BodyType GetBox2DType(Rigidbody2DComponent::BodyType type)
 	{
@@ -83,6 +30,78 @@ namespace GE
 		return b2_staticBody;
 	}
 #pragma endregion
+
+
+	Scene::Scene()
+	{
+
+	}
+
+	Scene::~Scene()
+	{
+
+	}
+
+	template<typename Component>
+	static void CopyComponent(entt::registry& to, entt::registry& from, const std::unordered_map<UUID, entt::entity>& entityMap)
+	{
+		auto view = from.view<Component>();
+		for (auto e : view)
+		{
+			UUID uuid = from.get<IDComponent>(e).ID;
+			GE_CORE_ASSERT(entityMap.find(uuid) != entityMap.end(), "Could not find Entity in map.");
+			entt::entity enttID = entityMap.at(uuid);
+			auto& component = from.get<Component>(e);
+			to.emplace_or_replace<Component>(enttID, component);
+		}
+	}
+
+	template<typename Component>
+	static void CopyComponentIfExists(Entity to, Entity from)
+	{
+		if (from.HasComponent<Component>())
+		{
+			Component component = from.GetComponent<Component>();
+			to.AddOrReplaceComponent<Component>(component);
+		}
+	}
+
+	Ref<Scene> Scene::Copy(const Ref<Scene> scene)
+	{
+		Ref<Scene> newScene = CreateRef<Scene>();
+
+		newScene->m_ViewportWidth = scene->m_ViewportWidth;
+		newScene->m_ViewportHeight = scene->m_ViewportHeight;
+		newScene->m_SceneState = scene->m_SceneState;
+
+		auto& sceneRegistry = scene->m_Registry;
+		auto& newSceneRegistry = newScene->m_Registry;
+		std::unordered_map<UUID, entt::entity> entityMap;
+
+		// Copy Components
+		{
+			GE_PROFILE_SCOPE();
+
+			// Special Case - Find/Set ID & Tag
+			auto idView = sceneRegistry.view<IDComponent>();
+			for (auto e : idView)
+			{
+				UUID uuid = sceneRegistry.get<IDComponent>(e).ID;
+				const auto& name = sceneRegistry.get<TagComponent>(e).Tag;
+				Entity entity = newScene->CreateEntityWithUUID(uuid, name);
+				entityMap[uuid] = (entt::entity)entity;
+			}
+
+			CopyComponent<TransformComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<SpriteRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<CameraComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<NativeScriptComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<Rigidbody2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<BoxCollider2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
+		}
+
+		return newScene;
+	}
 
 	Entity Scene::GetPrimaryCameraEntity()
 	{
@@ -112,6 +131,21 @@ namespace GE
 		tag.Tag = name.empty() ? "Entity" : name;
 
 		return entity;
+	}
+
+	Entity Scene::DuplicateEntity(Entity entity)
+	{
+		std::string name = entity.GetName();
+		Entity newEntity = CreateEntity(name);
+
+		CopyComponentIfExists<TransformComponent>(newEntity, entity);
+		CopyComponentIfExists<SpriteRendererComponent>(newEntity, entity);
+		CopyComponentIfExists<CameraComponent>(newEntity, entity);
+		CopyComponentIfExists<NativeScriptComponent>(newEntity, entity);
+		CopyComponentIfExists<Rigidbody2DComponent>(newEntity, entity);
+		CopyComponentIfExists<BoxCollider2DComponent>(newEntity, entity);
+
+		return newEntity;
 	}
 
 	void Scene::DestroyEntity(Entity entity)
@@ -286,4 +320,58 @@ namespace GE
 			}
 		}
 	}
+
+#pragma region OnComponentAdded
+
+	template<typename T>
+	void Scene::OnComponentAdded(Entity entity)
+	{
+		static_assert(false);
+	}
+
+	template<>
+	void Scene::OnComponentAdded<IDComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<TagComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<TransformComponent>(Entity entity)
+	{
+
+	}
+
+	template<>
+	void Scene::OnComponentAdded<CameraComponent>(Entity entity)
+	{
+		entity.GetComponent<CameraComponent>().Camera.SetViewport(m_ViewportWidth, m_ViewportHeight);
+	}
+
+	template<>
+	void Scene::OnComponentAdded<SpriteRendererComponent>(Entity entity)
+	{
+
+	}
+
+	template<>
+	void Scene::OnComponentAdded<NativeScriptComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<Rigidbody2DComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<BoxCollider2DComponent>(Entity entity)
+	{
+	}
+
+#pragma endregion
+
 }

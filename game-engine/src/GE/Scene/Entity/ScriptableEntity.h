@@ -11,6 +11,7 @@ namespace GE
 
 		template<typename T>
 		T& GetEntityComponent() { return m_Entity.GetComponent<T>(); }
+
 	protected:
 		virtual void OnCreate() {}
 		virtual void OnDestroy() {}

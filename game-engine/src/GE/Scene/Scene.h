@@ -33,13 +33,15 @@ namespace GE
 		void OnComponentAdded(Entity entity);
 
 	public:
-		Scene() = default;
-		~Scene() = default;
+		Scene();
+		~Scene();
+		
+		static Ref<Scene> Scene::Copy(const Ref<Scene> scene);
 
 		Entity GetPrimaryCameraEntity();
-
 		Entity CreateEntity(const std::string& name = std::string());
 		Entity CreateEntityWithUUID(UUID uuid, const std::string& name = std::string());
+		Entity DuplicateEntity(Entity entity);
 		void DestroyEntity(Entity entity);
 
 		void ResizeViewport(uint32_t width, uint32_t height);
