@@ -94,6 +94,7 @@ namespace GE
 
 			CopyComponent<TransformComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<SpriteRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<CircleRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<CameraComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<NativeScriptComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<Rigidbody2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
@@ -140,6 +141,7 @@ namespace GE
 
 		CopyComponentIfExists<TransformComponent>(newEntity, entity);
 		CopyComponentIfExists<SpriteRendererComponent>(newEntity, entity);
+		CopyComponentIfExists<CircleRendererComponent>(newEntity, entity);
 		CopyComponentIfExists<CameraComponent>(newEntity, entity);
 		CopyComponentIfExists<NativeScriptComponent>(newEntity, entity);
 		CopyComponentIfExists<Rigidbody2DComponent>(newEntity, entity);
@@ -220,7 +222,7 @@ namespace GE
 		m_PhysicsWorld = nullptr;
 	}
 
-	void Scene::OnUpdateRuntime(Timestep timestep)
+	void Scene::OnRuntimeUpdate(Timestep timestep)
 	{
 		// Update Scripts
 		{
@@ -267,6 +269,8 @@ namespace GE
 			GE_PROFILE_SCOPE("Scene::OnUpdate -- 2D Renderer");
 			Camera* mainCamera = nullptr;
 			glm::mat4* cameraTransform;
+
+			// Finds & Updates Primary Camera Transform
 			{
 				auto view = m_Registry.view<TransformComponent, CameraComponent>();
 				for (auto entity : view)
@@ -285,12 +289,32 @@ namespace GE
 			{
 				Renderer2D::Start(*mainCamera, *cameraTransform);
 
-				auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
-				for (auto entity : view)
+				// Sprites
 				{
-					auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
+					auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
+					for (auto entity : view)
+					{
+						auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
 
-					Renderer2D::FillQuad(transform.GetTransform(), sprite.Color);
+						Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+					}
+				}
+
+				// Circles
+				{
+					auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
+					for (auto entity : view)
+					{
+						auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
+
+						Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
+					}
+				}
+
+				// Lines - Not using Components
+				{
+					//Renderer2D::FillLine({ 0, 0, 0 }, { 1, 1, 0 }, { 1.0f, 1.0f, 1.0f, 1.0f });
+					//Renderer2D::FillRectangle({5,5,0}, {5,2}, { 1.0f, 1.0f, 1.0f, 1.0f });
 				}
 
 				Renderer2D::End();
@@ -299,7 +323,7 @@ namespace GE
 
 	}
 
-	void Scene::OnUpdateEditor(Timestep timestep, EditorCamera& camera)
+	void Scene::OnEditorUpdate(Timestep timestep, EditorCamera& camera)
 	{
 		{
 			GE_PROFILE_SCOPE();
@@ -307,12 +331,32 @@ namespace GE
 			{
 				Renderer2D::Start(camera);
 
-				auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
-				for (auto entity : view)
+				// Sprites
 				{
-					auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
+					auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
+					for (auto entity : view)
+					{
+						auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
 
-					Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+						Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+					}
+				}
+
+				// Circles
+				{
+					auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
+					for (auto entity : view)
+					{
+						auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
+
+						Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
+					}
+				}
+
+				// Lines
+				{
+					Renderer2D::FillLine({ 0, 0, 0 }, { 1, 1, 0 }, { 1.0f, 1.0f, 1.0f, 1.0f });
+					Renderer2D::FillRectangle({ 5,5,0 }, { 5,2 }, { 1.0f, 1.0f, 1.0f, 1.0f });
 				}
 
 				Renderer2D::End();
@@ -353,6 +397,12 @@ namespace GE
 
 	template<>
 	void Scene::OnComponentAdded<SpriteRendererComponent>(Entity entity)
+	{
+
+	}
+
+	template<>
+	void Scene::OnComponentAdded<CircleRendererComponent>(Entity entity)
 	{
 
 	}

@@ -180,10 +180,10 @@ namespace GE
 				DrawAddComponent<TransformComponent>("Transform", entity);
 				DrawAddComponent<CameraComponent>("Camera", entity);
 				DrawAddComponent<SpriteRendererComponent>("Sprite Renderer", entity);
+				DrawAddComponent<CircleRendererComponent>("Circle Renderer", entity);
 				DrawAddComponent<NativeScriptComponent>("Native Script", entity);
 				DrawAddComponent<Rigidbody2DComponent>("Rigidbody 2D", entity);
 				DrawAddComponent<BoxCollider2DComponent>("Box Collider 2D", entity);
-
 			});
 
 		DrawComponent<TransformComponent>("Transform", entity,
@@ -252,6 +252,17 @@ namespace GE
 					ImGui::EndDragDropTarget();
 				}
 				ImGui::DragFloat("Tiling Factor", &component.TilingFactor);
+			});
+
+		DrawComponent<CircleRendererComponent>("Circle Renderer", entity,
+			[](auto& component)
+			{
+				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
+
+				ImGui::DragFloat("Radius", &component.Radius);
+				ImGui::DragFloat("Thickness", &component.Thickness);
+				ImGui::DragFloat("Fade", &component.Fade);
+
 			});
 
 		DrawComponent<NativeScriptComponent>("Native Script", entity,

@@ -25,6 +25,12 @@ namespace GE
 
 		//	Draws elements
 		virtual void DrawIndices(const Ref<VertexArray>& vertexArray, uint32_t indexCount = 0) = 0;
+		
+		//	Draws lines
+		virtual void DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount) = 0;
+	
+		//	Sets line width
+		virtual void SetLineWidth(float thickness) = 0;
 	private:
 		static API s_API;
 	};

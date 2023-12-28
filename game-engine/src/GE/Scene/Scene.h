@@ -49,7 +49,7 @@ namespace GE
 		void OnRuntimeStart();
 		void OnRuntimeStop();
 
-		void OnUpdateEditor(Timestep timestep, EditorCamera& camera);
-		void OnUpdateRuntime(Timestep timestep);
+		void OnEditorUpdate(Timestep timestep, EditorCamera& camera);
+		void OnRuntimeUpdate(Timestep timestep);
 	};
 }

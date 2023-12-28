@@ -58,7 +58,7 @@ namespace GE
 		template<typename T>
 		bool HasComponent()
 		{
-			return m_Scene->m_Registry.all_of<T>(m_EntityID);
+			return m_Scene != nullptr ? m_Scene->m_Registry.all_of<T>(m_EntityID) : false;
 		}
 
 		operator entt::entity() const { return m_EntityID; }

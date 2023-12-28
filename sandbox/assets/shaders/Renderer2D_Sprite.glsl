@@ -1,4 +1,4 @@
-// Basic Texture Shader
+// Renderer2D Sprite Shader
 
 #type vertex
 #version 330 core

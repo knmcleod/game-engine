@@ -83,12 +83,12 @@ namespace GE
 			if (m_ViewportFocused)
 				m_EditorCamera.OnUpdate(timestep);
 
-			m_ActiveScene->OnUpdateEditor(timestep, m_EditorCamera);
+			m_ActiveScene->OnEditorUpdate(timestep, m_EditorCamera);
 			break;
 		}
 		case Scene::SceneState::Play:
 		{
-			m_ActiveScene->OnUpdateRuntime(timestep);
+			m_ActiveScene->OnRuntimeUpdate(timestep);
 			break;
 		}
 		}
@@ -194,7 +194,7 @@ namespace GE
 			Renderer2D::Statistics stats = Renderer2D::GetStats();
 			ImGui::Text("Renderer2D Stats: ");
 			ImGui::Text("Draw Calls - %d", stats.DrawCalls);
-			ImGui::Text("Quad Count - %d", stats.QuadCount);
+			ImGui::Text("Quad Count - %d", stats.SpawnCount);
 			ImGui::Text("Vertices - %d", stats.GetTotalVertexCount());
 			ImGui::Text("Indices - %d", stats.GetTotalIndexCount());
 

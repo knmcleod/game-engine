@@ -31,7 +31,7 @@ namespace GE
 
 	struct TransformComponent
 	{
-		glm::mat4 IdentityMat4 = glm::mat4{ 1.0f };
+		glm::mat4 s_IdentityMat4 = glm::mat4{ 1.0f };
 		glm::vec3 Translation = { 0.0f, 0.0f, 0.0f };
 		glm::vec3 Rotation = { 0.0f, 0.0f, 0.0f };
 		glm::vec3 Scale = { 1.0f, 1.0f, 1.0f };
@@ -43,12 +43,12 @@ namespace GE
 	
 		glm::mat4 GetTransform() const
 		{
-			glm::mat4 rotation = glm::rotate(IdentityMat4, Rotation.x, { 1, 0, 0 })
-				* glm::rotate(IdentityMat4, Rotation.y, { 0, 1, 0 })
-				* glm::rotate(IdentityMat4, Rotation.z, { 0, 0, 1 });
+			glm::mat4 rotation = glm::rotate(s_IdentityMat4, Rotation.x, { 1, 0, 0 })
+				* glm::rotate(s_IdentityMat4, Rotation.y, { 0, 1, 0 })
+				* glm::rotate(s_IdentityMat4, Rotation.z, { 0, 0, 1 });
 
-			return glm::translate(IdentityMat4, Translation)
-				* rotation * glm::scale(IdentityMat4, Scale);
+			return glm::translate(s_IdentityMat4, Translation)
+				* rotation * glm::scale(s_IdentityMat4, Scale);
 		}
 	};
 
@@ -61,6 +61,17 @@ namespace GE
 		SpriteRendererComponent() = default;
 		SpriteRendererComponent(const SpriteRendererComponent&) = default;
 		SpriteRendererComponent(const glm::vec4& color) : Color(color) {}
+	};
+
+	struct CircleRendererComponent
+	{
+		glm::vec4 Color = glm::vec4(1.0f);
+		float Radius = 0.5f; // Game Engine is 1x1, thus radius = 1/2;
+		float Thickness = 1.0f; // 1: Full, 0: Empty
+		float Fade = 0.0; // Blurs Circle
+
+		CircleRendererComponent() = default;
+		CircleRendererComponent(const CircleRendererComponent&) = default;
 	};
 
 	struct CameraComponent
@@ -120,5 +131,5 @@ namespace GE
 		BoxCollider2DComponent(const BoxCollider2DComponent&) = default;
 	};
 #pragma endregion
-
+	
 }

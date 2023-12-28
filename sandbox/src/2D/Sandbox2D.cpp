@@ -55,7 +55,7 @@ void Sandbox2D::OnImGuiRender()
 	GE::Renderer2D::Statistics stats = GE::Renderer2D::GetStats();
 	ImGui::Text("Renderer2D Stats: ");
 	ImGui::Text("Draw Calls - %d", stats.DrawCalls);
-	ImGui::Text("Quad Count - %d", stats.QuadCount);
+	ImGui::Text("Quad Count - %d", stats.SpawnCount);
 	ImGui::Text("Vertices - %d", stats.GetTotalVertexCount());
 	ImGui::Text("Indices - %d", stats.GetTotalIndexCount());
 

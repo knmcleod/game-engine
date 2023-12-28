@@ -36,10 +36,23 @@ namespace GE
 		}
 
 		// Draws elements to RenderAPI in use
-		inline static void DrawIndices(const Ref<VertexArray>& vertexArray, uint32_t indexCount = 0)
+		inline static void DrawIndices(const Ref<VertexArray>& vertexArray, uint32_t indexCount)
 		{
 			s_RenderAPI->DrawIndices(vertexArray, indexCount);
 		}
+
+		// Draws lines to RenderAPI in use
+		inline static void DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount)
+		{
+			s_RenderAPI->DrawLines(vertexArray, vertexCount);
+		}
+
+		// Sets lines width to RenderAPI in use
+		inline static void SetLineWidth(float thickness)
+		{
+			s_RenderAPI->SetLineWidth(thickness);
+		}
+
 
 	private:
 		static RenderAPI* s_RenderAPI;
