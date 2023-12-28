@@ -26,16 +26,25 @@ namespace GE
 		bool OnKeyPressed(KeyPressedEvent& e);
 		bool OnMousePressed(MouseButtonPressedEvent& e);
 
+		// Entity
+
+		void OnDuplicateEntity();
+
 		// Scene
-		void LoadScene();
-		void LoadScene(const std::filesystem::path& path);
-		void SaveSceneAs();
-		void NewScene();
 
 		void OnScenePlay();
 		void OnSceneStop();
 
+		void LoadSceneFromFile();
+		void LoadScene(const std::filesystem::path& path);
+		void SaveSceneFromFile();
+		void SaveScene();
+		void NewScene();
+
+		void SerializeScene(Ref<Scene> scene, const std::filesystem::path& path);
+
 		// UI 
+
 		void UI_Toolbar();
 
 	private:
@@ -47,10 +56,11 @@ namespace GE
 		glm::vec2 m_ViewportBounds[2];
 
 		Ref<Framebuffer> m_Framebuffer;
-		Ref<Scene> m_ActiveScene;
+		Ref<Scene> m_EditorScene, m_ActiveScene;
+		std::filesystem::path m_ScenePath;
+
 		Ref<SceneHierarchyPanel> m_ScenePanel;
 		Ref<AssetPanel> m_AssetPanel;
-
 		Ref<Texture2D> m_PlayButtonTexture, m_PauseButtonTexture;
 
 		Entity m_HoveredEntity;

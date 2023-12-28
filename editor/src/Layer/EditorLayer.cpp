@@ -1,6 +1,6 @@
 #include "EditorLayer.h"
 
-#define ENTITYTEST
+//#define ENTITYTEST
 
 namespace GE
 {
@@ -24,6 +24,8 @@ namespace GE
 
 		//Scene
 		m_ActiveScene = CreateRef<Scene>();
+		m_EditorScene = CreateRef<Scene>();
+
 		m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_ActiveScene);
 		m_AssetPanel = CreateRef<AssetPanel>();
 
@@ -176,8 +178,8 @@ namespace GE
 				//ImGui::MenuItem("Fullscreen", NULL, &opt_fullscreen_persistant);
 
 				if (ImGui::MenuItem("New", "Ctrl+N")) NewScene();
-				if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S")) SaveSceneAs();
-				if (ImGui::MenuItem("Load", "Ctrl+O")) LoadScene();
+				if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S")) SaveSceneFromFile();
+				if (ImGui::MenuItem("Load", "Ctrl+O")) LoadSceneFromFile();
 				ImGui::Separator();
 				if (ImGui::MenuItem("Exit")) Application::GetApplication().Close();
 				ImGui::EndMenu();
@@ -274,6 +276,12 @@ namespace GE
 		switch (e.GetKeyCode())
 		{
 			// File
+		case GE_KEY_D:
+		{
+			if (control)
+				OnDuplicateEntity();
+			break;
+		}
 		case GE_KEY_N:
 		{
 			if (control)
@@ -283,16 +291,23 @@ namespace GE
 		case GE_KEY_O:
 		{
 			if (control)
-				LoadScene();
+				LoadSceneFromFile();
 			break;
 		}
 		case GE_KEY_S:
 		{
-			if (control && shift)
-				SaveSceneAs();
+			if (control)
+			{
+				if(shift)
+					SaveSceneFromFile();
+				else
+					SaveScene();
+			}
+				
 			break;
 		}
 		default:
+			GE_CORE_INFO("Key not bound.");
 			break;
 		}
 		return true;
@@ -315,19 +330,32 @@ namespace GE
 		return true;
 	}
 
+	void EditorLayer::OnDuplicateEntity()
+	{
+		Entity selectedEntity = m_ScenePanel->GetSelectedEntity();
+		if (m_ActiveScene->m_SceneState == Scene::SceneState::Stop && selectedEntity)
+		{
+			m_ActiveScene->DuplicateEntity(selectedEntity);
+		}
+	}
+
 #pragma region Scene Functions
 
 	void EditorLayer::OnScenePlay()
 	{
+		m_EditorScene = Scene::Copy(m_ActiveScene);
 		m_ActiveScene->OnRuntimeStart();
+
 	}
 
 	void EditorLayer::OnSceneStop()
 	{
 		m_ActiveScene->OnRuntimeStop();
+		m_ActiveScene = m_EditorScene;
+
 	}
 
-	void EditorLayer::LoadScene()
+	void EditorLayer::LoadSceneFromFile()
 	{
 		std::string filePath = FileDialogs::LoadFile("GE Scene (*.ge)\0*.ge\0");
 		if (!filePath.empty())
@@ -336,27 +364,58 @@ namespace GE
 
 	void EditorLayer::LoadScene(const std::filesystem::path& path)
 	{
-		NewScene();
+		if (path.extension().string() != ".ge")
+		{
+			GE_CORE_WARN("Could not load {0}. File is not .ge", path.filename());
+			return;
+		}
 
+		if (m_ActiveScene && m_ActiveScene->m_SceneState != Scene::SceneState::Stop)
+			OnSceneStop();
+
+		m_ActiveScene = CreateRef<Scene>();
 		SceneSerializer serializer(m_ActiveScene);
-		serializer.DeserializeText(path.string());
+		if (serializer.DeserializeText(path.string()))
+		{
+			m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+			m_ScenePanel->SetScene(m_ActiveScene);
+			m_ScenePath = path;
+		}
 	}
 
-	void EditorLayer::SaveSceneAs()
+	void EditorLayer::SaveSceneFromFile()
 	{
 		std::string filePath = FileDialogs::SaveFile("GE Scene (*.ge)\0*.ge\0");
 		if (!filePath.empty())
 		{
-			SceneSerializer serializer(m_ActiveScene);
-			serializer.SerializeText(filePath);
+			m_ScenePath = filePath;
+			SerializeScene(m_ActiveScene, m_ScenePath);
 		}
+	}
+
+	void EditorLayer::SaveScene()
+	{
+		if (!m_ScenePath.empty() && m_ActiveScene)
+			SerializeScene(m_ActiveScene, m_ScenePath);
+		else
+			SaveSceneFromFile();
 	}
 
 	void EditorLayer::NewScene()
 	{
+		if (m_ActiveScene && m_ActiveScene->m_SceneState != Scene::SceneState::Stop)
+			OnSceneStop();
+
 		m_ActiveScene = CreateRef<Scene>();
 		m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 		m_ScenePanel->SetScene(m_ActiveScene);
+		m_ScenePath = std::filesystem::path();
+	}
+
+	void EditorLayer::SerializeScene(Ref<Scene> scene, const std::filesystem::path& path)
+	{
+		SceneSerializer serializer(scene);
+		serializer.SerializeText(path.string());
 	}
 
 #pragma endregion
