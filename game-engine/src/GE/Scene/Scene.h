@@ -51,5 +51,11 @@ namespace GE
 
 		void OnEditorUpdate(Timestep timestep, EditorCamera& camera);
 		void OnRuntimeUpdate(Timestep timestep);
+
+		template<typename... Components>
+		auto GetAllEntitiesWith()
+		{
+			return m_Registry.view<Components...>();
+		}
 	};
 }

@@ -25,7 +25,6 @@ namespace GE
 		//Scene
 		m_ActiveScene = CreateRef<Scene>();
 		m_EditorScene = CreateRef<Scene>();
-
 		m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_ActiveScene);
 		m_AssetPanel = CreateRef<AssetPanel>();
 
@@ -91,8 +90,14 @@ namespace GE
 			m_ActiveScene->OnRuntimeUpdate(timestep);
 			break;
 		}
+		default:
+		{
+			GE_CORE_ASSERT(false, "Unsupported Scene State. Active Scene will not Update.");
+			break;
+		}
 		}
 
+		// Handles Hovered Entity
 		{
 			auto [mx, my] = ImGui::GetMousePos();
 			mx -= m_ViewportBounds[0].x;
@@ -421,6 +426,54 @@ namespace GE
 #pragma endregion
 
 #pragma region UI Panel Functions
+	/*void EditorLayer::OnRenderColliders()
+	{
+		if (m_ActiveScene->m_SceneState == Scene::SceneState::Play)
+		{
+			Entity cameraEntity = m_ActiveScene->GetPrimaryCameraEntity();
+			Renderer2D::Start(
+				cameraEntity.GetComponent<CameraComponent>().Camera,
+				cameraEntity.GetComponent<TransformComponent>().GetTransform()
+				);
+		}
+		else
+		{
+			Renderer2D::Start(m_EditorCamera);
+		}
+
+		// Renders Entity Box Colliders
+		{
+			auto view = m_ActiveScene->GetAllEntitiesWith<TransformComponent, BoxCollider2DComponent>();
+			for (auto e : view)
+			{
+				auto [tc, bc2D] = view.get<TransformComponent, BoxCollider2DComponent>(e);
+				glm::vec3 translation = tc.Translation + glm::vec3(bc2D.Offset, 0.001f);
+				glm::vec3 scale = tc.Scale * glm::vec3(bc2D.Size * 2.0f, 1.0f);
+				glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
+					* glm::rotate(Renderer2D::s_IdentityMat4, glm::radians(tc.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f))
+					* glm::scale(Renderer2D::s_IdentityMat4, scale);
+				Renderer2D::DrawRectangle(transform, glm::vec4(0, 1, 0, 1));
+			}
+		}
+
+		// Renders Entity Circle Colliders
+		{
+			auto view = m_ActiveScene->GetAllEntitiesWith<TransformComponent, CircleCollider2DComponent>();
+			for (auto e : view)
+			{
+				auto [tc, cc2D] = view.get<TransformComponent, CircleCollider2DComponent>(e);
+				glm::vec3 translation = tc.Translation + glm::vec3(cc2D.Offset, 0.001f);
+				glm::vec3 scale = tc.Scale * glm::vec3(cc2D.Radius * 2);
+				glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
+					* glm::scale(Renderer2D::s_IdentityMat4, scale);
+				Renderer2D::FillCircle(transform, glm::vec4(0, 1, 0, 1), 0.5f, 0.0f, 0.0f);
+			}
+		}
+
+		Renderer2D::End();
+	}
+	*/
+	
 	void EditorLayer::UI_Toolbar()
 	{
 		ImGui::Begin("##UItoolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);

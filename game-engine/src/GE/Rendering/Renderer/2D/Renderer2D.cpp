@@ -206,8 +206,6 @@ namespace GE
 		if (s_Data.LineVertexCount == 0)
 			return;
 
-		ResetLineData();
-
 		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.LineVertexBufferPtr - (uint8_t*)s_Data.LineVertexBufferBase);
 		s_Data.LineVertexBuffer->SetData(s_Data.LineVertexBufferBase, dataSize);
 
@@ -217,6 +215,7 @@ namespace GE
 		RenderCommand::DrawLines(s_Data.LineVertexArray, s_Data.LineVertexCount);
 		s_Data.Stats.DrawCalls++;
 
+		ResetLineData();
 	}
 
 	void Renderer2D::FlushCircles()
@@ -451,9 +450,7 @@ namespace GE
 		GE_PROFILE_FUNCTION();
 
 		if (s_Data.CircleIndexCount >= s_Data.MaxIndices)
-		{
 			FlushCircles();
-		}
 			
 		SetCircleData(transform, color, radius, thickness, fade, entityID);
 	}
@@ -499,9 +496,7 @@ namespace GE
 		GE_PROFILE_FUNCTION();
 
 		if (s_Data.LineVertexCount >= s_Data.MaxIndices)
-		{
 			FlushLines();
-		}
 
 		SetLineData(initialPosition, finalPosition, color, entityID);
 	}

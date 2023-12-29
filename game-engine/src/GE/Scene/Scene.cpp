@@ -6,8 +6,9 @@
 
 #include <box2d/b2_world.h>
 #include <box2d/b2_body.h>
-#include <box2d/b2_polygon_shape.h>
 #include <box2d/b2_fixture.h>
+#include <box2d/b2_polygon_shape.h>
+#include <box2d/b2_circle_shape.h>
 
 namespace GE
 {
@@ -31,17 +32,6 @@ namespace GE
 	}
 #pragma endregion
 
-
-	Scene::Scene()
-	{
-
-	}
-
-	Scene::~Scene()
-	{
-
-	}
-
 	template<typename Component>
 	static void CopyComponent(entt::registry& to, entt::registry& from, const std::unordered_map<UUID, entt::entity>& entityMap)
 	{
@@ -64,6 +54,16 @@ namespace GE
 			Component component = from.GetComponent<Component>();
 			to.AddOrReplaceComponent<Component>(component);
 		}
+	}
+
+	Scene::Scene()
+	{
+
+	}
+
+	Scene::~Scene()
+	{
+
 	}
 
 	Ref<Scene> Scene::Copy(const Ref<Scene> scene)
@@ -99,6 +99,7 @@ namespace GE
 			CopyComponent<NativeScriptComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<Rigidbody2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<BoxCollider2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<CircleCollider2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
 		}
 
 		return newScene;
@@ -146,6 +147,7 @@ namespace GE
 		CopyComponentIfExists<NativeScriptComponent>(newEntity, entity);
 		CopyComponentIfExists<Rigidbody2DComponent>(newEntity, entity);
 		CopyComponentIfExists<BoxCollider2DComponent>(newEntity, entity);
+		CopyComponentIfExists<CircleCollider2DComponent>(newEntity, entity);
 
 		return newEntity;
 	}
@@ -194,22 +196,48 @@ namespace GE
 
 			rb2D.RuntimeBody = body;
 
-			if (entity.HasComponent<BoxCollider2DComponent>())
+			//	Box Collider
 			{
-				auto& bc2D = entity.GetComponent<BoxCollider2DComponent>();
+				GE_PROFILE_SCOPE();
+				if (entity.HasComponent<BoxCollider2DComponent>())
+				{
+					auto& bc2D = entity.GetComponent<BoxCollider2DComponent>();
 
-				b2PolygonShape polygonShape;
-				polygonShape.SetAsBox(bc2D.Size.x * transformComponent.Scale.x,
-					bc2D.Size.y * transformComponent.Scale.y);
+					b2PolygonShape polygonShape;
+					polygonShape.SetAsBox(bc2D.Size.x * transformComponent.Scale.x,
+						bc2D.Size.y * transformComponent.Scale.y);
 
-				b2FixtureDef fixtureDef;
-				fixtureDef.shape = &polygonShape;
-				fixtureDef.density = bc2D.Density;
-				fixtureDef.friction = bc2D.Friction;
-				fixtureDef.restitution = bc2D.Restitution;
-				fixtureDef.restitutionThreshold = bc2D.RestitutionThreshold;
+					b2FixtureDef fixtureDef;
+					fixtureDef.shape = &polygonShape;
+					fixtureDef.density = bc2D.Density;
+					fixtureDef.friction = bc2D.Friction;
+					fixtureDef.restitution = bc2D.Restitution;
+					fixtureDef.restitutionThreshold = bc2D.RestitutionThreshold;
 
-				body->CreateFixture(&fixtureDef);
+					body->CreateFixture(&fixtureDef);
+				}
+			}
+
+			//	Circle Collider
+			{
+				GE_PROFILE_SCOPE();
+				if (entity.HasComponent<CircleCollider2DComponent>())
+				{
+					auto& cc2D = entity.GetComponent<CircleCollider2DComponent>();
+
+					b2CircleShape circleShape;
+					circleShape.m_p.Set(cc2D.Offset.x, cc2D.Offset.y);
+					circleShape.m_radius = cc2D.Radius;
+
+					b2FixtureDef fixtureDef;
+					fixtureDef.shape = &circleShape;
+					fixtureDef.density = cc2D.Density;
+					fixtureDef.friction = cc2D.Friction;
+					fixtureDef.restitution = cc2D.Restitution;
+					fixtureDef.restitutionThreshold = cc2D.RestitutionThreshold;
+
+					body->CreateFixture(&fixtureDef);
+				}
 			}
 		}
 	}
@@ -226,7 +254,7 @@ namespace GE
 	{
 		// Update Scripts
 		{
-			GE_PROFILE_SCOPE("Scene::OnUpdate -- Scripts");
+			GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Scripts");
 			m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc) 
 				{
 					// TO DO: Move to Scene::Start()
@@ -243,6 +271,7 @@ namespace GE
 
 		// Update Physics
 		{
+			GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Physics");
 			const int32_t velocityInteration = 5;
 			const int32_t positionInteration = 5;
 			m_PhysicsWorld->Step(timestep, velocityInteration, positionInteration);
@@ -264,14 +293,16 @@ namespace GE
 			}
 		}
 
-		// Update 2D Renderer
+		// Update Camera & 2D Renderer
 		{
-			GE_PROFILE_SCOPE("Scene::OnUpdate -- 2D Renderer");
+			GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Camera & 2D Renderer");
 			Camera* mainCamera = nullptr;
 			glm::mat4* cameraTransform;
 
 			// Finds & Updates Primary Camera Transform
 			{
+				GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Camera");
+
 				auto view = m_Registry.view<TransformComponent, CameraComponent>();
 				for (auto entity : view)
 				{
@@ -287,6 +318,8 @@ namespace GE
 
 			if (mainCamera)
 			{
+				GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- 2D Renderer");
+
 				Renderer2D::Start(*mainCamera, *cameraTransform);
 
 				// Sprites
@@ -326,9 +359,9 @@ namespace GE
 	void Scene::OnEditorUpdate(Timestep timestep, EditorCamera& camera)
 	{
 		{
-			GE_PROFILE_SCOPE();
 			if (&camera)
 			{
+				GE_PROFILE_SCOPE("Scene::OnEditorUpdate -- 2D Renderer");
 				Renderer2D::Start(camera);
 
 				// Sprites
@@ -350,13 +383,55 @@ namespace GE
 						auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
 
 						Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
+					
 					}
 				}
 
 				// Lines
 				{
-					Renderer2D::FillLine({ 0, 0, 0 }, { 1, 1, 0 }, { 1.0f, 1.0f, 1.0f, 1.0f });
-					Renderer2D::FillRectangle({ 5,5,0 }, { 5,2 }, { 1.0f, 1.0f, 1.0f, 1.0f });
+					//Renderer2D::FillLine({ 0, 0, 0 }, { 1, 1, 0 }, { 1.0f, 1.0f, 1.0f, 1.0f });
+					//Renderer2D::FillRectangle({ 5,5,0 }, { 5,2 }, { 1.0f, 1.0f, 1.0f, 1.0f });
+				}
+
+				// Physics Visuals
+				{
+			
+					// Renders Entity Box Colliders
+					{
+						auto view = m_Registry.view<TransformComponent, BoxCollider2DComponent>();
+						for (auto e : view)
+						{
+							auto [tc, bc2D] = view.get<TransformComponent, BoxCollider2DComponent>(e);
+							if (bc2D.Show)
+							{
+								glm::vec3 translation = tc.Translation + glm::vec3(bc2D.Offset, 0.001f);
+								glm::vec3 scale = tc.Scale * glm::vec3(bc2D.Size * 2.0f, 1.0f);
+								glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
+									* glm::rotate(Renderer2D::s_IdentityMat4, glm::radians(tc.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f))
+									* glm::scale(Renderer2D::s_IdentityMat4, scale);
+								Renderer2D::DrawRectangle(transform, glm::vec4(0, 1, 0, 1));
+							}
+						}
+					}
+
+					// Renders Entity Circle Colliders
+					{
+						auto view = m_Registry.view<TransformComponent, CircleCollider2DComponent>();
+						for (auto e : view)
+						{
+							auto [tc, cc2D] = view.get<TransformComponent, CircleCollider2DComponent>(e);
+							if (cc2D.Show)
+							{
+								glm::vec3 translation = tc.Translation + glm::vec3(cc2D.Offset, 0.001f);
+								glm::vec3 scale = tc.Scale * glm::vec3(cc2D.Radius * 2);
+								glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
+									* glm::scale(Renderer2D::s_IdentityMat4, scale);
+								Renderer2D::FillCircle(transform, glm::vec4(0, 1, 0, 1), 0.5f, 0.0f, 0.0f);
+							}
+						}
+					}
+
+
 				}
 
 				Renderer2D::End();
@@ -419,6 +494,11 @@ namespace GE
 
 	template<>
 	void Scene::OnComponentAdded<BoxCollider2DComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<CircleCollider2DComponent>(Entity entity)
 	{
 	}
 

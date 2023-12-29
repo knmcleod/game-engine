@@ -74,7 +74,7 @@ namespace GE
 	void SceneHierarchyPanel::SetScene(const Ref<Scene>& scene)
 	{
 		m_Scene = scene;
-		m_SelectedEntity = {};
+		m_SelectedEntity = Entity();
 	}
 
 	void SceneHierarchyPanel::OnImGuiRender()
@@ -90,7 +90,7 @@ namespace GE
 
 			if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
 			{
-				m_SelectedEntity = {};
+				m_SelectedEntity = Entity();
 			}
 			
 			//	Right-Click Blank space
@@ -108,10 +108,9 @@ namespace GE
 		{
 			ImGui::Begin("Properties");
 
-			if (m_SelectedEntity)
+			if (m_SelectedEntity != Entity())
 			{
 				DrawComponents(m_SelectedEntity);
-
 			}
 
 			ImGui::End();
@@ -184,6 +183,7 @@ namespace GE
 				DrawAddComponent<NativeScriptComponent>("Native Script", entity);
 				DrawAddComponent<Rigidbody2DComponent>("Rigidbody 2D", entity);
 				DrawAddComponent<BoxCollider2DComponent>("Box Collider 2D", entity);
+				DrawAddComponent<CircleCollider2DComponent>("Circle Collider 2D", entity);
 			});
 
 		DrawComponent<TransformComponent>("Transform", entity,
@@ -306,6 +306,22 @@ namespace GE
 				ImGui::DragFloat("Friction", &component.Friction);
 				ImGui::DragFloat("Restitution", &component.Restitution);
 				ImGui::DragFloat("Restitution Threshold", &component.RestitutionThreshold);
+
+				ImGui::Checkbox("Show", &component.Show);
+
+			});
+
+		DrawComponent<CircleCollider2DComponent>("Circle Collider 2D", entity,
+			[](auto& component)
+			{
+				ImGui::DragFloat2("Offset", glm::value_ptr(component.Offset));
+				ImGui::DragFloat("Radius", &component.Radius);
+				ImGui::DragFloat("Density", &component.Density);
+				ImGui::DragFloat("Friction", &component.Friction);
+				ImGui::DragFloat("Restitution", &component.Restitution);
+				ImGui::DragFloat("Restitution Threshold", &component.RestitutionThreshold);
+
+				ImGui::Checkbox("Show", &component.Show);
 
 			});
 	}
