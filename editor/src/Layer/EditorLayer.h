@@ -32,7 +32,8 @@ namespace GE
 
 		// Scene
 
-		void OnScenePlay();
+		void OnSceneRuntime();
+		void OnSceneSimulate();
 		void OnSceneStop();
 
 		void LoadSceneFromFile();

@@ -25,6 +25,7 @@ namespace GE
 		//Scene
 		m_ActiveScene = CreateRef<Scene>();
 		m_EditorScene = CreateRef<Scene>();
+
 		m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_ActiveScene);
 		m_AssetPanel = CreateRef<AssetPanel>();
 
@@ -85,9 +86,14 @@ namespace GE
 			m_ActiveScene->OnEditorUpdate(timestep, m_EditorCamera);
 			break;
 		}
-		case Scene::SceneState::Play:
+		case Scene::SceneState::Run:
 		{
 			m_ActiveScene->OnRuntimeUpdate(timestep);
+			break;
+		}
+		case Scene::SceneState::Simulate:
+		{
+			m_ActiveScene->OnSimulationUpdate(timestep, m_EditorCamera);
 			break;
 		}
 		default:
@@ -346,18 +352,28 @@ namespace GE
 
 #pragma region Scene Functions
 
-	void EditorLayer::OnScenePlay()
+	void EditorLayer::OnSceneRuntime()
 	{
 		m_EditorScene = Scene::Copy(m_ActiveScene);
 		m_ActiveScene->OnRuntimeStart();
 
+		m_ScenePanel->SetScene(m_ActiveScene);
+	}
+
+	void EditorLayer::OnSceneSimulate()
+	{
+		m_EditorScene = Scene::Copy(m_ActiveScene);
+		m_ActiveScene->OnSimulationStart();
+
+		m_ScenePanel->SetScene(m_ActiveScene);
 	}
 
 	void EditorLayer::OnSceneStop()
 	{
-		m_ActiveScene->OnRuntimeStop();
+		m_ActiveScene->OnStop();
 		m_ActiveScene = m_EditorScene;
 
+		m_ScenePanel->SetScene(m_ActiveScene);
 	}
 
 	void EditorLayer::LoadSceneFromFile()
@@ -426,67 +442,28 @@ namespace GE
 #pragma endregion
 
 #pragma region UI Panel Functions
-	/*void EditorLayer::OnRenderColliders()
-	{
-		if (m_ActiveScene->m_SceneState == Scene::SceneState::Play)
-		{
-			Entity cameraEntity = m_ActiveScene->GetPrimaryCameraEntity();
-			Renderer2D::Start(
-				cameraEntity.GetComponent<CameraComponent>().Camera,
-				cameraEntity.GetComponent<TransformComponent>().GetTransform()
-				);
-		}
-		else
-		{
-			Renderer2D::Start(m_EditorCamera);
-		}
 
-		// Renders Entity Box Colliders
-		{
-			auto view = m_ActiveScene->GetAllEntitiesWith<TransformComponent, BoxCollider2DComponent>();
-			for (auto e : view)
-			{
-				auto [tc, bc2D] = view.get<TransformComponent, BoxCollider2DComponent>(e);
-				glm::vec3 translation = tc.Translation + glm::vec3(bc2D.Offset, 0.001f);
-				glm::vec3 scale = tc.Scale * glm::vec3(bc2D.Size * 2.0f, 1.0f);
-				glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
-					* glm::rotate(Renderer2D::s_IdentityMat4, glm::radians(tc.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f))
-					* glm::scale(Renderer2D::s_IdentityMat4, scale);
-				Renderer2D::DrawRectangle(transform, glm::vec4(0, 1, 0, 1));
-			}
-		}
-
-		// Renders Entity Circle Colliders
-		{
-			auto view = m_ActiveScene->GetAllEntitiesWith<TransformComponent, CircleCollider2DComponent>();
-			for (auto e : view)
-			{
-				auto [tc, cc2D] = view.get<TransformComponent, CircleCollider2DComponent>(e);
-				glm::vec3 translation = tc.Translation + glm::vec3(cc2D.Offset, 0.001f);
-				glm::vec3 scale = tc.Scale * glm::vec3(cc2D.Radius * 2);
-				glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
-					* glm::scale(Renderer2D::s_IdentityMat4, scale);
-				Renderer2D::FillCircle(transform, glm::vec4(0, 1, 0, 1), 0.5f, 0.0f, 0.0f);
-			}
-		}
-
-		Renderer2D::End();
-	}
-	*/
-	
 	void EditorLayer::UI_Toolbar()
 	{
 		ImGui::Begin("##UItoolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
 		float size = ImGui::GetWindowHeight() - 5.0f;
 		ImGui::SameLine((ImGui::GetWindowContentRegionMax().x * 0.5f) - (size *0.5f));
-		Ref<Texture2D> icon = m_ActiveScene->m_SceneState == Scene::SceneState::Play ? m_PauseButtonTexture : m_PlayButtonTexture;
+		Ref<Texture2D> icon = m_ActiveScene->m_SceneState == Scene::SceneState::Run || m_ActiveScene->m_SceneState == Scene::SceneState::Simulate 
+			? m_PauseButtonTexture : m_PlayButtonTexture;
 		if (ImGui::ImageButton((ImTextureID)icon->GetID(), ImVec2(10.0f, 10.0f)))
 		{
-			if (m_ActiveScene->m_SceneState == Scene::SceneState::Play)
+			if (m_ActiveScene->m_SceneState == Scene::SceneState::Run)
 				OnSceneStop();
 			else if (m_ActiveScene->m_SceneState == Scene::SceneState::Stop)
-				OnScenePlay();
+				OnSceneRuntime();
+		}
+		if (ImGui::ImageButton((ImTextureID)icon->GetID(), ImVec2(10.0f, 10.0f)))
+		{
+			if (m_ActiveScene->m_SceneState == Scene::SceneState::Simulate)
+				OnSceneStop();
+			else if (m_ActiveScene->m_SceneState == Scene::SceneState::Stop)
+				OnSceneSimulate();
 		}
 
 		ImGui::End();

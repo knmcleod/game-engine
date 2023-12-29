@@ -16,27 +16,37 @@ namespace GE
 		friend class SceneHierarchyPanel;
 		friend class EditorLayer;
 	private:
-		b2World* m_PhysicsWorld = nullptr;
-
-		entt::registry m_Registry;
-		uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
+		template<typename T>
+		void OnComponentAdded(Entity entity);
 
 		enum class SceneState
 		{
-			Play = 0,
+			Run = 0,
 			Simulate = 1,
 			Stop = 2
 		};
 		SceneState m_SceneState = SceneState::Stop;
 
-		template<typename T>
-		void OnComponentAdded(Entity entity);
+		b2World* m_PhysicsWorld = nullptr;
 
+		entt::registry m_Registry;
+		uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
+
+		void InitializePhysics2D();
+		void UpdatePhysics2D(Timestep timestep);
+		void DestroyPhysics2D();
 	public:
+		template<typename... Components>
+		auto GetAllEntitiesWith()
+		{
+			return m_Registry.view<Components...>();
+		}
+
 		Scene();
 		~Scene();
 		
-		static Ref<Scene> Scene::Copy(const Ref<Scene> scene);
+		static Ref<Scene> Copy(const Ref<Scene> scene);
+		void Render(const EditorCamera& camera);
 
 		Entity GetPrimaryCameraEntity();
 		Entity CreateEntity(const std::string& name = std::string());
@@ -46,16 +56,15 @@ namespace GE
 
 		void ResizeViewport(uint32_t width, uint32_t height);
 
-		void OnRuntimeStart();
-		void OnRuntimeStop();
+		void OnStop();
 
-		void OnEditorUpdate(Timestep timestep, EditorCamera& camera);
+		void OnRuntimeStart();
 		void OnRuntimeUpdate(Timestep timestep);
 
-		template<typename... Components>
-		auto GetAllEntitiesWith()
-		{
-			return m_Registry.view<Components...>();
-		}
+		void OnSimulationStart();
+		void OnSimulationUpdate(Timestep timestep, EditorCamera& camera);
+
+		void OnEditorUpdate(Timestep timestep, EditorCamera& camera);
+
 	};
 }

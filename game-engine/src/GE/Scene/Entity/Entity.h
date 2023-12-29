@@ -11,6 +11,14 @@ namespace GE
 		entt::entity m_EntityID{ entt::null };
 		Scene* m_Scene = nullptr;
 	public:
+		operator entt::entity() const { return m_EntityID; }
+		operator bool() const { return m_EntityID != entt::null; }
+		operator uint32_t() const { return (uint32_t)m_EntityID; }
+
+		bool operator ==(const Entity& other) const { return m_EntityID == other.m_EntityID && m_Scene == other.m_Scene; }
+		bool operator !=(const Entity& other) const { return !operator==(other); }
+
+
 		Entity() = default;
 		Entity(entt::entity entityID, Scene* scene);
 
@@ -58,16 +66,9 @@ namespace GE
 		template<typename T>
 		bool HasComponent()
 		{
-			return m_Scene != nullptr ? m_Scene->m_Registry.all_of<T>(m_EntityID) : false;
+			return this ? m_Scene->m_Registry.all_of<T>(m_EntityID) : false;
 		}
 
-		operator entt::entity() const { return m_EntityID; }
-		operator bool() const { return m_EntityID != entt::null; }
-		operator uint32_t() const { return (uint32_t)m_EntityID; }
-
-		bool operator ==(const Entity& other) const { return m_EntityID == other.m_EntityID && m_Scene == other.m_Scene; }
-		bool operator !=(const Entity& other) const { return !operator==(other); }
-		
 		UUID GetUUID() { return GetComponent<IDComponent>().ID; }
 		const std::string& GetName() { return GetComponent<TagComponent>().Tag; }
 	};

@@ -12,24 +12,68 @@
 
 namespace GE
 {
-#pragma region Physics Utils
-	static b2BodyType GetBox2DType(Rigidbody2DComponent::BodyType type)
+#pragma region OnComponentAdded
+
+	template<typename T>
+	void Scene::OnComponentAdded(Entity entity)
 	{
-		switch (type)
-		{
-		case GE::Rigidbody2DComponent::BodyType::Static:
-			return b2_staticBody;
-			break;
-		case GE::Rigidbody2DComponent::BodyType::Dynamic:
-			return b2_dynamicBody;
-			break;
-		case GE::Rigidbody2DComponent::BodyType::Kinematic:
-			return b2_kinematicBody;
-			break;
-		}
-		GE_CORE_ASSERT(false, "Unsupported Rigidbody2D type.");
-		return b2_staticBody;
+		static_assert(false);
 	}
+
+	template<>
+	void Scene::OnComponentAdded<IDComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<TagComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<TransformComponent>(Entity entity)
+	{
+
+	}
+
+	template<>
+	void Scene::OnComponentAdded<CameraComponent>(Entity entity)
+	{
+		entity.GetComponent<CameraComponent>().Camera.SetViewport(m_ViewportWidth, m_ViewportHeight);
+	}
+
+	template<>
+	void Scene::OnComponentAdded<SpriteRendererComponent>(Entity entity)
+	{
+
+	}
+
+	template<>
+	void Scene::OnComponentAdded<CircleRendererComponent>(Entity entity)
+	{
+
+	}
+
+	template<>
+	void Scene::OnComponentAdded<NativeScriptComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<Rigidbody2DComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<BoxCollider2DComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<CircleCollider2DComponent>(Entity entity)
+	{
+	}
+
 #pragma endregion
 
 	template<typename Component>
@@ -105,6 +149,88 @@ namespace GE
 		return newScene;
 	}
 
+	void Scene::Render(const EditorCamera& camera)
+	{
+		if (&camera)
+		{
+			GE_PROFILE_SCOPE("Scene::Render");
+			Renderer2D::Start(camera);
+
+			// Sprites
+			{
+				auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
+				for (auto entity : view)
+				{
+					auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
+
+					Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+				}
+			}
+
+			// Circles
+			{
+				auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
+				for (auto entity : view)
+				{
+					auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
+
+					Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
+
+				}
+			}
+
+			// Lines
+			{
+				//Renderer2D::FillLine({ 0, 0, 0 }, { 1, 1, 0 }, { 1.0f, 1.0f, 1.0f, 1.0f });
+				//Renderer2D::FillRectangle({ 5,5,0 }, { 5,2 }, { 1.0f, 1.0f, 1.0f, 1.0f });
+			}
+
+			// Physics Visuals
+			{
+
+				// Renders Entity Box Colliders
+				{
+					auto view = m_Registry.view<TransformComponent, BoxCollider2DComponent>();
+					for (auto e : view)
+					{
+						auto [tc, bc2D] = view.get<TransformComponent, BoxCollider2DComponent>(e);
+						if (bc2D.Show)
+						{
+							glm::vec3 translation = tc.Translation + glm::vec3(bc2D.Offset, 0.001f);
+							glm::vec3 scale = tc.Scale * glm::vec3(bc2D.Size * 2.0f, 1.0f);
+							glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
+								* glm::rotate(Renderer2D::s_IdentityMat4, glm::radians(tc.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f))
+								* glm::scale(Renderer2D::s_IdentityMat4, scale);
+							Renderer2D::DrawRectangle(transform, glm::vec4(0, 1, 0, 1));
+						}
+					}
+				}
+
+				// Renders Entity Circle Colliders
+				{
+					auto view = m_Registry.view<TransformComponent, CircleCollider2DComponent>();
+					for (auto e : view)
+					{
+						auto [tc, cc2D] = view.get<TransformComponent, CircleCollider2DComponent>(e);
+						if (cc2D.Show)
+						{
+							glm::vec3 translation = tc.Translation + glm::vec3(cc2D.Offset, 0.001f);
+							glm::vec3 scale = tc.Scale * glm::vec3(cc2D.Radius * 2);
+							glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
+								* glm::scale(Renderer2D::s_IdentityMat4, scale);
+							Renderer2D::FillCircle(transform, glm::vec4(0, 1, 0, 1), 0.5f, 0.0f, 0.0f);
+						}
+					}
+				}
+
+
+			}
+
+			Renderer2D::End();
+
+		}
+	}
+
 	Entity Scene::GetPrimaryCameraEntity()
 	{
 		auto view = m_Registry.view<CameraComponent>();
@@ -173,10 +299,144 @@ namespace GE
 			}
 		}
 	}
+	
+	void Scene::OnStop()
+	{
+		DestroyPhysics2D();
+		m_SceneState = Scene::SceneState::Stop;
+	}
 
 	void Scene::OnRuntimeStart()
 	{
-		m_SceneState = Scene::SceneState::Play;
+		m_SceneState = Scene::SceneState::Run;
+
+		InitializePhysics2D();
+	}
+	
+	void Scene::OnRuntimeUpdate(Timestep timestep)
+	{
+		// Update Scripts
+		{
+			GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Scripts");
+			m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc)
+				{
+					// TO DO: Move to Scene::Start()
+					if (!nsc.Instance)
+					{
+						nsc.Instance = nsc.InstantiateScript();
+						nsc.Instance->m_Entity = { entity, this };
+						nsc.Instance->OnCreate();
+					}
+
+					nsc.Instance->OnUpdate(timestep);
+				});
+		}
+
+		// Update Physics
+		UpdatePhysics2D(timestep);
+
+		// Update Camera & 2D Renderer
+		{
+			GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Camera & 2D Renderer");
+			Camera* mainCamera = nullptr;
+			glm::mat4* cameraTransform;
+
+			// Finds & Updates Primary Camera Transform
+			{
+				GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Camera");
+
+				auto view = m_Registry.view<TransformComponent, CameraComponent>();
+				for (auto entity : view)
+				{
+					auto [transform, camera] = view.get<TransformComponent, CameraComponent>(entity);
+					if (camera.Primary)
+					{
+						mainCamera = &camera.Camera;
+						cameraTransform = &transform.GetTransform();
+						break;
+					}
+				}
+			}
+
+			if (mainCamera)
+			{
+				GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- 2D Renderer");
+
+				Renderer2D::Start(*mainCamera, *cameraTransform);
+
+				// Sprites
+				{
+					auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
+					for (auto entity : view)
+					{
+						auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
+
+						Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+					}
+				}
+
+				// Circles
+				{
+					auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
+					for (auto entity : view)
+					{
+						auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
+
+						Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
+					}
+				}
+
+				// Lines - Not using Components
+				{
+					//Renderer2D::FillLine({ 0, 0, 0 }, { 1, 1, 0 }, { 1.0f, 1.0f, 1.0f, 1.0f });
+					//Renderer2D::FillRectangle({5,5,0}, {5,2}, { 1.0f, 1.0f, 1.0f, 1.0f });
+				}
+
+				Renderer2D::End();
+			}
+		}
+	}
+
+	void Scene::OnSimulationStart()
+	{
+		m_SceneState = Scene::SceneState::Simulate;
+		
+		InitializePhysics2D();
+	}
+
+	void Scene::OnSimulationUpdate(Timestep timestep, EditorCamera& camera)
+	{
+		UpdatePhysics2D(timestep);
+		Render(camera);
+	}
+
+	void Scene::OnEditorUpdate(Timestep timestep, EditorCamera& camera)
+	{
+		Render(camera);
+	}
+
+#pragma region Physics Utils
+	static b2BodyType GetBox2DType(Rigidbody2DComponent::BodyType type)
+	{
+		switch (type)
+		{
+		case GE::Rigidbody2DComponent::BodyType::Static:
+			return b2_staticBody;
+			break;
+		case GE::Rigidbody2DComponent::BodyType::Dynamic:
+			return b2_dynamicBody;
+			break;
+		case GE::Rigidbody2DComponent::BodyType::Kinematic:
+			return b2_kinematicBody;
+			break;
+		}
+		GE_CORE_ASSERT(false, "Unsupported Rigidbody2D type.");
+		return b2_staticBody;
+	}
+#pragma endregion
+
+	void Scene::InitializePhysics2D()
+	{
 
 		m_PhysicsWorld = new b2World({ 0.0f, -9.8f });
 		auto view = m_Registry.view<Rigidbody2DComponent>();
@@ -241,267 +501,34 @@ namespace GE
 			}
 		}
 	}
-
-	void Scene::OnRuntimeStop()
+	
+	void Scene::UpdatePhysics2D(Timestep timestep)
 	{
-		m_SceneState = Scene::SceneState::Stop;
+		GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Physics");
+		const int32_t velocityInteration = 5;
+		const int32_t positionInteration = 5;
+		m_PhysicsWorld->Step(timestep, velocityInteration, positionInteration);
 
+		auto view = m_Registry.view<Rigidbody2DComponent>();
+		for (auto e : view)
+		{
+			Entity entity = { e, this };
+			auto& transformComponent = entity.GetComponent<TransformComponent>();
+			auto& rb2D = entity.GetComponent<Rigidbody2DComponent>();
+
+			GE_CORE_ASSERT(rb2D.RuntimeBody != nullptr, "Rigidbody2DComponent has no Runtime Body.");
+			b2Body* body = (b2Body*)rb2D.RuntimeBody;
+			const auto& position = body->GetPosition();
+			transformComponent.Translation.x = position.x;
+			transformComponent.Translation.y = position.y;
+
+			transformComponent.Rotation.z = body->GetAngle();
+		}
+	}
+
+	void Scene::DestroyPhysics2D()
+	{
 		delete m_PhysicsWorld;
 		m_PhysicsWorld = nullptr;
 	}
-
-	void Scene::OnRuntimeUpdate(Timestep timestep)
-	{
-		// Update Scripts
-		{
-			GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Scripts");
-			m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc) 
-				{
-					// TO DO: Move to Scene::Start()
-					if (!nsc.Instance)
-					{
-						nsc.Instance = nsc.InstantiateScript();
-						nsc.Instance->m_Entity = { entity, this };
-						nsc.Instance->OnCreate();
-					}
-
-					nsc.Instance->OnUpdate(timestep);
-				});
-		}
-
-		// Update Physics
-		{
-			GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Physics");
-			const int32_t velocityInteration = 5;
-			const int32_t positionInteration = 5;
-			m_PhysicsWorld->Step(timestep, velocityInteration, positionInteration);
-
-			auto view = m_Registry.view<Rigidbody2DComponent>();
-			for (auto e : view)
-			{
-				Entity entity = { e, this };
-				auto& transformComponent = entity.GetComponent<TransformComponent>();
-				auto& rb2D = entity.GetComponent<Rigidbody2DComponent>();
-
-				GE_CORE_ASSERT(rb2D.RuntimeBody != nullptr, "Rigidbody2DComponent has no Runtime Body.");
-				b2Body* body = (b2Body*)rb2D.RuntimeBody;
-				const auto& position = body->GetPosition();
-				transformComponent.Translation.x = position.x;
-				transformComponent.Translation.y = position.y;
-
-				transformComponent.Rotation.z = body->GetAngle();
-			}
-		}
-
-		// Update Camera & 2D Renderer
-		{
-			GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Camera & 2D Renderer");
-			Camera* mainCamera = nullptr;
-			glm::mat4* cameraTransform;
-
-			// Finds & Updates Primary Camera Transform
-			{
-				GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Camera");
-
-				auto view = m_Registry.view<TransformComponent, CameraComponent>();
-				for (auto entity : view)
-				{
-					auto [transform, camera] = view.get<TransformComponent, CameraComponent>(entity);
-					if (camera.Primary)
-					{
-						mainCamera = &camera.Camera;
-						cameraTransform = &transform.GetTransform();
-						break;
-					}
-				}
-			}
-
-			if (mainCamera)
-			{
-				GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- 2D Renderer");
-
-				Renderer2D::Start(*mainCamera, *cameraTransform);
-
-				// Sprites
-				{
-					auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
-					for (auto entity : view)
-					{
-						auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
-
-						Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
-					}
-				}
-
-				// Circles
-				{
-					auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
-					for (auto entity : view)
-					{
-						auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
-
-						Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
-					}
-				}
-
-				// Lines - Not using Components
-				{
-					//Renderer2D::FillLine({ 0, 0, 0 }, { 1, 1, 0 }, { 1.0f, 1.0f, 1.0f, 1.0f });
-					//Renderer2D::FillRectangle({5,5,0}, {5,2}, { 1.0f, 1.0f, 1.0f, 1.0f });
-				}
-
-				Renderer2D::End();
-			}
-		}
-
-	}
-
-	void Scene::OnEditorUpdate(Timestep timestep, EditorCamera& camera)
-	{
-		{
-			if (&camera)
-			{
-				GE_PROFILE_SCOPE("Scene::OnEditorUpdate -- 2D Renderer");
-				Renderer2D::Start(camera);
-
-				// Sprites
-				{
-					auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
-					for (auto entity : view)
-					{
-						auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
-
-						Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
-					}
-				}
-
-				// Circles
-				{
-					auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
-					for (auto entity : view)
-					{
-						auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
-
-						Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
-					
-					}
-				}
-
-				// Lines
-				{
-					//Renderer2D::FillLine({ 0, 0, 0 }, { 1, 1, 0 }, { 1.0f, 1.0f, 1.0f, 1.0f });
-					//Renderer2D::FillRectangle({ 5,5,0 }, { 5,2 }, { 1.0f, 1.0f, 1.0f, 1.0f });
-				}
-
-				// Physics Visuals
-				{
-			
-					// Renders Entity Box Colliders
-					{
-						auto view = m_Registry.view<TransformComponent, BoxCollider2DComponent>();
-						for (auto e : view)
-						{
-							auto [tc, bc2D] = view.get<TransformComponent, BoxCollider2DComponent>(e);
-							if (bc2D.Show)
-							{
-								glm::vec3 translation = tc.Translation + glm::vec3(bc2D.Offset, 0.001f);
-								glm::vec3 scale = tc.Scale * glm::vec3(bc2D.Size * 2.0f, 1.0f);
-								glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
-									* glm::rotate(Renderer2D::s_IdentityMat4, glm::radians(tc.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f))
-									* glm::scale(Renderer2D::s_IdentityMat4, scale);
-								Renderer2D::DrawRectangle(transform, glm::vec4(0, 1, 0, 1));
-							}
-						}
-					}
-
-					// Renders Entity Circle Colliders
-					{
-						auto view = m_Registry.view<TransformComponent, CircleCollider2DComponent>();
-						for (auto e : view)
-						{
-							auto [tc, cc2D] = view.get<TransformComponent, CircleCollider2DComponent>(e);
-							if (cc2D.Show)
-							{
-								glm::vec3 translation = tc.Translation + glm::vec3(cc2D.Offset, 0.001f);
-								glm::vec3 scale = tc.Scale * glm::vec3(cc2D.Radius * 2);
-								glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
-									* glm::scale(Renderer2D::s_IdentityMat4, scale);
-								Renderer2D::FillCircle(transform, glm::vec4(0, 1, 0, 1), 0.5f, 0.0f, 0.0f);
-							}
-						}
-					}
-
-
-				}
-
-				Renderer2D::End();
-
-			}
-		}
-	}
-
-#pragma region OnComponentAdded
-
-	template<typename T>
-	void Scene::OnComponentAdded(Entity entity)
-	{
-		static_assert(false);
-	}
-
-	template<>
-	void Scene::OnComponentAdded<IDComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<TagComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<TransformComponent>(Entity entity)
-	{
-
-	}
-
-	template<>
-	void Scene::OnComponentAdded<CameraComponent>(Entity entity)
-	{
-		entity.GetComponent<CameraComponent>().Camera.SetViewport(m_ViewportWidth, m_ViewportHeight);
-	}
-
-	template<>
-	void Scene::OnComponentAdded<SpriteRendererComponent>(Entity entity)
-	{
-
-	}
-
-	template<>
-	void Scene::OnComponentAdded<CircleRendererComponent>(Entity entity)
-	{
-
-	}
-
-	template<>
-	void Scene::OnComponentAdded<NativeScriptComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<Rigidbody2DComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<BoxCollider2DComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<CircleCollider2DComponent>(Entity entity)
-	{
-	}
-
-#pragma endregion
-
 }
