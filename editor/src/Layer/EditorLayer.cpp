@@ -386,7 +386,7 @@ namespace GE
 
 	void EditorLayer::LoadScene(const std::filesystem::path& path)
 	{
-		if (path.extension().string() != ".ge")
+		if (path.filename().extension().string() != ".ge")
 		{
 			GE_CORE_WARN("Could not load {0}. File is not .ge", path.filename());
 			return;
@@ -436,6 +436,12 @@ namespace GE
 
 	void EditorLayer::SerializeScene(Ref<Scene> scene, const std::filesystem::path& path)
 	{
+		if (path.filename().extension().string() != ".ge")
+		{
+			GE_CORE_WARN("Could not save {0}. File is not .ge", path.filename());
+			return;
+		}
+
 		SceneSerializer serializer(scene);
 		serializer.SerializeText(path.string());
 	}

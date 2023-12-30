@@ -212,7 +212,7 @@ namespace GE
 							glm::vec3 scale = tc.Scale * glm::vec3(cc2D.Radius * 2);
 							glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
 								* glm::scale(Renderer2D::s_IdentityMat4, scale);
-							Renderer2D::FillCircle(transform, glm::vec4(0, 1, 0, 1), 0.5f, 0.0f, 0.0f);
+							Renderer2D::FillCircle(transform, glm::vec4(0, 1, 0, 1), 0.5f, 1.0f, 0.5f);
 						}
 					}
 				}
@@ -377,12 +377,6 @@ namespace GE
 
 						Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
 					}
-				}
-
-				// Lines - Not using Components
-				{
-					//Renderer2D::FillLine({ 0, 0, 0 }, { 1, 1, 0 }, { 1.0f, 1.0f, 1.0f, 1.0f });
-					//Renderer2D::FillRectangle({5,5,0}, {5,2}, { 1.0f, 1.0f, 1.0f, 1.0f });
 				}
 
 				Renderer2D::End();

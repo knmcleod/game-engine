@@ -30,14 +30,6 @@ namespace GE
 			auto relativePath = std::filesystem::relative(dir.path(), g_AssetsPath);
 			std::string filenameString = relativePath.filename().string();
 
-			if (ImGui::BeginDragDropSource())
-			{
-				const wchar_t* itemPath = relativePath.c_str();
-				ImGui::SetDragDropPayload("ASSET_PANEL_ITEM", itemPath, (wcslen(itemPath) + 1) * sizeof(wchar_t));
-				
-				ImGui::EndDragDropSource();
-			}
-
 			if (dir.is_directory())
 			{
 				if (ImGui::Button(filenameString.c_str()))
@@ -51,6 +43,14 @@ namespace GE
 				{
 
 				}
+			}
+
+			if (ImGui::BeginDragDropSource())
+			{
+				const wchar_t* itemPath = relativePath.c_str();
+				ImGui::SetDragDropPayload("ASSET_PANEL_ITEM", itemPath, (wcslen(itemPath) + 1) * sizeof(wchar_t));
+
+				ImGui::EndDragDropSource();
 			}
 		}
 

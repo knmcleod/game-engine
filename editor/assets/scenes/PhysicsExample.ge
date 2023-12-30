@@ -1,8 +1,8 @@
 Scene: Name
 Entities:
-  - Entity: 4286179109667532841
+  - Entity: 13198727205686470121
     TagComponent:
-      Tag: Camera
+      Tag: Camera Entity
     TransformComponent:
       Translation: [0, 0, 0]
       Rotation: [0, 0, 0]
@@ -15,15 +15,15 @@ Entities:
         Near: -1
         FOV: 10
         Type: 1
-  - Entity: 16535968901226508065
+  - Entity: 11220799736880303874
     TagComponent:
-      Tag: Sprite
+      Tag: Static Entity
     TransformComponent:
-      Translation: [0, 0, 0]
+      Translation: [0, -4, 0]
       Rotation: [0, 0, 0]
-      Scale: [1, 1, 1]
+      Scale: [6, 1, 1]
     SpriteRendererComponent:
-      Color: [1, 1, 1, 1]
+      Color: [1, 0, 0, 1]
     Rigidbody2DComponent:
       Type: Static
       FixedRotation: false
@@ -35,15 +35,15 @@ Entities:
       Restitution: 0
       RestitutionThreshold: 0.5
       Show: true
-  - Entity: 9252488493201731458
+  - Entity: 9388749248785975965
     TagComponent:
-      Tag: Pink Sprite
+      Tag: Dynamic Entity
     TransformComponent:
-      Translation: [-2, 0, 0]
+      Translation: [0, 0, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     SpriteRendererComponent:
-      Color: [1, 0.333333343, 1, 1]
+      Color: [1, 1, 0.34117648, 1]
     Rigidbody2DComponent:
       Type: Dynamic
       FixedRotation: false
