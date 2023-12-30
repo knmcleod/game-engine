@@ -190,7 +190,7 @@ namespace GE
 						auto [tc, bc2D] = view.get<TransformComponent, BoxCollider2DComponent>(e);
 						if (bc2D.Show)
 						{
-							glm::vec3 translation = tc.Translation + glm::vec3(bc2D.Offset, 0.001f);
+							glm::vec3 translation = tc.Translation + glm::vec3(bc2D.Offset, 0.0025f);
 							glm::vec3 scale = tc.Scale * glm::vec3(bc2D.Size * 2.0f, 1.0f);
 							glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
 								* glm::rotate(Renderer2D::s_IdentityMat4, glm::radians(tc.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f))
@@ -208,11 +208,11 @@ namespace GE
 						auto [tc, cc2D] = view.get<TransformComponent, CircleCollider2DComponent>(e);
 						if (cc2D.Show)
 						{
-							glm::vec3 translation = tc.Translation + glm::vec3(cc2D.Offset, 0.001f);
-							glm::vec3 scale = tc.Scale * glm::vec3(cc2D.Radius * 2);
+							glm::vec3 translation = tc.Translation + glm::vec3(cc2D.Offset, 0.0025f);
+							glm::vec3 scale = tc.Scale * glm::vec3(glm::vec2(cc2D.Radius * 2.0f), 1.0f);
 							glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
 								* glm::scale(Renderer2D::s_IdentityMat4, scale);
-							Renderer2D::FillCircle(transform, glm::vec4(0, 1, 0, 1), 0.5f, 1.0f, 0.5f);
+							Renderer2D::FillCircle(transform, glm::vec4(0, 1, 0, 1), cc2D.Radius, 0.5f, 0.4f);
 						}
 					}
 				}
@@ -471,10 +471,11 @@ namespace GE
 				if (entity.HasComponent<CircleCollider2DComponent>())
 				{
 					auto& cc2D = entity.GetComponent<CircleCollider2DComponent>();
+					auto& tc = entity.GetComponent<TransformComponent>();
 
 					b2CircleShape circleShape;
 					circleShape.m_p.Set(cc2D.Offset.x, cc2D.Offset.y);
-					circleShape.m_radius = cc2D.Radius;
+					circleShape.m_radius = tc.Scale.x * cc2D.Radius;
 
 					b2FixtureDef fixtureDef;
 					fixtureDef.shape = &circleShape;

@@ -49,13 +49,14 @@ void main()
 {
 	float d = length(vec2(v_LocalPosition.x, v_LocalPosition.y));
 
-	float circle = (1.0 - smoothstep(v_Thickness - v_Radius, v_Radius, d)) * (smoothstep(v_Fade - v_Radius, v_Radius, d));
+	float circle = 1.0 - smoothstep(v_Thickness, v_Thickness, d);
+	circle *= smoothstep(v_Fade, v_Fade, d);
 	if(circle == 0)
 	{
 		discard;
 	}
-	
-	color = vec4(v_Color.rgb, circle);
 
+	vec4 c = v_Color * vec4(circle);
+	color = c;
 	entityID = v_EntityID;
 }

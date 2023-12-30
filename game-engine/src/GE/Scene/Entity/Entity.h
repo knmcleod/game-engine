@@ -42,7 +42,7 @@ namespace GE
 		template<typename T, typename... Args>
 		T& AddComponent(Args&&... args)
 		{
-			GE_CORE_ASSERT(!HasComponent<T>(), "Component already exists on Entity!");
+			GE_CORE_ASSERT(!this->HasComponent<T>(), "Component already exists on Entity!");
 			T& component = m_Scene->m_Registry.emplace<T>(m_EntityID, std::forward<Args>(args)...);
 			m_Scene->OnComponentAdded<T>(*this);
 			return component;

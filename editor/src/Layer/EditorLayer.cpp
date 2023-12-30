@@ -34,11 +34,17 @@ namespace GE
 		m_PlayButtonTexture = Texture2D::Create("assets/textures/UI/Play_Button.png");
 		m_PauseButtonTexture = Texture2D::Create("assets/textures/UI/Pause_Button.png");
 
-#ifdef ENTITYTEST
+		m_CircleColliderEntity = m_ActiveScene->CreateEntity("Circle Collider Entity");
+		m_CircleColliderEntity.AddComponent<CircleRendererComponent>();
+		m_CircleColliderEntity.AddComponent<Rigidbody2DComponent>().Type = Rigidbody2DComponent::BodyType::Dynamic;
+		m_CircleColliderEntity.AddComponent<CircleCollider2DComponent>();
+
 		m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
 		m_CameraEntityPrimary.AddComponent<CameraComponent>();
 		m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = true;
 		m_CameraEntityPrimary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
+
+#ifdef ENTITYTEST
 
 		m_CameraEntitySecondary = m_ActiveScene->CreateEntity("Secondary Camera Entity");
 		m_CameraEntitySecondary.AddComponent<CameraComponent>();

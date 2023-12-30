@@ -423,8 +423,7 @@ namespace GE
 #pragma endregion
 
 #pragma region Circle
-	void Renderer2D::SetCircleData(const glm::mat4& transform, const glm::vec4& color, const float& radius,
-		const float& thickness, const float& fade, const int entityID)
+	void Renderer2D::SetCircleData(const glm::mat4& transform, const glm::vec4& color, const float& radius, const float& thickness, const float& fade, const int entityID)
 	{
 		constexpr size_t circleVertexCount = 4;
 
@@ -451,7 +450,7 @@ namespace GE
 
 	}
 
-	void Renderer2D::FillCircle(const glm::mat4& transform, const glm::vec4& color, float radius, float thickness, float fade, const int entityID)
+	void Renderer2D::FillCircle(const glm::mat4& transform, const glm::vec4& color, const float& radius, const float& thickness, const float& fade, const int entityID)
 	{
 		GE_PROFILE_FUNCTION();
 

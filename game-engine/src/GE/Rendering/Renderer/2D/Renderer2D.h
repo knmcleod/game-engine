@@ -142,7 +142,7 @@ namespace GE
 			const float& thickness = 1.0f, const float& fade = 0.0f, const int entityID = -1);
 		static void ResetCircleData();
 
-		static void FillCircle(const glm::mat4& transform, const glm::vec4& color, const float radius, const float thickness, const float fade, const int entityID = -1);
+		static void FillCircle(const glm::mat4& transform, const glm::vec4& color, const float& radius, const float& thickness, const float& fade, const int entityID = -1);
 
 		// Line/Rectangle
 		

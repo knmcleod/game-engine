@@ -257,8 +257,8 @@ namespace GE
 			[](auto& component)
 			{
 				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
-				ImGui::DragFloat("Thickness", &component.Thickness, 0.5f, 0, 1);
-				ImGui::DragFloat("Fade", &component.Fade, 0.5f, 0, 1);
+				ImGui::DragFloat("Thickness", &component.Thickness, 0.25f, 0.0f, 1.0f);
+				ImGui::DragFloat("Fade", &component.Fade, 0.25f, 0.0f, 1.0f);
 
 			});
 
