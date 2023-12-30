@@ -266,6 +266,8 @@ namespace GE
 					src.Friction = boxCollider2DComponent["Friction"].as<float>();
 					src.Restitution = boxCollider2DComponent["Restitution"].as<float>();
 					src.RestitutionThreshold = boxCollider2DComponent["RestitutionThreshold"].as<float>();
+
+					src.Show = boxCollider2DComponent["Show"].as<bool>();
 				}
 
 				// CircleCollider2DComponent
@@ -273,12 +275,14 @@ namespace GE
 				if (circleCollider2DComponent)
 				{
 					auto& src = deserializedEntity.GetOrAddComponent<CircleCollider2DComponent>();
-					src.Offset = boxCollider2DComponent["Offset"].as<glm::vec2>();
-					src.Radius = boxCollider2DComponent["circleCollider2DComponent"].as<float>();
-					src.Density = boxCollider2DComponent["Density"].as<float>();
-					src.Friction = boxCollider2DComponent["Friction"].as<float>();
-					src.Restitution = boxCollider2DComponent["Restitution"].as<float>();
-					src.RestitutionThreshold = boxCollider2DComponent["RestitutionThreshold"].as<float>();
+					src.Offset = circleCollider2DComponent["Offset"].as<glm::vec2>();
+					src.Radius = circleCollider2DComponent["Radius"].as<float>();
+					src.Density = circleCollider2DComponent["Density"].as<float>();
+					src.Friction = circleCollider2DComponent["Friction"].as<float>();
+					src.Restitution = circleCollider2DComponent["Restitution"].as<float>();
+					src.RestitutionThreshold = circleCollider2DComponent["RestitutionThreshold"].as<float>();
+
+					src.Show = circleCollider2DComponent["Show"].as<bool>();
 				}
 			}
 		}
@@ -396,6 +400,7 @@ namespace GE
 			out << YAML::Key << "Friction" << YAML::Value << component.Friction;
 			out << YAML::Key << "Restitution" << YAML::Value << component.Restitution;
 			out << YAML::Key << "RestitutionThreshold" << YAML::Value << component.RestitutionThreshold;
+			out << YAML::Key << "Show" << YAML::Value << component.Show;
 			out << YAML::EndMap; // BoxCollider2DComponent
 		}
 
@@ -410,6 +415,7 @@ namespace GE
 			out << YAML::Key << "Friction" << YAML::Value << component.Friction;
 			out << YAML::Key << "Restitution" << YAML::Value << component.Restitution;
 			out << YAML::Key << "RestitutionThreshold" << YAML::Value << component.RestitutionThreshold;
+			out << YAML::Key << "Show" << YAML::Value << component.Show;
 			out << YAML::EndMap; // CircleCollider2DComponent
 		}
 

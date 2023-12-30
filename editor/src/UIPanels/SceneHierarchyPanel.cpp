@@ -98,7 +98,7 @@ namespace GE
 			{
 				if (ImGui::MenuItem("Create Empty Entity"))
 					m_Scene->CreateEntity("Empty Entity");
-
+				
 				ImGui::EndPopup();
 			}
 
@@ -139,10 +139,9 @@ namespace GE
 			ImGui::EndPopup();
 		}
 
-
+		// Show child entities if present
 		if (opened)
 		{
-			// Show child entities
 			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
 			bool childOpened = ImGui::TreeNodeEx((void*)9817239, flags, tag.c_str());
 			if (childOpened)
@@ -258,10 +257,8 @@ namespace GE
 			[](auto& component)
 			{
 				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
-
-				ImGui::DragFloat("Radius", &component.Radius);
-				ImGui::DragFloat("Thickness", &component.Thickness);
-				ImGui::DragFloat("Fade", &component.Fade);
+				ImGui::DragFloat("Thickness", &component.Thickness, 0.5f, 0, 1);
+				ImGui::DragFloat("Fade", &component.Fade, 0.5f, 0, 1);
 
 			});
 

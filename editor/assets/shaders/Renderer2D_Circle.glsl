@@ -47,26 +47,15 @@ flat in int v_EntityID;
 
 void main()
 {
-	float d = (length(vec2(v_LocalPosition.x, v_LocalPosition.y)));
-	float t1 = 1.0 - smoothstep(v_Thickness - v_Radius, v_Radius, d);
-	
-	// For Border
-	//float t2 = 1.0 - smoothstep(v_Radius, v_Radius + v_Thickness, d);
+	float d = length(vec2(v_LocalPosition.x, v_LocalPosition.y));
 
-	if(t1 == 0)
+	float circle = (1.0 - smoothstep(v_Thickness - v_Radius, v_Radius, d)) * (smoothstep(v_Fade - v_Radius, v_Radius, d));
+	if(circle == 0)
 	{
 		discard;
 	}
-
-	float alpha = 1.0 - smoothstep(0.0, v_Fade, d);
-	alpha *= smoothstep(v_Thickness + v_Fade, v_Thickness, d);
 	
-	if(alpha == 0)
-	{
-		discard;
-	}
+	color = vec4(v_Color.rgb, circle);
 
-	color = vec4(v_Color.rgb, t1);
-	color.a = alpha;
 	entityID = v_EntityID;
 }

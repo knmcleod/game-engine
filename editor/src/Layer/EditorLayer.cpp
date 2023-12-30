@@ -23,8 +23,8 @@ namespace GE
 		m_Framebuffer = Framebuffer::Create(framebufferSpec);
 
 		//Scene
-		m_ActiveScene = CreateRef<Scene>();
 		m_EditorScene = CreateRef<Scene>();
+		m_ActiveScene = Scene::Copy(m_EditorScene);
 
 		m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_ActiveScene);
 		m_AssetPanel = CreateRef<AssetPanel>();
@@ -63,9 +63,9 @@ namespace GE
 			(spec.Width != m_ViewportSize.x || spec.Height != m_ViewportSize.y))
 		{
 			m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-
 			m_EditorCamera.SetViewport(m_ViewportSize.x, m_ViewportSize.y);
 			m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+
 		}
 
 		Renderer2D::ResetStats();
@@ -82,7 +82,6 @@ namespace GE
 		{
 			if (m_ViewportFocused)
 				m_EditorCamera.OnUpdate(timestep);
-
 			m_ActiveScene->OnEditorUpdate(timestep, m_EditorCamera);
 			break;
 		}
@@ -93,6 +92,8 @@ namespace GE
 		}
 		case Scene::SceneState::Simulate:
 		{
+			m_EditorCamera.OnUpdate(timestep);
+
 			m_ActiveScene->OnSimulationUpdate(timestep, m_EditorCamera);
 			break;
 		}
@@ -371,7 +372,7 @@ namespace GE
 	void EditorLayer::OnSceneStop()
 	{
 		m_ActiveScene->OnStop();
-		m_ActiveScene = m_EditorScene;
+		m_ActiveScene = Scene::Copy(m_EditorScene);
 
 		m_ScenePanel->SetScene(m_ActiveScene);
 	}
@@ -458,13 +459,13 @@ namespace GE
 			else if (m_ActiveScene->m_SceneState == Scene::SceneState::Stop)
 				OnSceneRuntime();
 		}
-		if (ImGui::ImageButton((ImTextureID)icon->GetID(), ImVec2(10.0f, 10.0f)))
+		/*if (ImGui::ImageButton((ImTextureID)icon->GetID(), ImVec2(10.0f, 10.0f)))
 		{
 			if (m_ActiveScene->m_SceneState == Scene::SceneState::Simulate)
 				OnSceneStop();
 			else if (m_ActiveScene->m_SceneState == Scene::SceneState::Stop)
 				OnSceneSimulate();
-		}
+		}*/
 
 		ImGui::End();
 	}

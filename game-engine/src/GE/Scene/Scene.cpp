@@ -179,12 +179,6 @@ namespace GE
 				}
 			}
 
-			// Lines
-			{
-				//Renderer2D::FillLine({ 0, 0, 0 }, { 1, 1, 0 }, { 1.0f, 1.0f, 1.0f, 1.0f });
-				//Renderer2D::FillRectangle({ 5,5,0 }, { 5,2 }, { 1.0f, 1.0f, 1.0f, 1.0f });
-			}
-
 			// Physics Visuals
 			{
 
@@ -222,7 +216,6 @@ namespace GE
 						}
 					}
 				}
-
 
 			}
 

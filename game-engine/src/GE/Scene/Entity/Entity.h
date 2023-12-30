@@ -18,7 +18,6 @@ namespace GE
 		bool operator ==(const Entity& other) const { return m_EntityID == other.m_EntityID && m_Scene == other.m_Scene; }
 		bool operator !=(const Entity& other) const { return !operator==(other); }
 
-
 		Entity() = default;
 		Entity(entt::entity entityID, Scene* scene);
 
@@ -66,7 +65,7 @@ namespace GE
 		template<typename T>
 		bool HasComponent()
 		{
-			return this ? m_Scene->m_Registry.all_of<T>(m_EntityID) : false;
+			return m_Scene->m_Registry.all_of<T>(m_EntityID);
 		}
 
 		UUID GetUUID() { return GetComponent<IDComponent>().ID; }

@@ -42,7 +42,7 @@ namespace GE
 		virtual void Unbind() const override;
 	private:
 		uint32_t m_RendererID;
-		uint32_t m_Count;
+		uint32_t m_Count = 0;
 	};
 
 }

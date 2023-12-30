@@ -1,0 +1,40 @@
+Scene: Name
+Entities:
+  - Entity: 11794016191922332254
+    TagComponent:
+      Tag: Empty Entity
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      FixedAspectRatio: false
+      Primary: true
+      Camera:
+        Far: 1
+        Near: -1
+        FOV: 10
+        Type: 1
+  - Entity: 753793872277642395
+    TagComponent:
+      Tag: Circle Collider
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CircleRendererComponent:
+      Color: [1, 0.34117648, 1, 1]
+      Radius: 0.5
+      Thickness: 1
+      Fade: 0
+    Rigidbody2DComponent:
+      Type: Dynamic
+      FixedRotation: false
+    CircleCollider2DComponent:
+      Offset: [0, 0]
+      Radius: 0.5
+      Density: 4
+      Friction: 2.5
+      Restitution: 1
+      RestitutionThreshold: 1.5
+      Show: false

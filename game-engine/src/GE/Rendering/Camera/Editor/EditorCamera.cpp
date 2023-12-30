@@ -47,10 +47,12 @@ namespace GE
 	{
 		return glm::rotate(GetOrientation(), glm::vec3(0.0f, 1.0f, 0.0f));
 	}
+	
 	glm::vec3 EditorCamera::GetHorizontal() const
 	{
 		return glm::rotate(GetOrientation(), glm::vec3(1.0f, 0.0f, 0.0f));
 	}
+	
 	glm::vec3 EditorCamera::GetDepth() const
 	{
 		return glm::rotate(GetOrientation(), glm::vec3(0.0f, 0.0f, -1.0f));

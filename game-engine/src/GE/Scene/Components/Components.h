@@ -68,7 +68,7 @@ namespace GE
 		glm::vec4 Color = glm::vec4(1.0f);
 		float Radius = 0.5f; // Game Engine is 1x1, thus radius = 1/2;
 		float Thickness = 1.0f; // 1: Full, 0: Empty
-		float Fade = 0.0; // Blurs Circle
+		float Fade = 0.0; // Blurs Circle 1: Full Fade 0: No Fade
 
 		CircleRendererComponent() = default;
 		CircleRendererComponent(const CircleRendererComponent&) = default;

@@ -31,10 +31,10 @@ namespace GE
 
 		struct QuadVertex
 		{
-			glm::vec3 GlobalPosition = glm::vec3(0.0f);
+			glm::vec3 Position = glm::vec3(0.0f);
 			glm::vec4 Color = glm::vec4(1.0f);
 			glm::vec2 TextureCoord = glm::vec2(0.0f);
-			float TextureIndex = 0;
+			float TextureIndex = 0.0f;
 			float TilingFactor = 1.0f;
 
 			int EntityID = -1;
@@ -118,7 +118,7 @@ namespace GE
 
 		// Sprite/Quad
 
-		static void SetQuadData(const glm::mat4& transform, const float& textureIndex, const glm::vec2 textureCoords[4],
+		static void SetQuadData(const glm::mat4& transform, const int& textureIndex, const glm::vec2 textureCoords[4],
 			const float& tilingFactor, const glm::vec4& color, const int entityID = -1);
 		static void ResetQuadData();
 

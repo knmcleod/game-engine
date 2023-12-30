@@ -100,9 +100,7 @@ namespace GE
 	void OpenGLVertexArray::AddIndexBuffer(const Ref<IndexBuffer>& indexBuffer)
 	{
 		this->Bind();
-
-		indexBuffer->Bind();
-
 		m_IndexBuffer = indexBuffer;
+		m_IndexBuffer->Bind();
 	}
 }

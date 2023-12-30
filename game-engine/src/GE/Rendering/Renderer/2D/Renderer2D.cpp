@@ -40,12 +40,12 @@ namespace GE
 			//Sets up Layout using Vertex Buffer
 			BufferLayout layout =
 			{
-				{ GE::Shader::ShaderDataType::Float3, "a_Position" },
-				{ GE::Shader::ShaderDataType::Float4, "a_Color" },
-				{ GE::Shader::ShaderDataType::Float2, "a_TextureCoord" },
-				{ GE::Shader::ShaderDataType::Float, "a_TextureIndex" },
-				{ GE::Shader::ShaderDataType::Float, "a_TilingFactor" },
-				{ GE::Shader::ShaderDataType::Int, "a_EntityID" }
+				{ GE::Shader::ShaderDataType::Float3,	"a_Position"	 },
+				{ GE::Shader::ShaderDataType::Float4,	"a_Color"		 },
+				{ GE::Shader::ShaderDataType::Float2,	"a_TextureCoord" },
+				{ GE::Shader::ShaderDataType::Float,	"a_TextureIndex" },
+				{ GE::Shader::ShaderDataType::Float,	"a_TilingFactor" },
+				{ GE::Shader::ShaderDataType::Int,		"a_EntityID"	 }
 			};
 			s_Data.QuadVertexBuffer->SetLayout(layout);
 
@@ -113,10 +113,8 @@ namespace GE
 			s_Data.CircleVertices[3] = { -0.5f, 0.5f, 0.0f, 1.0f };
 
 			s_Data.CircleShader = Shader::Create("assets/shaders/Renderer2D_Circle.glsl");
-			s_Data.CircleShader->Bind();
-
 		}
-
+		
 		// Line Rendering Setup
 		{
 			GE_PROFILE_SCOPE();
@@ -140,7 +138,6 @@ namespace GE
 			s_Data.LineVertexBufferBase = new LineVertex[s_Data.MaxVertices];
 
 			s_Data.LineShader = Shader::Create("assets/shaders/Renderer2D_Line.glsl");
-			s_Data.LineShader->Bind();
 		}
 
 		delete[] indices;
@@ -151,6 +148,11 @@ namespace GE
 		GE_PROFILE_FUNCTION();
 
 		delete[] s_Data.QuadVertexBufferBase;
+	
+		delete[] s_Data.CircleVertexBufferBase;
+	
+		delete[] s_Data.LineVertexBufferBase;
+	
 	}
 
 	void Renderer2D::Start(const EditorCamera& camera)
@@ -172,7 +174,7 @@ namespace GE
 		GE_PROFILE_FUNCTION();
 
 		s_Data.QuadShader->SetMat4("u_ViewProjection", orthoCamera.GetViewProjectionMatrix());
-		s_Data.CircleShader->SetMat4("u_ViewProjection", orthoCamera.GetViewProjectionMatrix());
+		//s_Data.CircleShader->SetMat4("u_ViewProjection", orthoCamera.GetViewProjectionMatrix());
 		s_Data.LineShader->SetMat4("u_ViewProjection", orthoCamera.GetViewProjectionMatrix());
 
 		ResetQuadData();
@@ -206,11 +208,12 @@ namespace GE
 		if (s_Data.LineVertexCount == 0)
 			return;
 
+		s_Data.LineShader->Bind();
 		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.LineVertexBufferPtr - (uint8_t*)s_Data.LineVertexBufferBase);
 		s_Data.LineVertexBuffer->SetData(s_Data.LineVertexBufferBase, dataSize);
 
 		// Draw Line Indices
-		s_Data.LineShader->Bind();
+		s_Data.LineVertexArray->Bind();
 		RenderCommand::SetLineWidth(s_Data.LineWidth);
 		RenderCommand::DrawLines(s_Data.LineVertexArray, s_Data.LineVertexCount);
 		s_Data.Stats.DrawCalls++;
@@ -223,11 +226,12 @@ namespace GE
 		if (s_Data.CircleIndexCount == 0)
 			return;
 
+		s_Data.CircleShader->Bind();
 		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.CircleVertexBufferPtr - (uint8_t*)s_Data.CircleVertexBufferBase);
 		s_Data.CircleVertexBuffer->SetData(s_Data.CircleVertexBufferBase, dataSize);
 
 		// Draw Circle Indices
-		s_Data.CircleShader->Bind();
+		s_Data.CircleVertexArray->Bind();
 		RenderCommand::DrawIndices(s_Data.CircleVertexArray, s_Data.CircleIndexCount);
 		s_Data.Stats.DrawCalls++;
 
@@ -239,6 +243,7 @@ namespace GE
 		if (s_Data.QuadIndexCount == 0)
 			return;
 
+		s_Data.QuadShader->Bind();
 		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.QuadVertexBufferPtr - (uint8_t*)s_Data.QuadVertexBufferBase);
 		s_Data.QuadVertexBuffer->SetData(s_Data.QuadVertexBufferBase, dataSize);
 
@@ -247,7 +252,7 @@ namespace GE
 			s_Data.TextureSlots[i]->Bind(i);
 
 		// Draw Quad Indices
-		s_Data.QuadShader->Bind();
+		s_Data.QuadVertexArray->Bind();
 		RenderCommand::DrawIndices(s_Data.QuadVertexArray, s_Data.QuadIndexCount);
 		s_Data.Stats.DrawCalls++;
 
@@ -262,14 +267,14 @@ namespace GE
 	}
 
 #pragma region Sprite/Quad
-	void Renderer2D::SetQuadData(const glm::mat4& transform, const float& textureIndex,
+	void Renderer2D::SetQuadData(const glm::mat4& transform, const int& textureIndex,
 		const glm::vec2 textureCoords[4], const float& tilingFactor, const glm::vec4& color, const int entityID)
 	{
 		constexpr size_t quadVertexCount = 4;
 
 		for (size_t i = 0; i < quadVertexCount; i++)
 		{
-			s_Data.QuadVertexBufferPtr->GlobalPosition = transform * s_Data.QuadVertices[i];
+			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertices[i];
 			s_Data.QuadVertexBufferPtr->Color = color;
 			s_Data.QuadVertexBufferPtr->TextureCoord = textureCoords[i];
 			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
@@ -412,6 +417,7 @@ namespace GE
 			FillQuad(transform, component.Texture, component.TilingFactor, component.Color, entityID);
 		else
 			FillQuad(transform, component.Color, entityID);
+	
 	}
 
 #pragma endregion
