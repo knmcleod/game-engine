@@ -26,11 +26,7 @@ namespace GE
 		bool OnKeyPressed(KeyPressedEvent& e);
 		bool OnMousePressed(MouseButtonPressedEvent& e);
 
-		// Entity
-
 		void OnDuplicateEntity();
-
-		// Scene
 
 		void OnSceneRuntime();
 		void OnSceneSimulate();
@@ -65,12 +61,6 @@ namespace GE
 		Ref<Texture2D> m_PlayButtonTexture, m_PauseButtonTexture;
 
 		Entity m_HoveredEntity;
-
-		Entity m_CircleColliderEntity;
-		Entity m_SquareEntity;
-		Entity m_CameraEntityPrimary;
-		Entity m_CameraEntitySecondary;
-		bool m_CameraPrimary = true;
 		
 	};
 }

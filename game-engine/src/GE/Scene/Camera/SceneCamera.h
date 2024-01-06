@@ -1,4 +1,5 @@
 #pragma once
+
 #include "GE/Rendering/Camera/Camera.h"
 
 namespace GE

@@ -1,8 +1,5 @@
 #pragma once
 
-#include "GE/Core/Core.h"
-#include "GE/Scene/Scene.h"
-
 #include <filesystem>
 
 namespace GE

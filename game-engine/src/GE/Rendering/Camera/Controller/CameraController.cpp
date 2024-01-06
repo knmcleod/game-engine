@@ -1,7 +1,10 @@
 #include "GE/GEpch.h"
+
 #include "CameraController.h"
-#include "GE/Scene/Components/Components.h"
+
 #include "GE/Core/Input/Input.h"
+#include "GE/Scene/Components/Components.h"
+
 namespace GE
 {
 	void CameraController::OnUpdate(Timestep timestep)

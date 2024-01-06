@@ -4,7 +4,7 @@
 
 #include "GE/Rendering/Renderer/Renderer.h"
 
-#include "GE/_Platform/OpenGL/Framebuffers/OpenGLFramebuffer.h"
+#include "Platform/OpenGL/Framebuffers/OpenGLFramebuffer.h"
 
 namespace GE
 {

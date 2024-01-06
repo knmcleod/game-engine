@@ -1,9 +1,14 @@
 #include "GE/GEpch.h"
 
-#include "GE/ImGui/ImGuiLayer.h"
+#include "ImGuiLayer.h"
+
 #include "GE/Core/Application/Application.h"
 
+#include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
+#include <imgui/backends/imgui_impl_opengl3.h>
+#include <imgui/backends/imgui_impl_glfw.h>
 
 namespace GE
 {

@@ -1,7 +1,10 @@
 #include "GE/GEpch.h"
 
-#include "GE/Rendering/Textures/Texture.h"
-#include "GE/_Platform/OpenGL/Texture/OpenGLTexture.h"
+#include "Texture.h"
+
+#include "GE/Rendering/Renderer/Renderer.h"
+
+#include "Platform/OpenGL/Texture/OpenGLTexture.h"
 
 namespace GE
 {

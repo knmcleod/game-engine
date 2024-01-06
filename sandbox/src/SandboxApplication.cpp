@@ -5,14 +5,9 @@
 class SandboxApplication : public GE::Application
 {
 public:
-	SandboxApplication() : Application("Sandbox")
+	SandboxApplication(const GE::ApplicationSpecification& specification) : Application(specification)
 	{
 		PushLayer(new Sandbox2D());
-	}
-
-	~SandboxApplication()
-	{
-
 	}
 
 private:
@@ -21,5 +16,7 @@ private:
 
 GE::Application* GE::CreateApplication()
 {
-	return new SandboxApplication();
+	ApplicationSpecification spec;
+	spec.Name = "Sandbox Application";
+	return new SandboxApplication(spec);
 }

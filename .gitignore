@@ -1,7 +1,6 @@
 
 *.obj
 *.ipch
-.vs/game-engine/v16/.suo
 *.log
 *.tlog
 *.vsidx
@@ -18,3 +17,6 @@
 *.db-wal
 *.opendb
 *.db-shm
+.vs
+bin
+bin-int

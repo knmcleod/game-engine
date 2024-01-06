@@ -1,6 +1,7 @@
 #include "GE/GEpch.h"
 
 #include "EditorCamera.h"
+
 #include "GE/Core/Input/Input.h"
 
 namespace GE

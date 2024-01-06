@@ -1,9 +1,8 @@
 #pragma once
 
-#include <glad/glad.h>
-
 #include "GE/Rendering/VertexArray/Buffer.h"
 
+#include <glad/glad.h>
 
 namespace GE
 {

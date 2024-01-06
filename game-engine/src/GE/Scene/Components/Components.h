@@ -1,14 +1,16 @@
 #pragma once
 
 #include "GE/Core/UUID/UUID.h"
-#include "GE/Scene/Scene.h"
-#include "GE/Scene/Camera/SceneCamera.h"
+
 #include "GE/Rendering/Textures/Texture.h"
+
+#include "GE/Scene/Camera/SceneCamera.h"
+#include "GE/Scene/Scene.h"
 
 #include <glm/glm.hpp>
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/quaternion.hpp>
+	#include <glm/gtx/quaternion.hpp>
 
 namespace GE
 {

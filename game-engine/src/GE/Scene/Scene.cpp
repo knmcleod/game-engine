@@ -1,7 +1,10 @@
 #include "GE/GEpch.h"
+
 #include "Scene.h"
 
-#include "Entity/ScriptableEntity.h"
+#include "GE/Scene/Components/Components.h"
+#include "GE/Scene/Entity/ScriptableEntity.h"
+
 #include "GE/Rendering/Renderer/2D/Renderer2D.h"
 
 #include <box2d/b2_world.h>
@@ -105,6 +108,11 @@ namespace GE
 
 	}
 
+	Scene::Scene(const std::string& name) : m_Name(name)
+	{
+
+	}
+
 	Scene::~Scene()
 	{
 
@@ -124,7 +132,7 @@ namespace GE
 
 		// Copy Components
 		{
-			GE_PROFILE_SCOPE();
+			GE_PROFILE_SCOPE("Scene - Copy : Components");
 
 			// Special Case - Find/Set ID & Tag
 			auto idView = sceneRegistry.view<IDComponent>();
@@ -445,7 +453,7 @@ namespace GE
 
 			//	Box Collider
 			{
-				GE_PROFILE_SCOPE();
+				GE_PROFILE_SCOPE("Scene - InitializePhysics2D : Box Collider");
 				if (entity.HasComponent<BoxCollider2DComponent>())
 				{
 					auto& bc2D = entity.GetComponent<BoxCollider2DComponent>();
@@ -467,7 +475,7 @@ namespace GE
 
 			//	Circle Collider
 			{
-				GE_PROFILE_SCOPE();
+				GE_PROFILE_SCOPE("Scene - InitializePhysics2D : Circle Collider");
 				if (entity.HasComponent<CircleCollider2DComponent>())
 				{
 					auto& cc2D = entity.GetComponent<CircleCollider2DComponent>();
@@ -492,7 +500,7 @@ namespace GE
 	
 	void Scene::UpdatePhysics2D(Timestep timestep)
 	{
-		GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Physics");
+		GE_PROFILE_SCOPE("Scene - UpdatePhysics2D");
 		const int32_t velocityInteration = 5;
 		const int32_t positionInteration = 5;
 		m_PhysicsWorld->Step(timestep, velocityInteration, positionInteration);

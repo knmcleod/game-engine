@@ -1,8 +1,12 @@
 #include "GE/GEpch.h"
 
-#include "GE/Core/Application/Application.h"
+#include "Application.h"
+
+#include "GE/Core/Time/Time.h"
 
 #include "GE/Rendering/RenderCommand.h"
+#include "GE/Rendering/Shader/Shader.h"
+#include "GE/Rendering/VertexArray/VertexArray.h"
 
 #include <GLFW/glfw3.h>
 
@@ -12,20 +16,24 @@ namespace GE
 	
 	Application* Application::s_Instance = 0;
 
-	Application::Application(const std::string& name)
+	Application::Application(const ApplicationSpecification specification) : m_Specification(specification)
 	{
 		GE_PROFILE_FUNCTION();
 
 		GE_CORE_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
 
-		//Creates Window and Binds Events
-		m_Window = Window::Create(WindowProps(name));
+		// Sets working directory
+		if (!m_Specification.WorkingDirectory.empty())
+			std::filesystem::current_path(m_Specification.WorkingDirectory);
+
+		// Creates Window and Binds Events
+		m_Window = Window::Create(WindowProps(specification.Name));
 		m_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));
 		
 		RenderCommand::Init();
 
-		//Creates ImGui Layer
+		// Creates ImGui Layer
 		m_ImGuiLayer = new ImGuiLayer();
 		PushOverlay(m_ImGuiLayer);
 	}
@@ -44,7 +52,7 @@ namespace GE
 			Timestep timestep;
 			{
 				GE_PROFILE_SCOPE("Time Compilation - Application::Run()");
-				float time = (float)glfwGetTime(); //Platform::GetTime();
+				float time = (float)glfwGetTime();
 				timestep = time - m_LastFrameTime;
 				m_LastFrameTime = time;
 			}

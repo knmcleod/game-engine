@@ -1,5 +1,6 @@
 #include "GE/GEpch.h"
-#include "GE/Core/UUID/UUID.h"
+
+#include "UUID.h"
 
 #include <random>
 

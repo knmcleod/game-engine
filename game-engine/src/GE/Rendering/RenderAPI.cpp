@@ -1,6 +1,6 @@
 #include "GE/GEpch.h"
 
-#include "GE/Rendering/RenderAPI.h"
+#include "RenderAPI.h"
 
 namespace GE
 {

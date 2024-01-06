@@ -1,7 +1,5 @@
 #include "EditorLayer.h"
 
-//#define ENTITYTEST
-
 namespace GE
 {
 	extern const std::filesystem::path g_AssetsPath;
@@ -34,25 +32,6 @@ namespace GE
 		m_PlayButtonTexture = Texture2D::Create("assets/textures/UI/Play_Button.png");
 		m_PauseButtonTexture = Texture2D::Create("assets/textures/UI/Pause_Button.png");
 
-		m_CircleColliderEntity = m_ActiveScene->CreateEntity("Circle Collider Entity");
-		m_CircleColliderEntity.AddComponent<CircleRendererComponent>();
-		m_CircleColliderEntity.AddComponent<Rigidbody2DComponent>().Type = Rigidbody2DComponent::BodyType::Dynamic;
-		m_CircleColliderEntity.AddComponent<CircleCollider2DComponent>();
-
-		m_CameraEntityPrimary = m_ActiveScene->CreateEntity("Primary Camera Entity");
-		m_CameraEntityPrimary.AddComponent<CameraComponent>();
-		m_CameraEntityPrimary.GetComponent<CameraComponent>().Primary = true;
-		m_CameraEntityPrimary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
-
-#ifdef ENTITYTEST
-
-		m_CameraEntitySecondary = m_ActiveScene->CreateEntity("Secondary Camera Entity");
-		m_CameraEntitySecondary.AddComponent<CameraComponent>();
-		m_CameraEntitySecondary.AddComponent<NativeScriptComponent>().Bind<CameraController>();
-
-		m_SquareEntity = m_ActiveScene->CreateEntity();
-		m_SquareEntity.AddComponent<SpriteRendererComponent>(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
-#endif
 	}
 
 	void EditorLayer::OnDetach()
@@ -394,7 +373,7 @@ namespace GE
 	{
 		if (path.filename().extension().string() != ".ge")
 		{
-			GE_CORE_WARN("Could not load {0}. File is not .ge", path.filename());
+			GE_CORE_WARN("Could not load {0}. File is not .ge", path.filename().string());
 			return;
 		}
 
@@ -444,9 +423,11 @@ namespace GE
 	{
 		if (path.filename().extension().string() != ".ge")
 		{
-			GE_CORE_WARN("Could not save {0}. File is not .ge", path.filename());
+			GE_CORE_WARN("Could not save {0}. File is not .ge", path.filename().string());
 			return;
 		}
+
+		scene->m_Name = path.filename().string();
 
 		SceneSerializer serializer(scene);
 		serializer.SerializeText(path.string());

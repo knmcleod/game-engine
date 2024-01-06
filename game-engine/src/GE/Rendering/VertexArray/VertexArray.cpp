@@ -1,8 +1,10 @@
 #include "GE/GEpch.h"
 
 #include "VertexArray.h"
-#include "GE/_Platform/OpenGL/VertexArray/OpenGLVertexArray.h"
+
 #include "GE/Rendering/Renderer/Renderer.h"
+
+#include "Platform/OpenGL/VertexArray/OpenGLVertexArray.h"
 
 namespace GE
 {

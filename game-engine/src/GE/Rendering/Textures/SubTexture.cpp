@@ -1,4 +1,5 @@
 #include "GE/GEpch.h"
+
 #include "SubTexture.h"
 
 namespace GE

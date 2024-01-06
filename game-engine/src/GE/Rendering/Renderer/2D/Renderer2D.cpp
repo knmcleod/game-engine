@@ -2,6 +2,11 @@
 
 #include "Renderer2D.h"
 
+#include "GE/Rendering/Camera/Camera.h"
+#include "GE/Rendering/Camera/Editor/EditorCamera.h"
+#include "GE/Rendering/RenderCommand.h"
+#include "GE/Rendering/Shader/Shader.h"
+
 namespace GE
 {
 	const glm::mat4 Renderer2D::s_IdentityMat4 = glm::mat4(1.0f);
@@ -31,7 +36,7 @@ namespace GE
 
 		// Quad/Sprite Rendering Setup
 		{ 
-			GE_PROFILE_SCOPE();
+			GE_PROFILE_SCOPE("Renderer2D - Init() : Quad/Sprite Rendering Setup");
 
 			//Creates Vertex Array
 			s_Data.QuadVertexArray = VertexArray::Create();
@@ -82,7 +87,7 @@ namespace GE
 
 		// Circle Rendering Setup
 		{
-			GE_PROFILE_SCOPE();
+			GE_PROFILE_SCOPE("Renderer2D - Init() : Circle Rendering Setup");
 
 			//Creates Vertex Array
 			s_Data.CircleVertexArray = VertexArray::Create();
@@ -91,13 +96,13 @@ namespace GE
 			//Sets up Layout using Vertex Buffer
 			BufferLayout layout =
 			{
-				{ GE::Shader::ShaderDataType::Float3, "a_GlobalPosition" },
-				{ GE::Shader::ShaderDataType::Float3, "a_LocalPosition" },
-				{ GE::Shader::ShaderDataType::Float4, "a_Color" },
-				{ GE::Shader::ShaderDataType::Float, "a_Radius" },
-				{ GE::Shader::ShaderDataType::Float, "a_Thickness" },
-				{ GE::Shader::ShaderDataType::Float, "a_Fade" },
-				{ GE::Shader::ShaderDataType::Int, "a_EntityID" }
+				{ GE::Shader::ShaderDataType::Float3, "a_GlobalPosition"	},
+				{ GE::Shader::ShaderDataType::Float3, "a_LocalPosition"		},
+				{ GE::Shader::ShaderDataType::Float4, "a_Color"				},
+				{ GE::Shader::ShaderDataType::Float, "a_Radius"				},
+				{ GE::Shader::ShaderDataType::Float, "a_Thickness"			},
+				{ GE::Shader::ShaderDataType::Float, "a_Fade"				},
+				{ GE::Shader::ShaderDataType::Int, "a_EntityID"				}
 			};
 			s_Data.CircleVertexBuffer->SetLayout(layout);
 
@@ -117,7 +122,7 @@ namespace GE
 		
 		// Line Rendering Setup
 		{
-			GE_PROFILE_SCOPE();
+			GE_PROFILE_SCOPE("Renderer2D - Init() : Line Rendering Setup");
 
 			//Creates Vertex Array
 			s_Data.LineVertexArray = VertexArray::Create();
@@ -126,9 +131,9 @@ namespace GE
 			//Sets up Layout using Vertex Buffer
 			BufferLayout layout =
 			{
-				{ GE::Shader::ShaderDataType::Float3, "a_Position" },
-				{ GE::Shader::ShaderDataType::Float4, "a_Color" },
-				{ GE::Shader::ShaderDataType::Int, "a_EntityID" }
+				{ GE::Shader::ShaderDataType::Float3, "a_Position"	},
+				{ GE::Shader::ShaderDataType::Float4, "a_Color"		},
+				{ GE::Shader::ShaderDataType::Int, "a_EntityID"		}
 			};
 			s_Data.LineVertexBuffer->SetLayout(layout);
 
@@ -163,19 +168,6 @@ namespace GE
 		s_Data.QuadShader->SetMat4("u_ViewProjection", viewProjection);
 		s_Data.CircleShader->SetMat4("u_ViewProjection", viewProjection);
 		s_Data.LineShader->SetMat4("u_ViewProjection", viewProjection);
-
-		ResetQuadData();
-		ResetCircleData();
-		ResetLineData();
-	}
-
-	void Renderer2D::Start(const OrthographicCamera& orthoCamera)
-	{
-		GE_PROFILE_FUNCTION();
-
-		s_Data.QuadShader->SetMat4("u_ViewProjection", orthoCamera.GetViewProjectionMatrix());
-		//s_Data.CircleShader->SetMat4("u_ViewProjection", orthoCamera.GetViewProjectionMatrix());
-		s_Data.LineShader->SetMat4("u_ViewProjection", orthoCamera.GetViewProjectionMatrix());
 
 		ResetQuadData();
 		ResetCircleData();
@@ -267,7 +259,7 @@ namespace GE
 	}
 
 #pragma region Sprite/Quad
-	void Renderer2D::SetQuadData(const glm::mat4& transform, const int& textureIndex,
+	void Renderer2D::SetQuadData(const glm::mat4& transform, const float& textureIndex,
 		const glm::vec2 textureCoords[4], const float& tilingFactor, const glm::vec4& color, const int entityID)
 	{
 		constexpr size_t quadVertexCount = 4;

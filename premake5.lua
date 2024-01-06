@@ -14,7 +14,7 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 IncludeDir = {}
 IncludeDir["glfw"] = "game-engine/vender/glfw/include"
 IncludeDir["GLAD"] = "game-engine/vender/GLAD/include"
-IncludeDir["ImGui"] = "game-engine/vender/imgui"
+IncludeDir["ImGui"] = "game-engine/vender/ImGui"
 IncludeDir["glm"] = "game-engine/vender/glm"
 IncludeDir["spdlog"] = "game-engine/vender/spdlog/include"
 IncludeDir["stb"] = "game-engine/vender/stb_image"
@@ -25,7 +25,7 @@ IncludeDir["box2d"] = "game-engine/vender/box2d/include"
 group "Dependencies"
 	include "game-engine/vender/glfw"
 	include "game-engine/vender/GLAD"
-	include "game-engine/vender/imgui"
+	include "game-engine/vender/ImGui/imgui"
 	include "game-engine/vender/yaml-cpp"
 	include "game-engine/vender/box2d"
 group ""
@@ -35,7 +35,7 @@ project "game-engine"
 	kind "StaticLib"
 	language "C++"
 	cppdialect "C++17"
-	staticruntime "On"
+	staticruntime "off"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -74,8 +74,7 @@ project "game-engine"
 		"ImGui",
 		"yaml-cpp",
 		"box2d",
-		"opengl32.lib",
-		"dwmapi.lib"
+		"opengl32.lib"
 	}
 
 	filter "system:windows"
@@ -107,7 +106,7 @@ project "editor"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++17"
-	staticruntime "On"
+	staticruntime "off"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -162,7 +161,7 @@ project "sandbox"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++17"
-	staticruntime "On"
+	staticruntime "off"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")

@@ -1,4 +1,5 @@
 #pragma once
+
 #include "GE/Rendering/RenderAPI.h"
 #include "GE/Rendering/Renderer/Renderer.h"
 

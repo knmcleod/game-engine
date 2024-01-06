@@ -1,9 +1,9 @@
 #pragma once
 
-#include "GE/Rendering/Camera/Camera.h"
-#include "GE/Core/Core.h"
-#include "GE/Core/Time/Time.h"
 #include "GE/Core/Events/MouseEvent.h"
+#include "GE/Core/Time/Time.h"
+
+#include "GE/Rendering/Camera/Camera.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>

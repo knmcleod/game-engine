@@ -1,7 +1,9 @@
 #pragma once
+
 #include "GE/Core/Time/Time.h"
+#include "GE/Core/UUID/UUID.h"
+
 #include "GE/Rendering/Camera/Editor/EditorCamera.h"
-#include "Components/Components.h"
 
 #include <entt/entt.hpp>
 
@@ -32,6 +34,8 @@ namespace GE
 		entt::registry m_Registry;
 		uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
 
+		std::string m_Name = "Scene";
+
 		void InitializePhysics2D();
 		void UpdatePhysics2D(Timestep timestep);
 		void DestroyPhysics2D();
@@ -43,10 +47,15 @@ namespace GE
 		}
 
 		Scene();
+		Scene(const std::string& name);
 		~Scene();
 		
+		std::string GetName() { return m_Name; }
+
 		static Ref<Scene> Copy(const Ref<Scene> scene);
 		void Render(const EditorCamera& camera);
+
+		void OnEntitySelected(Entity entity);
 
 		Entity GetPrimaryCameraEntity();
 		Entity CreateEntity(const std::string& name = std::string());

@@ -3,10 +3,7 @@
 #include "GE/Core/Core.h"
 #include "GE/Scene/Scene.h"
 #include "GE/Scene/Entity/Entity.h"
-#include "GE/Scene/Components/Components.h"
-#include "GE/Rendering/Textures/Texture.h"
 
-#include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
 
 namespace GE
