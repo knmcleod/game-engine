@@ -1,5 +1,8 @@
 #include "SceneHierarchyPanel.h"
 
+#include "GE/Scene/Components/Components.h"
+#include "GE/Rendering/Textures/Texture.h"
+
 #include <filesystem>
 
 namespace GE

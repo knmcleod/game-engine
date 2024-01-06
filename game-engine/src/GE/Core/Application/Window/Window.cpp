@@ -1,8 +1,9 @@
 #include "GE/GEpch.h"
+
 #include "Window.h"
 
 #ifdef GE_PLATFORM_WINDOWS
-	#include "GE/_Platform/Windows/WindowsWindow.h"
+	#include "Platform/Windows/WindowsWindow.h"
 #endif
 
 namespace GE

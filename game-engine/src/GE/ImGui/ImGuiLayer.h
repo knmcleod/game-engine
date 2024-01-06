@@ -1,11 +1,10 @@
 #pragma once
 
+#include "GE/Core/Application/Layers/Layer.h"
+
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <imgui.h>
-
-#include "GE/Core/Application/Layers/Layer.h"
-
 
 namespace GE
 {

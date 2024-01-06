@@ -29,26 +29,31 @@
 
 //	--	Util	--
 #include "GE/Core/Util/PlatformUtils.h"
+
+//	--	UUID	--
+#include "GE/Core/UUID/UUID.h"
 #pragma endregion
 
 #pragma region Rendering
-//	--	Rendering	--
+//	--	Renderer	--
 #include "GE/Rendering/RenderCommand.h"
 #include "GE/Rendering/Renderer/Renderer.h"
 #include "GE/Rendering/Renderer/2D/Renderer2D.h"
 
+#include "GE/Rendering/Framebuffers/Framebuffer.h"
+
+//	--	Shader	--
 #include "GE/Rendering/Shader/Shader.h"
 #include "GE/Rendering/VertexArray/VertexArray.h"
 #include "GE/Rendering/VertexArray/Buffer.h"
 
+//	--	Texture	--
 #include "GE/Rendering/Textures/Texture.h"
+#include "GE/Rendering/Textures/SubTexture.h"
 
-#include "GE/Rendering/Framebuffers/Framebuffer.h"
-
+//	--	Camera	--
 #include "GE/Rendering/Camera/Camera.h"
 #include "GE/Rendering/Camera/Controller/CameraController.h"
-#include "GE/Rendering/Camera/OrthographicCamera.h"
-#include "GE/Rendering/Camera/Controller/OrthographicCameraController.h"
 #pragma endregion
 
 #pragma region Scene
@@ -57,5 +62,9 @@
 #include "GE/Scene/Entity/ScriptableEntity.h"
 #include "GE/Scene/Components/Components.h"
 
+//	--	Camera	--
+#include "GE/Scene/Camera/SceneCamera.h"
+
+//	--	Serializer	--
 #include "GE/Scene/Serializer/SceneSerializer.h"
 #pragma endregion

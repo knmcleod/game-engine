@@ -22,7 +22,7 @@ namespace GE
 	{
 		FramebufferTextureSpecification() = default;
 		FramebufferTextureSpecification(FramebufferTextureFormat format) : TextureFormat(format) {}
-	
+
 		FramebufferTextureFormat TextureFormat = FramebufferTextureFormat::None;
 
 	};
@@ -41,10 +41,8 @@ namespace GE
 		uint32_t Samples = 1;
 		FramebufferAttachmentSpecification AttachmentSpecification;
 
-		bool SwapChainTarget = false; 
+		bool SwapChainTarget = false;
 
-		// TO-DO
-		//FramebufferFormat format;
 	};
 
 	class Framebuffer

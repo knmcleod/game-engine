@@ -1,4 +1,5 @@
 #include <GE/GE.h>
+
 #include "Layer/EditorLayer.h"
 
 namespace GE
@@ -6,20 +7,17 @@ namespace GE
 	class EditorApplication : public Application
 	{
 	public:
-		EditorApplication() : Application("Editor")
+		EditorApplication(const ApplicationSpecification& specification) : Application(specification)
 		{
 			PushLayer(new EditorLayer());
-		}
-
-		~EditorApplication()
-		{
-
 		}
 
 	};
 
 	Application* CreateApplication()
 	{
-		return new EditorApplication();
+		ApplicationSpecification spec;
+		spec.Name = "Game Editor Application";
+		return new EditorApplication(spec);
 	}
 }

@@ -1,6 +1,7 @@
 #include "GE/GEpch.h"
 
-#include "GE/ImGui/ImGuiLayer.h"
+#include "ImGuiLayer.h"
+
 #include "GE/Core/Application/Application.h"
 
 #include <GLFW/glfw3.h>

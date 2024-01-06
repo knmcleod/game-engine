@@ -2,8 +2,6 @@
 
 #include "GE/Rendering/RenderAPI.h"
 
-#include "GE/Rendering/Camera/OrthographicCamera.h"
-
 namespace GE
 {
 	class Renderer

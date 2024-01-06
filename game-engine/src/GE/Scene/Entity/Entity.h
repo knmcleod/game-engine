@@ -1,6 +1,8 @@
 #pragma once
 #include "GE/Core/UUID/UUID.h"
+
 #include "GE/Scene/Scene.h"
+#include "GE/Scene/Components/Components.h"
 
 #include <entt/entt.hpp>
 namespace GE

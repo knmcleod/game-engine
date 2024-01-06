@@ -1,5 +1,8 @@
 #include "AssetPanel.h"
 
+#include "GE/Core/Core.h"
+#include "GE/Scene/Scene.h"
+
 #include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
 

@@ -74,8 +74,7 @@ project "game-engine"
 		"ImGui",
 		"yaml-cpp",
 		"box2d",
-		"opengl32.lib",
-		"dwmapi.lib"
+		"opengl32.lib"
 	}
 
 	filter "system:windows"

@@ -1,6 +1,6 @@
 #pragma once
-#include "GE/Scene/Entity/ScriptableEntity.h"
 #include "GE/Core/Time/Time.h"
+#include "GE/Scene/Entity/ScriptableEntity.h"
 
 namespace GE
 {

@@ -1,9 +1,10 @@
 #pragma once
+
+#include "GE/Rendering/Shader/Shader.h"
+
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glad/glad.h>
-
-#include "GE/Rendering/Shader/Shader.h"
 
 namespace GE
 {

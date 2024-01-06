@@ -1,8 +1,8 @@
 #pragma once
 
-#include <glad/glad.h>
-
 #include "GE/Rendering/RenderAPI.h"
+
+#include <glad/glad.h>
 
 namespace GE
 {

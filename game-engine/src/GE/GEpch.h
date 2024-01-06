@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <utility>
@@ -16,10 +17,6 @@
 
 //	-- Core	--
 #include "GE/Core/Core.h"
-
-//	-- Debug	--
-#include "GE/Core/Debug/Instrumentor.h"
-#include "GE/Core/Debug/Log/Log.h"
 
 //	-- Entry Point	--
 #include "GE/Core/EntryPoint.h"

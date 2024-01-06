@@ -47,6 +47,11 @@ void main()
 	vec4 texColor = v_Color;
 	texColor *= texture(u_Textures[int(v_TextureIndex)], v_TextureCoord * v_TilingFactor);
 	
+	if(texColor.a == 0.0)
+	{
+		discard;
+	}
+
 	color = texColor;
 	entityID = v_EntityID;
 }

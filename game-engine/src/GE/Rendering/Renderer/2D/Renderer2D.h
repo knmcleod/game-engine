@@ -1,10 +1,7 @@
 #pragma once
 
-#include "GE/Rendering/RenderCommand.h"
-#include "GE/Rendering/Camera/Camera.h"
-#include "GE/Rendering/Camera//Editor/EditorCamera.h"
+#include "GE/Rendering/VertexArray/VertexArray.h"
 
-#include "GE/Rendering/Shader/Shader.h"
 #include "GE/Rendering/Textures/Texture.h"
 #include "GE/Rendering/Textures/SubTexture.h"
 
@@ -107,7 +104,6 @@ namespace GE
 		static void ShutDown();
 
 		static void Start(const EditorCamera& camera);
-		static void Start(const OrthographicCamera& camera);
 		static void Start(const Camera& camera, const glm::mat4& transform);
 		static void End();
 
@@ -118,7 +114,7 @@ namespace GE
 
 		// Sprite/Quad
 
-		static void SetQuadData(const glm::mat4& transform, const int& textureIndex, const glm::vec2 textureCoords[4],
+		static void SetQuadData(const glm::mat4& transform, const float& textureIndex, const glm::vec2 textureCoords[4],
 			const float& tilingFactor, const glm::vec4& color, const int entityID = -1);
 		static void ResetQuadData();
 
@@ -155,7 +151,7 @@ namespace GE
 		static void FillRectangle(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color, const int entityID = -1);
 		static void DrawRectangle(const glm::mat4& transform, const glm::vec4& color, const int entityID = -1);
 
-
+	public:
 		static const glm::mat4 s_IdentityMat4;
 
 	};

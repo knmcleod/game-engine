@@ -1,6 +1,6 @@
 #include "GE/GEpch.h"
 
-#include "GE/Rendering/Renderer/Renderer.h"
+#include "Renderer.h"
 #include "2D/Renderer2D.h"
 
 namespace GE

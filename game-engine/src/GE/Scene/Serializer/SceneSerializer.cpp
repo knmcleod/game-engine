@@ -1,7 +1,9 @@
 #include "GE/GEpch.h"
+
 #include "SceneSerializer.h"
-#include "GE/Scene/Entity/Entity.h"
+
 #include "GE/Scene/Components/Components.h"
+#include "GE/Scene/Entity/Entity.h"
 
 #include <yaml-cpp/yaml.h>
 
@@ -141,7 +143,7 @@ namespace GE
 	{
 		YAML::Emitter out;
 		out << YAML::BeginMap;
-		out << YAML::Key << "Scene" << YAML::Value << "Name";
+		out << YAML::Key << "Scene" << YAML::Value << m_Scene->GetName();
 		out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
 
 		m_Scene->m_Registry.each([&](auto entityID)
@@ -226,6 +228,15 @@ namespace GE
 				{
 					auto& src = deserializedEntity.GetOrAddComponent<SpriteRendererComponent>();
 					src.Color = spriteRendererComponent["Color"].as<glm::vec4>();
+					if (spriteRendererComponent["Texture"])
+					{
+						src.Texture = Texture2D::Create(spriteRendererComponent["Texture"].as<std::string>());
+					}
+
+					if (spriteRendererComponent["TilingFactor"])
+					{
+						src.TilingFactor = spriteRendererComponent["TilingFactor"].as<float>();
+					}
 				}
 
 				// CircleRendererComponent
@@ -355,6 +366,15 @@ namespace GE
 			out << YAML::BeginMap; // SpriteRendererComponent
 			auto& component = entity.GetComponent<SpriteRendererComponent>();
 			out << YAML::Key << "Color" << YAML::Value << component.Color;
+			if (component.Texture)
+			{
+				out << YAML::Key << "Texture" << YAML::Value << component.Texture->GetPath();
+			}
+
+			if (component.TilingFactor)
+			{
+				out << YAML::Key << "TilingFactor" << YAML::Value << component.TilingFactor;
+			}
 			out << YAML::EndMap; // SpriteRendererComponent
 		}
 

@@ -6,7 +6,7 @@
 #include "GE/Core/Events/KeyEvent.h"
 #include "GE/Core/Events/MouseEvent.h"
 
-#include "GE/_Platform/OpenGL/Context/OpenGLContext.h"
+#include "Platform/OpenGL/Context/OpenGLContext.h"
 
 namespace GE
 {

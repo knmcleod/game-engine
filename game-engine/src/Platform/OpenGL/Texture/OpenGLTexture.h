@@ -1,9 +1,9 @@
 #pragma once
 
+#include "GE/Rendering/Textures/Texture.h"
+
 #include <glad/glad.h>
 #include <stb_image.h>
-
-#include "GE/Rendering/Textures/Texture.h"
 
 namespace GE
 {
@@ -18,8 +18,8 @@ namespace GE
 
 		virtual uint32_t GetWidth() const override { return m_Width; }
 		virtual uint32_t GetHeight() const override { return m_Height; }
-
 		virtual uint32_t GetID() const override { return m_RendererID; }
+		virtual const std::string& GetPath() const override { return m_Path; }
 
 		virtual void SetData(void* data, uint32_t size) override;
 

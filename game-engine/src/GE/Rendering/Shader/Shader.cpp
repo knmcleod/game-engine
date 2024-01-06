@@ -1,9 +1,11 @@
 #include "GE/GEpch.h"
 
 #include "Shader.h"
-#include "GE/_Platform/OpenGL/Shader/OpenGLShader.h"
 
 #include "GE/Rendering/Renderer/Renderer.h"
+
+#include "Platform/OpenGL/Shader/OpenGLShader.h"
+
 
 namespace GE
 {
@@ -40,6 +42,8 @@ namespace GE
 		return nullptr;
 	}
 
+#pragma region ShaderLibrary
+
 	void ShaderLibrary::Add(const Ref<Shader>& shader, const std::string& name)
 	{
 		if (name == "")
@@ -73,4 +77,5 @@ namespace GE
 		return m_Shaders.find(name) != m_Shaders.end();
 	}
 
+#pragma endregion
 }
