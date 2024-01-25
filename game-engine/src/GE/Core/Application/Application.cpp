@@ -8,6 +8,8 @@
 #include "GE/Rendering/Shader/Shader.h"
 #include "GE/Rendering/VertexArray/VertexArray.h"
 
+#include "GE/Scripting/Scripting.h"
+
 #include <GLFW/glfw3.h>
 
 namespace GE
@@ -33,6 +35,8 @@ namespace GE
 		
 		RenderCommand::Init();
 
+		Scripting::Init();
+
 		// Creates ImGui Layer
 		m_ImGuiLayer = new ImGuiLayer();
 		PushOverlay(m_ImGuiLayer);
@@ -40,6 +44,8 @@ namespace GE
 
 	Application::~Application()
 	{
+		Scripting::Shutdown();
+
 		RenderCommand::ShutDown();
 	}
 

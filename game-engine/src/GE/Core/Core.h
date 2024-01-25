@@ -4,7 +4,7 @@
 
 #include "GE/Core/Debug/Log/Log.h"
 
-#ifdef _Win32
+#ifdef _WIN32
 	#ifdef _WIN64
 		#define GE_PLATFORM_WINDOWS
 	#else
@@ -30,37 +30,28 @@
 #elif defined(__linux__)
 	#define GE_PLATFORM_LINUX
 	#error "Linux not supported!"
+#else
+	#error "Unknown Platform!"
 #endif
 
 #ifdef GE_PLATFORM_WINDOWS
-	#if GE_DYNAMIC_LINK
-		#ifdef GE_BUILD_DLL
-			#define GE_API __declspec(dllexport)
-		#else
-			#define GE_API __declspec(dllimport)
-		#endif
-	#else
-		#define GE_API
-	#endif
+#define GE_DYNAMIC_LINK
+#ifdef GE_DYNAMIC_LINK
+#ifdef GE_BUILD_DLL
+#define GE_API __declspec(dllexport)
 #else
-	#error "GE only supports Windows!"
+#define GE_API __declspec(dllimport)
+#endif
+#else
+#define GE_API
+#endif
+#else
+#error "GE only supports Windows!"
 #endif // GE_PLATFORM_WINDOWS
 
 #ifdef GE_DEBUG
 	#define GE_ENABLE_ASSERTS
 #endif // GE_DEBUG
-
-#ifdef GE_ENABLE_ASSERTS
-	#define GE_ASSERT(x, ...) { if(!(x)) { GE_ERROR("Assertion Failed{0}", __VA_ARGS__); __debugbreak(); } }
-	#define GE_CORE_ASSERT(x, ...) { if(!(x)) { GE_CORE_ERROR("Assertion Failed{0}", __VA_ARGS__); __debugbreak(); } }
-#else
-	#define GE_ASSERT(x, ...)
-	#define GE_CORE_ASSERT(x, ...)
-#endif // GE_ENABLE_ASSERTS
-
-#define BIT(x) (1 << x)
-
-#define GE_BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
 // Core Log Macros
 #define GE_CORE_TRACE(...)	::GE::Log::GetCoreLogger()->trace(__VA_ARGS__)
@@ -75,6 +66,18 @@
 #define GET_WARN(...)	::GE::Log::GetClientLogger()->warn(__VA_ARGS__)
 #define GE_ERROR(...)	::GE::Log::GetClientLogger()->error(__VA_ARGS__)
 #define GE_FATAL(...)	::GE::Log::GetClientLogger()->fatal(__VA_ARGS__)
+
+#ifdef GE_ENABLE_ASSERTS
+	#define GE_ASSERT(x, ...) { if(!(x)) { GE_ERROR("Assertion Failed{0}", __VA_ARGS__); __debugbreak(); } }
+	#define GE_CORE_ASSERT(x, ...) { if(!(x)) { GE_CORE_ERROR("Assertion Failed{0}", __VA_ARGS__); __debugbreak(); } }
+#else
+	#define GE_ASSERT(x, ...)
+	#define GE_CORE_ASSERT(x, ...)
+#endif // GE_ENABLE_ASSERTS
+
+#define BIT(x) (1 << x)
+
+#define GE_BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
 namespace GE
 {

@@ -21,13 +21,27 @@ IncludeDir["stb"] = "game-engine/vender/stb_image"
 IncludeDir["entt"] = "game-engine/vender/entt/single_include"
 IncludeDir["yaml_cpp"] = "game-engine/vender/yaml-cpp/include"
 IncludeDir["box2d"] = "game-engine/vender/box2d/include"
+IncludeDir["mono"] = "game-engine/vender/mono/mono/msvc/include"
+
+Library = {}
+Library["mono"] = "game-engine/vender/mono/mono/msvc/build/sgen/x64/lib/%{cfg.buildcfg}/libmono-static-sgen.lib"
+
+-- Windows
+Library["WinSock"] = "Ws2_32.lib"
+Library["WinMM"] = "Winmm.lib"
+Library["WinVersion"] = "Version.lib"
+Library["BCrypt"] = "Bcrypt.lib"
 
 group "Dependencies"
 	include "game-engine/vender/glfw"
 	include "game-engine/vender/GLAD"
-	include "game-engine/vender/imgui"
+	include "game-engine/vender/ImGui"
 	include "game-engine/vender/yaml-cpp"
 	include "game-engine/vender/box2d"
+group ""
+
+group "Scripting"
+	include "GE-ScriptCore"
 group ""
 
 project "game-engine"
@@ -35,7 +49,7 @@ project "game-engine"
 	kind "StaticLib"
 	language "C++"
 	cppdialect "C++17"
-	staticruntime "On"
+	staticruntime "off"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -53,6 +67,12 @@ project "game-engine"
 		"%{prj.name}/vender/glm/glm/**.inl"
 	}
 
+	defines
+	{
+		"_CRT_SECURE_NO_WARNINGS",
+		"GLFW_INCLUDE_NONE"
+	}
+
 	includedirs
 	{
 		"%{prj.name}/src",
@@ -64,7 +84,8 @@ project "game-engine"
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.entt}",
 		"%{IncludeDir.yaml_cpp}",
-		"%{IncludeDir.box2d}"
+		"%{IncludeDir.box2d}",
+		"%{IncludeDir.mono}"
 	}
 
 	links
@@ -74,16 +95,19 @@ project "game-engine"
 		"ImGui",
 		"yaml-cpp",
 		"box2d",
-		"opengl32.lib"
+		"opengl32.lib",
+		"game-engine/vender/mono/mono/msvc/build/sgen/x64/lib/%{cfg.buildcfg}/libmono-static-sgen.lib"
 	}
 
 	filter "system:windows"
 		systemversion "latest"
-		defines
+
+		links
 		{
-			"GE_PLATFORM_WINDOWS",
-			"GE_BUILD_DLL",
-			"GLFW_INCLUDE_NONE"
+			"%{Library.WinSock}",
+			"%{Library.WinMM}",
+			"%{Library.WinVersion}",
+			"%{Library.BCrypt}"
 		}
 
 	filter "configurations:Debug"
@@ -106,7 +130,7 @@ project "editor"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++17"
-	staticruntime "On"
+	staticruntime "off"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -125,7 +149,7 @@ project "editor"
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.entt}",
-		"%{IncludeDir.yaml_cpp}"
+		"%{IncludeDir.mono}"
 	}
 
 	links
@@ -135,11 +159,6 @@ project "editor"
 
 	filter "system:windows"
 		systemversion "latest"
-
-		defines
-		{
-			"GE_PLATFORM_WINDOWS"
-		}
 
 	filter "configurations:Debug"
 		defines "GE_DEBUG"
@@ -161,7 +180,7 @@ project "sandbox"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++17"
-	staticruntime "On"
+	staticruntime "on"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -189,11 +208,6 @@ project "sandbox"
 
 	filter "system:windows"
 		systemversion "latest"
-
-		defines
-		{
-			"GE_PLATFORM_WINDOWS"
-		}
 
 	filter "configurations:Debug"
 		defines "GE_DEBUG"
