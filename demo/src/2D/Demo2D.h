@@ -4,11 +4,11 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-class Sandbox2D : public GE::Layer
+class Demo2D : public GE::Layer
 {
 public:
-	Sandbox2D(const std::string& name = "SandboxLayer2D");
-	virtual ~Sandbox2D() = default;
+	Demo2D(const std::string& name = "SandboxLayer2D");
+	virtual ~Demo2D() = default;
 
 	virtual void OnAttach() override;
 	virtual void OnDetach() override;

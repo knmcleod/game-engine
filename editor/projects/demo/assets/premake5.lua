@@ -1,16 +1,36 @@
-project "GE-ScriptCore"
+workspace "demo"
+	architecture "x86_64"
+	startproject "demo"
+	
+	configurations
+	{
+		"Debug",
+		"Release",
+		"Dist"
+	}
+
+group "GE"
+	include "../../../../GE-ScriptCore"
+group ""
+
+project "demo"
 	kind "SharedLib"
 	language "C#"
 	dotnetframework "4.7.2"
 	staticruntime "on"
 	
-	targetdir ("../editor/Resources/Scripts")
-	objdir ("../editor/Resources/Scripts/Intermediates")
+	targetdir ("%{wks.location}/Resources/Binaries")
+	objdir ("%{wks.location}/Resources/Intermediates")
 
 	files
 	{
 		"Source/**.cs",
 		"Properties/**.cs"
+	}
+
+	links
+	{
+		"GE-ScriptCore"
 	}
 
 	filter "configurations:Debug"

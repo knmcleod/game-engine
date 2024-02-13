@@ -41,8 +41,9 @@ namespace GE
 
 		static MonoObject* InstantiateClass(MonoClass* monoClass);
 		static MonoAssembly* LoadMonoAssembly(const std::filesystem::path& assemblyPath);
+		static void LoadApplicationAssembly(const std::filesystem::path& filepath);
 		static void LoadAssembly(const std::filesystem::path& filepath);
-		static void LoadAssemblyClasses(MonoAssembly* assembly);
+		static void LoadAssemblyClasses();
 
 		static char* ReadBytes(const std::filesystem::path& filePath, uint32_t* fileSize);
 
@@ -54,7 +55,7 @@ namespace GE
 	{
 	public:
 		ScriptClass() = default;
-		ScriptClass(const std::string& classNamespace, const std::string& className);
+		ScriptClass(const std::string& classNamespace, const std::string& className, bool isCore = false);
 
 		MonoObject* Instantiate();
 		MonoMethod* GetMethod(const std::string& name, int parameterCount);

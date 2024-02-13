@@ -1,31 +1,31 @@
-#include "Sandbox2D.h"
+#include "Demo2D.h"
 
-Sandbox2D::Sandbox2D(const std::string& name) : Layer(name)
+Demo2D::Demo2D(const std::string& name) : Layer(name)
 {
 }
 
-void Sandbox2D::OnAttach()
+void Demo2D::OnAttach()
 {
 	GE::RenderCommand::Init();
 }
 
-void Sandbox2D::OnDetach()
+void Demo2D::OnDetach()
 {
 	GE::RenderCommand::ShutDown();
 }
 
-void Sandbox2D::OnUpdate(GE::Timestep timestep)
+void Demo2D::OnUpdate(GE::Timestep timestep)
 {
 	
 
 }
 
-void Sandbox2D::OnEvent(GE::Event& e)
+void Demo2D::OnEvent(GE::Event& e)
 {
 
 }
 
-void Sandbox2D::OnImGuiRender()
+void Demo2D::OnImGuiRender()
 {
 	ImGui::Begin("Settings");
 
@@ -39,7 +39,7 @@ void Sandbox2D::OnImGuiRender()
 	ImGui::End();
 }
 
-void Sandbox2D::OnWindowResize(GE::WindowResizeEvent& e)
+void Demo2D::OnWindowResize(GE::WindowResizeEvent& e)
 {
 
 }

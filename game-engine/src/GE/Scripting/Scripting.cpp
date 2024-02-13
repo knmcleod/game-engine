@@ -107,6 +107,8 @@ namespace GE
 
 		MonoAssembly* CoreAssembly = nullptr;
 		MonoImage* CoreAssemblyImage = nullptr;
+		MonoAssembly* ApplicationAssembly = nullptr;
+		MonoImage* ApplicationAssemblyImage = nullptr;
 
 		ScriptClass EntityClass;
 
@@ -125,12 +127,13 @@ namespace GE
 		InitMono();
 
 		LoadAssembly("Resources/Scripts/GE-ScriptCore.dll");
-		LoadAssemblyClasses(s_Data->CoreAssembly);
+		LoadApplicationAssembly("projects/demo/assets/Resources/Binaries/demo.dll");
+		LoadAssemblyClasses();
 
 		ScriptGlue::RegisterComponents();
 		ScriptGlue::RegisterFunctions();
 		
-		s_Data->EntityClass = ScriptClass("GE", "Entity");
+		s_Data->EntityClass = ScriptClass("GE", "Entity", true);
 		
 	}
 
@@ -237,42 +240,46 @@ namespace GE
 		return assembly;
 	}
 
+	void Scripting::LoadApplicationAssembly(const std::filesystem::path& filepath)
+	{
+		s_Data->ApplicationAssembly = LoadMonoAssembly(filepath);
+		s_Data->ApplicationAssemblyImage = mono_assembly_get_image(s_Data->ApplicationAssembly);
+		//PrintAssemblyTypes(s_Data->ApplicationAssembly);
+	}
+
 	void Scripting::LoadAssembly(const std::filesystem::path& filepath)
 	{
 		// Create an App Domain
 		s_Data->AppDomain = mono_domain_create_appdomain("GEScriptRuntime", nullptr);
 		mono_domain_set(s_Data->AppDomain, true);
 
-		// Move this maybe
 		s_Data->CoreAssembly = LoadMonoAssembly(filepath);
 		s_Data->CoreAssemblyImage = mono_assembly_get_image(s_Data->CoreAssembly);
-		///PrintAssemblyTypes(s_Data->CoreAssembly);
+		//PrintAssemblyTypes(s_Data->CoreAssembly);
 	}
 
-	void Scripting::LoadAssemblyClasses(MonoAssembly* assembly)
+	void Scripting::LoadAssemblyClasses()
 	{
 		s_Data->ScriptClasses.clear();
 
-		MonoImage* image = mono_assembly_get_image(assembly);
-
-		const MonoTableInfo* typeDefinitionTable = mono_image_get_table_info(image, MONO_TABLE_TYPEDEF);
+		const MonoTableInfo* typeDefinitionTable = mono_image_get_table_info(s_Data->ApplicationAssemblyImage, MONO_TABLE_TYPEDEF);
 		int32_t numTypes = mono_table_info_get_rows(typeDefinitionTable);
-		MonoClass* entityClass = mono_class_from_name(image, "GE", "Entity");
+		MonoClass* entityClass = mono_class_from_name(s_Data->CoreAssemblyImage, "GE", "Entity");
 
 		for (int32_t i = 0; i < numTypes; i++)
 		{
 			uint32_t cols[MONO_TYPEDEF_SIZE];
 			mono_metadata_decode_row(typeDefinitionTable, i, cols, MONO_TYPEDEF_SIZE);
 
-			const char* nameSpace = mono_metadata_string_heap(image, cols[MONO_TYPEDEF_NAMESPACE]);
-			const char* name = mono_metadata_string_heap(image, cols[MONO_TYPEDEF_NAME]);
+			const char* nameSpace = mono_metadata_string_heap(s_Data->ApplicationAssemblyImage, cols[MONO_TYPEDEF_NAMESPACE]);
+			const char* name = mono_metadata_string_heap(s_Data->ApplicationAssemblyImage, cols[MONO_TYPEDEF_NAME]);
 			std::string fullName;
 			if (strlen(nameSpace) != 0)
 				fullName = fmt::format("{}.{}", nameSpace, name);
 			else
 				fullName = name;
 
-			MonoClass* monoClass = mono_class_from_name(image, nameSpace, name);
+			MonoClass* monoClass = mono_class_from_name(s_Data->ApplicationAssemblyImage, nameSpace, name);
 			bool isSubClass = mono_class_is_subclass_of(monoClass, entityClass, false);
 			if (isSubClass)
 				s_Data->ScriptClasses[fullName] = CreateRef<ScriptClass>(nameSpace, name);
@@ -307,10 +314,10 @@ namespace GE
 
 #pragma region ScriptClass
 
-	ScriptClass::ScriptClass(const std::string& classNamespace, const std::string& className)
+	ScriptClass::ScriptClass(const std::string& classNamespace, const std::string& className, bool isCore)
 		: m_ClassNamespace(classNamespace), m_ClassName(className)
 	{
-		m_MonoClass = mono_class_from_name(s_Data->CoreAssemblyImage, classNamespace.c_str(), className.c_str());
+		m_MonoClass = mono_class_from_name(isCore ? s_Data->CoreAssemblyImage : s_Data->ApplicationAssemblyImage, classNamespace.c_str(), className.c_str());
 	}
 
 	MonoObject* ScriptClass::Instantiate()

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 using GE;
 
-namespace Sandbox
+namespace demo
 {
     public class Player : Entity
     {
