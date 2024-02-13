@@ -87,6 +87,8 @@ namespace GE
 		CameraComponent(const SceneCamera camera) : Camera(camera) {}
 	};
 
+#pragma region Scripting
+
 	class ScriptableEntity;
 	struct NativeScriptComponent
 	{
@@ -102,6 +104,16 @@ namespace GE
 			DestroyScript = [](NativeScriptComponent* nsc) { delete nsc->Instance; nsc->Instance = nullptr; };
 		}
 	};
+
+	struct ScriptComponent
+	{
+		std::string ClassName;
+
+		ScriptComponent() = default;
+		ScriptComponent(const ScriptComponent&) = default;
+	};
+
+#pragma endregion
 
 #pragma region Physics
 	struct Rigidbody2DComponent

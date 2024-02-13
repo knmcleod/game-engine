@@ -2,6 +2,7 @@
 
 #include "GE/Scene/Components/Components.h"
 #include "GE/Rendering/Textures/Texture.h"
+#include "GE/Scripting/Scripting.h"
 
 #include <filesystem>
 
@@ -180,12 +181,25 @@ namespace GE
 			{
 				DrawAddComponent<TransformComponent>("Transform", entity);
 				DrawAddComponent<CameraComponent>("Camera", entity);
-				DrawAddComponent<SpriteRendererComponent>("Sprite Renderer", entity);
-				DrawAddComponent<CircleRendererComponent>("Circle Renderer", entity);
-				DrawAddComponent<NativeScriptComponent>("Native Script", entity);
-				DrawAddComponent<Rigidbody2DComponent>("Rigidbody 2D", entity);
-				DrawAddComponent<BoxCollider2DComponent>("Box Collider 2D", entity);
-				DrawAddComponent<CircleCollider2DComponent>("Circle Collider 2D", entity);
+				
+				DrawPopup("Rendering", entity, [](auto& entity)
+					{
+						DrawAddComponent<SpriteRendererComponent>("Sprite Renderer", entity);
+						DrawAddComponent<CircleRendererComponent>("Circle Renderer", entity);
+					});
+
+				DrawPopup("Scripting", entity, [](auto& entity)
+					{
+						DrawAddComponent<NativeScriptComponent>("Native Script", entity);
+						DrawAddComponent<ScriptComponent>("Script", entity);
+					});
+
+				DrawPopup("Physics", entity, [](auto& entity)
+					{
+						DrawAddComponent<Rigidbody2DComponent>("Rigidbody 2D", entity);
+						DrawAddComponent<BoxCollider2DComponent>("Box Collider 2D", entity);
+						DrawAddComponent<CircleCollider2DComponent>("Circle Collider 2D", entity);
+					});
 			});
 
 		DrawComponent<TransformComponent>("Transform", entity,
@@ -268,6 +282,25 @@ namespace GE
 		DrawComponent<NativeScriptComponent>("Native Script", entity,
 			[](auto& component)
 			{
+			});
+
+		DrawComponent<ScriptComponent>("Script", entity,
+			[](auto& component)
+			{
+				bool exists = Scripting::ScriptClassExists(component.ClassName);
+
+				char buffer[64];
+				memset(buffer, 0, sizeof(buffer));
+				strcpy_s(buffer, sizeof(buffer), component.ClassName.c_str());
+
+				if (!exists)
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0, 0.0, 0.0, 1.0));
+
+				if (ImGui::InputText("Class", buffer, sizeof(buffer)))
+					component.ClassName = std::string(buffer);
+
+				if (!exists)
+					ImGui::PopStyleColor();
 			});
 
 		DrawComponent<Rigidbody2DComponent>("Rigidbody 2D", entity,

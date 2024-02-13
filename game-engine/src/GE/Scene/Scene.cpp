@@ -4,6 +4,7 @@
 
 #include "GE/Scene/Components/Components.h"
 #include "GE/Scene/Entity/ScriptableEntity.h"
+#include "GE/Scripting/Scripting.h"
 
 #include "GE/Rendering/Renderer/2D/Renderer2D.h"
 
@@ -59,6 +60,11 @@ namespace GE
 
 	template<>
 	void Scene::OnComponentAdded<NativeScriptComponent>(Entity entity)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<ScriptComponent>(Entity entity)
 	{
 	}
 
@@ -243,6 +249,18 @@ namespace GE
 		}
 		return { };
 	}
+	
+	Entity Scene::GetEntity(UUID uuid)
+	{
+		auto view = m_Registry.view<IDComponent>();
+		for (auto entity : view)
+		{
+			const auto& idc = view.get<IDComponent>(entity);
+			if (uuid == idc.ID)
+				return Entity(entity, this);
+		}
+		return { };
+	}
 
 	Entity Scene::CreateEntity(const std::string& name)
 	{
@@ -304,6 +322,8 @@ namespace GE
 	void Scene::OnStop()
 	{
 		DestroyPhysics2D();
+		DestroyScripting();
+
 		m_SceneState = Scene::SceneState::Stop;
 	}
 
@@ -312,29 +332,16 @@ namespace GE
 		m_SceneState = Scene::SceneState::Run;
 
 		InitializePhysics2D();
+		InitializeScripting();
 	}
 	
 	void Scene::OnRuntimeUpdate(Timestep timestep)
 	{
-		// Update Scripts
-		{
-			GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Scripts");
-			m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc)
-				{
-					// TO DO: Move to Scene::Start()
-					if (!nsc.Instance)
-					{
-						nsc.Instance = nsc.InstantiateScript();
-						nsc.Instance->m_Entity = { entity, this };
-						nsc.Instance->OnCreate();
-					}
-
-					nsc.Instance->OnUpdate(timestep);
-				});
-		}
-
 		// Update Physics
 		UpdatePhysics2D(timestep);
+
+		// Update Scripts
+		UpdateScripting(timestep);
 
 		// Update Camera & 2D Renderer
 		{
@@ -397,11 +404,13 @@ namespace GE
 		m_SceneState = Scene::SceneState::Simulate;
 		
 		InitializePhysics2D();
+		InitializeScripting();
 	}
 
 	void Scene::OnSimulationUpdate(Timestep timestep, EditorCamera& camera)
 	{
 		UpdatePhysics2D(timestep);
+		UpdateScripting(timestep);
 		Render(camera);
 	}
 
@@ -410,7 +419,7 @@ namespace GE
 		Render(camera);
 	}
 
-#pragma region Physics Utils
+#pragma region Physics
 	static b2BodyType GetBox2DType(Rigidbody2DComponent::BodyType type)
 	{
 		switch (type)
@@ -428,7 +437,6 @@ namespace GE
 		GE_CORE_ASSERT(false, "Unsupported Rigidbody2D type.");
 		return b2_staticBody;
 	}
-#pragma endregion
 
 	void Scene::InitializePhysics2D()
 	{
@@ -527,4 +535,52 @@ namespace GE
 		delete m_PhysicsWorld;
 		m_PhysicsWorld = nullptr;
 	}
+#pragma endregion
+
+#pragma region Scripting
+	void Scene::InitializeScripting()
+	{
+		GE_PROFILE_SCOPE("Scene::InitializeScripting");
+		m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc)
+			{
+				if (!nsc.Instance)
+				{
+					nsc.Instance = nsc.InstantiateScript();
+					nsc.Instance->m_Entity = { entity, this };
+					nsc.Instance->OnCreate();
+				}
+
+			});
+
+		Scripting::SetScene(this);
+
+		m_Registry.view<ScriptComponent>().each([=](auto entity, auto& nsc)
+			{
+				Entity e = { entity, this };
+				Scripting::OnCreateScript(e);
+			});
+	}
+
+	void Scene::UpdateScripting(Timestep timestep)
+	{
+		GE_PROFILE_SCOPE("Scene::UpdateScripting");
+		m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc)
+			{
+				nsc.Instance->OnUpdate(timestep);
+			});
+
+		m_Registry.view<ScriptComponent>().each([=](auto entity, auto& nsc)
+			{
+				Entity e = { entity, this };
+				Scripting::OnUpdateScript(e, timestep);
+			});
+	}
+
+	void Scene::DestroyScripting()
+	{
+		GE_PROFILE_SCOPE("Scene::DestroyScripting");
+		Scripting::OnStop();
+	}
+#pragma endregion
+
 }

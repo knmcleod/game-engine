@@ -9,9 +9,12 @@ namespace GE
 {
 	class Entity
 	{
+		friend class Scene;
 	private:
 		entt::entity m_EntityID{ entt::null };
 		Scene* m_Scene = nullptr;
+
+		Scene* GetScene() { return m_Scene; }
 	public:
 		operator entt::entity() const { return m_EntityID; }
 		operator bool() const { return m_EntityID != entt::null; }

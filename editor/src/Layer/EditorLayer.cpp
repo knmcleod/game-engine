@@ -117,7 +117,6 @@ namespace GE
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<KeyPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnKeyPressed));
 		dispatcher.Dispatch<MouseButtonPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnMousePressed));
-
 	}
 
 	void EditorLayer::OnImGuiRender()
@@ -267,31 +266,31 @@ namespace GE
 		if (e.GetRepeatCount() > 0)
 			return false;
 
-		bool control = Input::IsKeyPressed(GE_KEY_LEFT_CONTROL) || Input::IsKeyPressed(GE_KEY_RIGHT_CONTROL);
-		bool shift = Input::IsKeyPressed(GE_KEY_LEFT_SHIFT) || Input::IsKeyPressed(GE_KEY_RIGHT_SHIFT);
+		bool control = Input::IsKeyPressed(KEY_LEFT_CONTROL) || Input::IsKeyPressed(KEY_RIGHT_CONTROL);
+		bool shift = Input::IsKeyPressed(KEY_LEFT_SHIFT) || Input::IsKeyPressed(KEY_RIGHT_SHIFT);
 
 		switch (e.GetKeyCode())
 		{
 			// File
-		case GE_KEY_D:
+		case KEY_D:
 		{
 			if (control)
 				OnDuplicateEntity();
 			break;
 		}
-		case GE_KEY_N:
+		case KEY_N:
 		{
 			if (control)
 				NewScene();
 			break;
 		}
-		case GE_KEY_O:
+		case KEY_O:
 		{
 			if (control)
 				LoadSceneFromFile();
 			break;
 		}
-		case GE_KEY_S:
+		case KEY_S:
 		{
 			if (control)
 			{

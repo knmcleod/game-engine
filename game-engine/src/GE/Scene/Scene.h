@@ -39,6 +39,10 @@ namespace GE
 		void InitializePhysics2D();
 		void UpdatePhysics2D(Timestep timestep);
 		void DestroyPhysics2D();
+
+		void InitializeScripting();
+		void UpdateScripting(Timestep timestep);
+		void DestroyScripting();
 	public:
 		template<typename... Components>
 		auto GetAllEntitiesWith()
@@ -58,6 +62,7 @@ namespace GE
 		void OnEntitySelected(Entity entity);
 
 		Entity GetPrimaryCameraEntity();
+		Entity GetEntity(UUID uuid);
 		Entity CreateEntity(const std::string& name = std::string());
 		Entity CreateEntityWithUUID(UUID uuid, const std::string& name = std::string());
 		Entity DuplicateEntity(Entity entity);

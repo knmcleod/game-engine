@@ -257,6 +257,14 @@ namespace GE
 					auto& src = deserializedEntity.GetOrAddComponent<NativeScriptComponent>();
 				}
 
+				// ScriptComponent
+				auto scriptComponent = entity["ScriptComponent"];
+				if (scriptComponent)
+				{
+					auto& src = deserializedEntity.GetOrAddComponent<ScriptComponent>();
+					src.ClassName = scriptComponent["ClassName"].as<std::string>();
+				}
+
 				// RigidBody2DComponent
 				auto rigidBody2DComponent = entity["Rigidbody2DComponent"];
 				if (rigidBody2DComponent)
@@ -397,6 +405,16 @@ namespace GE
 			auto& component = entity.GetComponent<NativeScriptComponent>();
 
 			out << YAML::EndMap; // NativeScriptComponent
+		}
+
+		if (entity.HasComponent<ScriptComponent>())
+		{
+			out << YAML::Key << "ScriptComponent";
+			out << YAML::BeginMap; // ScriptComponent
+			auto& component = entity.GetComponent<ScriptComponent>();
+			out << YAML::Key << "ClassName" << YAML::Value << component.ClassName;
+
+			out << YAML::EndMap; // ScriptComponent
 		}
 
 		if (entity.HasComponent<Rigidbody2DComponent>())

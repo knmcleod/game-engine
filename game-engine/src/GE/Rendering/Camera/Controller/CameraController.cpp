@@ -12,20 +12,20 @@ namespace GE
 		auto& translation = GetEntityComponent<TransformComponent>().Translation;
 		float speed = 10.0f;
 		//	Camera Movement
-		if (Input::IsKeyPressed(GE_KEY_A))
+		if (Input::IsKeyPressed(KEY_A))
 		{
 			translation.x -= speed * timestep;
 		}
-		else if (Input::IsKeyPressed(GE_KEY_D))
+		else if (Input::IsKeyPressed(KEY_D))
 		{
 			translation.x += speed * timestep;
 		}
 
-		if (Input::IsKeyPressed(GE_KEY_W))
+		if (Input::IsKeyPressed(KEY_W))
 		{
 			translation.y += speed * timestep;
 		}
-		else if (Input::IsKeyPressed(GE_KEY_S))
+		else if (Input::IsKeyPressed(KEY_S))
 		{
 			translation.y -= speed * timestep;
 		}
