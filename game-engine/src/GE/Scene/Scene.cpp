@@ -554,7 +554,7 @@ namespace GE
 
 		Scripting::SetScene(this);
 
-		m_Registry.view<ScriptComponent>().each([=](auto entity, auto& nsc)
+		m_Registry.view<ScriptComponent>().each([=](auto entity, auto& sc)
 			{
 				Entity e = { entity, this };
 				Scripting::OnCreateScript(e);
@@ -569,7 +569,7 @@ namespace GE
 				nsc.Instance->OnUpdate(timestep);
 			});
 
-		m_Registry.view<ScriptComponent>().each([=](auto entity, auto& nsc)
+		m_Registry.view<ScriptComponent>().each([=](auto entity, auto& sc)
 			{
 				Entity e = { entity, this };
 				Scripting::OnUpdateScript(e, timestep);

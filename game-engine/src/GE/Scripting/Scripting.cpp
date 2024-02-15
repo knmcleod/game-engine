@@ -4,16 +4,32 @@
 #include "GE/Core/Input/Input.h"
 #include "GE/Core/Input/KeyCodes.h"
 
-#include "mono/metadata/object.h"
-#include "glm/glm.hpp"
+#include <mono/metadata/attrdefs.h>
+
+#include <glm/glm.hpp>
 #include <box2d/b2_body.h>
 
 namespace GE
 {
 	static std::unordered_map<MonoType*, std::function<bool(Entity)>>  s_HasComponentsFuncs;
 
+	static std::unordered_map<std::string, ScriptFieldType>  s_ScriptFieldTypeNames
+	{
+		{ "System.Char",	ScriptFieldType::Char		},
+		{ "System.Int",		ScriptFieldType::Int		},
+		{ "System.UInt",	ScriptFieldType::UInt		},
+		{ "System.Single",	ScriptFieldType::Float		},
+		{ "System.Byte",	ScriptFieldType::Byte		},
+		{ "System.Boolean",	ScriptFieldType::Bool		},
+		{ "GE.Vector2",		ScriptFieldType::Vector2	},
+		{ "GE.Vector3",		ScriptFieldType::Vector3	},
+		{ "GE.Vector4",		ScriptFieldType::Vector4	},
+		{ "GE.Entity",		ScriptFieldType::Entity		}
+	};
+
 #define GE_ADD_INTERNAL_CALL(Name) mono_add_internal_call("GE.InternalCalls::" #Name, Name)
 
+#pragma region Interal Call Declarations
 	static void TransformComponent_GetTranslation(UUID uuid, glm::vec3* translation)
 	{
 		Scene* scene = Scripting::GetScene();
@@ -81,8 +97,9 @@ namespace GE
 	{
 		return Input::IsKeyPressed(keyCode);
 	}
+#pragma endregion
 
-	static void PrintAssemblyTypes(MonoAssembly* assembly)
+	static void PrintMonoAssemblyTypes(MonoAssembly* assembly)
 	{
 		MonoImage* image = mono_assembly_get_image(assembly);
 		const MonoTableInfo* typeDefinitionTable = mono_image_get_table_info(image, MONO_TABLE_TYPEDEF);
@@ -100,6 +117,60 @@ namespace GE
 		}
 	}
 
+	static const char* ScriptFieldTypeToString(ScriptFieldType fieldType)
+	{
+		switch (fieldType)
+		{
+		case GE::ScriptFieldType::None:
+			return "None";
+			break;
+		case GE::ScriptFieldType::Char:
+			return "Char";
+			break;
+		case GE::ScriptFieldType::Int:
+			return "Int";
+			break;
+		case GE::ScriptFieldType::UInt:
+			return "UInt";
+			break;
+		case GE::ScriptFieldType::Float:
+			return "Float";
+			break;
+		case GE::ScriptFieldType::Byte:
+			return "Byte";
+			break;
+		case GE::ScriptFieldType::Bool:
+			return "Boolean";
+			break;
+		case GE::ScriptFieldType::Vector2:
+			return "Vector2";
+			break;
+		case GE::ScriptFieldType::Vector3:
+			return "Vector3";
+			break;
+		case GE::ScriptFieldType::Vector4:
+			return "Vector4";
+			break;
+		case GE::ScriptFieldType::Entity:
+			return "Entity";
+			break;
+		}
+		return "<Invalid>";
+	}
+
+	static ScriptFieldType MonoTypeToScriptFieldType(MonoType* monoType)
+	{
+		const char* typeName = mono_type_get_name(monoType);
+		GE_CORE_INFO(typeName);
+		ScriptFieldType type = s_ScriptFieldTypeNames.at(typeName);
+		GE_CORE_INFO(ScriptFieldTypeToString(type));
+
+		if (s_ScriptFieldTypeNames.find(typeName) == s_ScriptFieldTypeNames.end())
+			return ScriptFieldType::None;
+
+		return s_ScriptFieldTypeNames.at(typeName);
+	}
+
 	struct ScriptingData
 	{
 		MonoDomain* RootDomain = nullptr;
@@ -115,202 +186,12 @@ namespace GE
 		std::unordered_map<std::string, Ref<ScriptClass>> ScriptClasses;
 		std::unordered_map<UUID, Ref<ScriptInstance>> ScriptInstances;
 
+		std::unordered_map<UUID, ScriptFieldMap> ScriptFields;
+
 		Scene* SceneContext = nullptr;
 	};
 
 	static ScriptingData* s_Data;
-
-	void Scripting::Init()
-	{
-		s_Data = new ScriptingData();
-
-		InitMono();
-
-		LoadAssembly("Resources/Scripts/GE-ScriptCore.dll");
-		LoadApplicationAssembly("projects/demo/assets/Resources/Binaries/demo.dll");
-		LoadAssemblyClasses();
-
-		ScriptGlue::RegisterComponents();
-		ScriptGlue::RegisterFunctions();
-		
-		s_Data->EntityClass = ScriptClass("GE", "Entity", true);
-		
-	}
-
-	void Scripting::Shutdown()
-	{
-		// Mono is hard to shutdown
-		//ShutdownMono();
-		 
-		delete s_Data;
-	}
-	
-	void Scripting::SetScene(Scene* scene)
-	{
-		s_Data->SceneContext = scene;
-	}
-	
-	Scene* Scripting::GetScene()
-	{
-		return s_Data->SceneContext;
-	}
-	
-	void Scripting::OnStop()
-	{
-		s_Data->SceneContext = nullptr;
-		s_Data->ScriptClasses.clear();
-		s_Data->ScriptInstances.clear();
-	}
-
-	bool Scripting::ScriptClassExists(const std::string& fullName)
-	{
-		return s_Data->ScriptClasses.find(fullName) != s_Data->ScriptClasses.end();
-	}
-
-	void Scripting::OnCreateScript(Entity entity)
-	{
-		const auto& sc = entity.GetComponent<ScriptComponent>();
-		if (ScriptClassExists(sc.ClassName))
-		{
-			Ref<ScriptInstance> instance = CreateRef<ScriptInstance>(s_Data->ScriptClasses[sc.ClassName], entity.GetUUID());
-			s_Data->ScriptInstances[entity.GetUUID()] = instance;
-			instance->InvokeOnCreate();
-		}
-	}
-
-	void Scripting::OnUpdateScript(Entity entity, float timestep)
-	{
-		UUID uuid = entity.GetUUID();
-		GE_CORE_ASSERT(s_Data->ScriptInstances.find(uuid) != s_Data->ScriptInstances.end(), "Cannot find Entity in Script Instances.");
-		
-		s_Data->ScriptInstances[uuid]->InvokeOnUpdate(timestep);
-	}
-
-	void Scripting::InitMono()
-	{
-		mono_set_assemblies_path("mono/lib");
-
-		MonoDomain* rootDomain = mono_jit_init("GEJITRuntime");
-		if (rootDomain == nullptr)
-		{
-			GE_CORE_ERROR("Mono Scripting initialization failure.");
-			return;
-		}
-
-		s_Data->RootDomain = rootDomain;
-	}
-
-	void Scripting::ShutdownMono()
-	{
-		mono_jit_cleanup(s_Data->RootDomain);
-		s_Data->RootDomain = nullptr;
-
-		mono_domain_unload(s_Data->AppDomain);
-		s_Data->AppDomain = nullptr;
-	}
-
-	MonoObject* Scripting::InstantiateClass(MonoClass* monoClass)
-	{
-		MonoObject* instance = mono_object_new(s_Data->AppDomain, monoClass);
-		mono_runtime_object_init(instance);
-		return instance;
-	}
-	
-	MonoAssembly* Scripting::LoadMonoAssembly(const std::filesystem::path& assemblyPath)
-	{
-		uint32_t fileSize = 0;
-		char* fileData = ReadBytes(assemblyPath, &fileSize);
-
-		MonoImageOpenStatus monoStatus;
-		MonoImage* image = mono_image_open_from_data_full(fileData, fileSize, 1, &monoStatus, 0);
-
-		if (monoStatus != MONO_IMAGE_OK)
-		{
-			const char* errorMessage = mono_image_strerror(monoStatus);
-			GE_CORE_ASSERT(false, errorMessage);
-			return nullptr;
-		}
-
-		std::string pathString = assemblyPath.string();
-		MonoAssembly* assembly = mono_assembly_load_from_full(image, pathString.c_str(), &monoStatus, 0);
-		mono_image_close(image);
-
-		delete[] fileData;
-
-		return assembly;
-	}
-
-	void Scripting::LoadApplicationAssembly(const std::filesystem::path& filepath)
-	{
-		s_Data->ApplicationAssembly = LoadMonoAssembly(filepath);
-		s_Data->ApplicationAssemblyImage = mono_assembly_get_image(s_Data->ApplicationAssembly);
-		//PrintAssemblyTypes(s_Data->ApplicationAssembly);
-	}
-
-	void Scripting::LoadAssembly(const std::filesystem::path& filepath)
-	{
-		// Create an App Domain
-		s_Data->AppDomain = mono_domain_create_appdomain("GEScriptRuntime", nullptr);
-		mono_domain_set(s_Data->AppDomain, true);
-
-		s_Data->CoreAssembly = LoadMonoAssembly(filepath);
-		s_Data->CoreAssemblyImage = mono_assembly_get_image(s_Data->CoreAssembly);
-		//PrintAssemblyTypes(s_Data->CoreAssembly);
-	}
-
-	void Scripting::LoadAssemblyClasses()
-	{
-		s_Data->ScriptClasses.clear();
-
-		const MonoTableInfo* typeDefinitionTable = mono_image_get_table_info(s_Data->ApplicationAssemblyImage, MONO_TABLE_TYPEDEF);
-		int32_t numTypes = mono_table_info_get_rows(typeDefinitionTable);
-		MonoClass* entityClass = mono_class_from_name(s_Data->CoreAssemblyImage, "GE", "Entity");
-
-		for (int32_t i = 0; i < numTypes; i++)
-		{
-			uint32_t cols[MONO_TYPEDEF_SIZE];
-			mono_metadata_decode_row(typeDefinitionTable, i, cols, MONO_TYPEDEF_SIZE);
-
-			const char* nameSpace = mono_metadata_string_heap(s_Data->ApplicationAssemblyImage, cols[MONO_TYPEDEF_NAMESPACE]);
-			const char* name = mono_metadata_string_heap(s_Data->ApplicationAssemblyImage, cols[MONO_TYPEDEF_NAME]);
-			std::string fullName;
-			if (strlen(nameSpace) != 0)
-				fullName = fmt::format("{}.{}", nameSpace, name);
-			else
-				fullName = name;
-
-			MonoClass* monoClass = mono_class_from_name(s_Data->ApplicationAssemblyImage, nameSpace, name);
-			bool isSubClass = mono_class_is_subclass_of(monoClass, entityClass, false);
-			if (isSubClass)
-				s_Data->ScriptClasses[fullName] = CreateRef<ScriptClass>(nameSpace, name);
-		}
-	}
-
-	char* Scripting::ReadBytes(const std::filesystem::path& filePath, uint32_t* fileSize)
-	{
-		std::ifstream stream(filePath, std::ios::binary | std::ios::ate);
-		if (!stream)
-		{
-			GE_CORE_ASSERT(false, "Failed to open scripting file.");
-			return nullptr;
-		}
-
-		std::streampos end = stream.tellg();
-		stream.seekg(0, std::ios::beg);
-		uint32_t size = end - stream.tellg();
-		if (size == 0)
-		{
-			GE_CORE_ASSERT(false, "File is empty.");
-			return nullptr;
-		}
-
-		char* buffer = new char[size];
-		stream.read(buffer, size);
-		stream.close();
-
-		*fileSize = size;
-		return buffer;
-	}
 
 #pragma region ScriptClass
 
@@ -368,7 +249,285 @@ namespace GE
 		m_ScriptClass->InvokeMethod(m_Instance, m_OnUpdate, &param);
 	}
 
+	void ScriptInstance::Internal_GetFieldValue(const std::string& name, void* buffer)
+	{
+		const auto& fields = m_ScriptClass->GetFields();
+		auto instance = fields.find(name);
+		if (instance == fields.end())
+			return;
+
+		const ScriptField& field = instance->second;
+		mono_field_get_value(m_Instance, field.Field, buffer);
+	}
+
+	void ScriptInstance::Internal_SetFieldValue(const std::string& name, const void* value)
+	{
+		const auto& fields = m_ScriptClass->GetFields();
+		auto instance = fields.find(name);
+		if (instance == fields.end())
+			return;
+
+		const ScriptField& field = instance->second;
+		mono_field_set_value(m_Instance, field.Field, (void*)value);
+	}
 #pragma endregion
+
+#pragma region Scripting
+
+	void Scripting::SetScene(Scene* scene)
+	{
+		s_Data->SceneContext = scene;
+	}
+
+	Scene* Scripting::GetScene()
+	{
+		return s_Data->SceneContext;
+	}
+
+	Ref<ScriptInstance> Scripting::GetScriptInstance(UUID uuid)
+	{
+		auto instance = s_Data->ScriptInstances.find(uuid);
+		if (instance == s_Data->ScriptInstances.end())
+			return nullptr;
+		return instance->second;
+	}
+
+	Ref<ScriptClass> Scripting::GetScriptClass(const std::string& name)
+	{
+		auto scriptClass = s_Data->ScriptClasses.find(name);
+		if (scriptClass == s_Data->ScriptClasses.end())
+			return nullptr;
+		return scriptClass->second;
+	}
+
+	ScriptFieldMap& Scripting::GetScriptFieldMap(Entity entity)
+	{
+		GE_CORE_ASSERT(entity, "Entity does not exist.");
+
+		UUID uuid = entity.GetUUID();
+
+		return s_Data->ScriptFields[uuid];
+	}
+
+	bool Scripting::ScriptClassExists(const std::string& fullName)
+	{
+		return s_Data->ScriptClasses.find(fullName) != s_Data->ScriptClasses.end();
+	}
+
+	void Scripting::Init()
+	{
+		s_Data = new ScriptingData();
+
+		InitMono();
+
+		LoadAssembly("Resources/Scripts/GE-ScriptCore.dll");
+		LoadApplicationAssembly("projects/demo/assets/Resources/Binaries/demo.dll");
+		LoadAssemblyClasses();
+
+		ScriptGlue::RegisterComponents();
+		ScriptGlue::RegisterFunctions();
+
+		s_Data->EntityClass = ScriptClass("GE", "Entity", true);
+
+	}
+
+	void Scripting::Shutdown()
+	{
+		// Mono is hard to shutdown
+		//ShutdownMono();
+
+		delete s_Data;
+	}
+
+	void Scripting::InitMono()
+	{
+		mono_set_assemblies_path("mono/lib");
+
+		MonoDomain* rootDomain = mono_jit_init("GEJITRuntime");
+		if (rootDomain == nullptr)
+		{
+			GE_CORE_ERROR("Mono Scripting initialization failure.");
+			return;
+		}
+
+		s_Data->RootDomain = rootDomain;
+	}
+
+	void Scripting::ShutdownMono()
+	{
+		mono_jit_cleanup(s_Data->RootDomain);
+		s_Data->RootDomain = nullptr;
+
+		mono_domain_unload(s_Data->AppDomain);
+		s_Data->AppDomain = nullptr;
+	}
+
+	void Scripting::OnStop()
+	{
+		s_Data->SceneContext = nullptr;
+		s_Data->ScriptClasses.clear();
+		s_Data->ScriptInstances.clear();
+	}
+
+	void Scripting::OnCreateScript(Entity entity)
+	{
+		const auto& sc = entity.GetComponent<ScriptComponent>();
+		if (ScriptClassExists(sc.ClassName))
+		{
+			UUID uuid = entity.GetUUID();
+			Ref<ScriptInstance> instance = CreateRef<ScriptInstance>(s_Data->ScriptClasses[sc.ClassName], uuid);
+			s_Data->ScriptInstances[uuid] = instance;
+
+			// Copy Field values if found
+			if (s_Data->ScriptFields.find(uuid) != s_Data->ScriptFields.end())
+			{
+				ScriptFieldMap& fieldMap = s_Data->ScriptFields.at(uuid);
+				for (auto& [name, fieldInstance] : fieldMap)
+				{
+					instance->SetFieldValue(name, fieldInstance.m_ValueBuffer);
+				}
+			}
+
+			instance->InvokeOnCreate();
+		}
+	}
+
+	void Scripting::OnUpdateScript(Entity entity, float timestep)
+	{
+		UUID uuid = entity.GetUUID();
+		GE_CORE_ASSERT(s_Data->ScriptInstances.find(uuid) != s_Data->ScriptInstances.end(), "Cannot find Entity in Script Instances.");
+
+		s_Data->ScriptInstances[uuid]->InvokeOnUpdate(timestep);
+	}
+
+	MonoObject* Scripting::InstantiateClass(MonoClass* monoClass)
+	{
+		MonoObject* instance = mono_object_new(s_Data->AppDomain, monoClass);
+		mono_runtime_object_init(instance);
+		return instance;
+	}
+
+	MonoAssembly* Scripting::LoadMonoAssembly(const std::filesystem::path& assemblyPath)
+	{
+		uint32_t fileSize = 0;
+		char* fileData = ReadBytes(assemblyPath, &fileSize);
+
+		MonoImageOpenStatus monoStatus;
+		MonoImage* image = mono_image_open_from_data_full(fileData, fileSize, 1, &monoStatus, 0);
+
+		if (monoStatus != MONO_IMAGE_OK)
+		{
+			const char* errorMessage = mono_image_strerror(monoStatus);
+			GE_CORE_ASSERT(false, errorMessage);
+			return nullptr;
+		}
+
+		std::string pathString = assemblyPath.string();
+		MonoAssembly* assembly = mono_assembly_load_from_full(image, pathString.c_str(), &monoStatus, 0);
+		mono_image_close(image);
+
+		delete[] fileData;
+
+		return assembly;
+	}
+
+	void Scripting::LoadApplicationAssembly(const std::filesystem::path& filepath)
+	{
+		s_Data->ApplicationAssembly = LoadMonoAssembly(filepath);
+		s_Data->ApplicationAssemblyImage = mono_assembly_get_image(s_Data->ApplicationAssembly);
+		//PrintMonoAssemblyTypes(s_Data->ApplicationAssembly);
+	}
+
+	void Scripting::LoadAssembly(const std::filesystem::path& filepath)
+	{
+		// Create an App Domain
+		s_Data->AppDomain = mono_domain_create_appdomain("GEScriptRuntime", nullptr);
+		mono_domain_set(s_Data->AppDomain, true);
+
+		s_Data->CoreAssembly = LoadMonoAssembly(filepath);
+		s_Data->CoreAssemblyImage = mono_assembly_get_image(s_Data->CoreAssembly);
+		//PrintMonoAssemblyTypes(s_Data->CoreAssembly);
+	}
+
+	void Scripting::LoadAssemblyClasses()
+	{
+		s_Data->ScriptClasses.clear();
+
+		const MonoTableInfo* typeDefinitionTable = mono_image_get_table_info(s_Data->ApplicationAssemblyImage, MONO_TABLE_TYPEDEF);
+		int32_t numTypes = mono_table_info_get_rows(typeDefinitionTable);
+		MonoClass* entityClass = mono_class_from_name(s_Data->CoreAssemblyImage, "GE", "Entity");
+
+		for (int32_t i = 0; i < numTypes; i++)
+		{
+			uint32_t cols[MONO_TYPEDEF_SIZE];
+			mono_metadata_decode_row(typeDefinitionTable, i, cols, MONO_TYPEDEF_SIZE);
+
+			const char* nameSpace = mono_metadata_string_heap(s_Data->ApplicationAssemblyImage, cols[MONO_TYPEDEF_NAMESPACE]);
+			const char* name = mono_metadata_string_heap(s_Data->ApplicationAssemblyImage, cols[MONO_TYPEDEF_NAME]);
+			std::string fullName;
+			if (strlen(nameSpace) != 0)
+				fullName = fmt::format("{}.{}", nameSpace, name);
+			else
+				fullName = name;
+
+			MonoClass* monoClass = mono_class_from_name(s_Data->ApplicationAssemblyImage, nameSpace, name);
+			bool isSubClass = mono_class_is_subclass_of(monoClass, entityClass, false);
+			if (!isSubClass)
+				continue;
+
+			Ref<ScriptClass> scriptClass = CreateRef<ScriptClass>(nameSpace, name);
+			s_Data->ScriptClasses[fullName] = scriptClass;
+
+			void* iterator = nullptr;
+			while (MonoClassField* monoField = mono_class_get_fields(monoClass, &iterator))
+			{
+				const char* fieldName = mono_field_get_name(monoField);
+
+				uint32_t flags = mono_field_get_flags(monoField);
+				if (flags & MONO_FIELD_ATTR_PUBLIC)
+				{
+					MonoType* monoType = mono_field_get_type(monoField);
+
+					ScriptFieldType fieldType = MonoTypeToScriptFieldType(monoType);
+					const char* fieldTypeName = ScriptFieldTypeToString(fieldType);
+
+					scriptClass->m_Fields[fieldName] = ScriptField{ fieldTypeName, fieldType, monoField };
+
+				}
+			}
+		}
+
+	}
+
+	char* Scripting::ReadBytes(const std::filesystem::path& filePath, uint32_t* fileSize)
+	{
+		std::ifstream stream(filePath, std::ios::binary | std::ios::ate);
+		if (!stream)
+		{
+			GE_CORE_ASSERT(false, "Failed to open scripting file.");
+			return nullptr;
+		}
+
+		std::streampos end = stream.tellg();
+		stream.seekg(0, std::ios::beg);
+		uint32_t size = end - stream.tellg();
+		if (size == 0)
+		{
+			GE_CORE_ASSERT(false, "File is empty.");
+			return nullptr;
+		}
+
+		char* buffer = new char[size];
+		stream.read(buffer, size);
+		stream.close();
+
+		*fileSize = size;
+		return buffer;
+	}
+
+#pragma endregion
+
+#pragma region ScriptGlue
 
 	void ScriptGlue::RegisterFunctions()
 	{
@@ -402,5 +561,5 @@ namespace GE
 		RegisterComponent<TransformComponent>();
 		RegisterComponent<Rigidbody2DComponent>();
 	}
-
+#pragma endregion
 }

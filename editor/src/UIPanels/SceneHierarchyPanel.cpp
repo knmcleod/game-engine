@@ -285,11 +285,11 @@ namespace GE
 			});
 
 		DrawComponent<ScriptComponent>("Script", entity,
-			[](auto& component)
+			[entity, scene = m_Scene](auto& component) mutable
 			{
 				bool exists = Scripting::ScriptClassExists(component.ClassName);
 
-				char buffer[64];
+				static char buffer[64];
 				memset(buffer, 0, sizeof(buffer));
 				strcpy_s(buffer, sizeof(buffer), component.ClassName.c_str());
 
@@ -298,6 +298,69 @@ namespace GE
 
 				if (ImGui::InputText("Class", buffer, sizeof(buffer)))
 					component.ClassName = std::string(buffer);
+
+				// Script Fields
+				if (scene->IsRunning())
+				{
+					Ref<ScriptInstance> scriptInstance = Scripting::GetScriptInstance(entity.GetUUID());
+					if (scriptInstance)
+					{
+						const auto& fields = scriptInstance->GetScriptClass()->GetFields();
+
+						for (const auto& [name, field] : fields)
+						{
+							if (field.Type == ScriptFieldType::Float)
+							{
+								float data = scriptInstance->GetFieldValue<float>(name);
+								if (ImGui::DragFloat(name.c_str(), &data))
+								{
+									scriptInstance->SetFieldValue<float>(name, data);
+								}
+							}
+
+						}
+					}
+				}
+				else
+				{
+					if (exists)
+					{
+						Ref<ScriptClass> scriptClass = Scripting::GetScriptClass(component.ClassName);
+						const auto& fields = scriptClass->GetFields();
+						auto& editorFieldMap = Scripting::GetScriptFieldMap(entity);
+
+						for (const auto& [name, field] : fields)
+						{
+							// ScriptFieldInstance already exists, display it
+							if (editorFieldMap.find(name) != editorFieldMap.end())
+							{
+								ScriptFieldInstance& fieldInstance = editorFieldMap.at(name);
+
+								if (field.Type == ScriptFieldType::Float)
+								{
+									float data = fieldInstance.GetValue<float>();
+									if (ImGui::DragFloat(name.c_str(), &data))
+										fieldInstance.SetValue<float>(data);
+								}
+							}
+							else // Add ScriptFieldInstance for display
+							{
+								if (field.Type == ScriptFieldType::Float)
+								{
+									float data = 0.0f;
+									if (ImGui::DragFloat(name.c_str(), &data))
+									{
+										ScriptFieldInstance& fieldInstance = editorFieldMap[name];
+										fieldInstance.Field = field;
+										fieldInstance.SetValue<float>(data);
+										
+									}
+								}
+							}
+
+						}
+					}
+				}
 
 				if (!exists)
 					ImGui::PopStyleColor();

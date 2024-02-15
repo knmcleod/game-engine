@@ -13,6 +13,9 @@ namespace demo
         private TransformComponent m_TransformComponent;
         private Rigidbody2DComponent m_Rigidbody2DComponent;
 
+        public float Speed;
+        public Vector3 Velocity;
+
         void OnCreate()
         {
             Console.WriteLine("Player::OnCreate()");
@@ -23,34 +26,30 @@ namespace demo
 
         void OnUpdate(float timestep)
         {
-
-            float speed = 5.0f;
-            Vector3 velocity = new Vector3(0, 0, 0);
-
             if (Input.IsKeyDown(KeyCode.KEY_W))
             {
-                velocity.y += speed * timestep;
+                Velocity.y += Speed * timestep;
             }
             else if (Input.IsKeyDown(KeyCode.KEY_S))
             {
-                velocity.y -= speed * timestep;
+                Velocity.y -= Speed * timestep;
             }
             else if (Input.IsKeyDown(KeyCode.KEY_A))
             {
-                velocity.x -= speed * timestep;
+                Velocity.x -= Speed * timestep;
             }
             else if (Input.IsKeyDown(KeyCode.KEY_D))
             {
-                velocity.x += speed * timestep;
+                Velocity.x += Speed * timestep;
             }
 
             Vector3 translation = m_TransformComponent.Translation;
-            translation += velocity;
+            translation += Velocity;
             m_TransformComponent.Translation = translation;
 
             if (Input.IsKeyDown(KeyCode.KEY_E))
             {
-                m_Rigidbody2DComponent.ApplyLinearImpulseToCenter(velocity.XY, false);
+                m_Rigidbody2DComponent.ApplyLinearImpulseToCenter(Velocity.XY, false);
             }
         }
     }

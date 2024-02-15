@@ -56,6 +56,8 @@ namespace GE
 		
 		std::string GetName() { return m_Name; }
 
+		bool IsRunning() { return m_SceneState == SceneState::Run; }
+
 		static Ref<Scene> Copy(const Ref<Scene> scene);
 		void Render(const EditorCamera& camera);
 
