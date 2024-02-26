@@ -5,7 +5,7 @@ namespace GE
 	extern const std::filesystem::path g_AssetsPath;
 
 	EditorLayer::EditorLayer(const std::string& name)
-		: Layer(name)
+		: Layer(name), m_ViewportSize(1.0f)
 	{
 	}
 
@@ -363,16 +363,16 @@ namespace GE
 
 	void EditorLayer::LoadSceneFromFile()
 	{
-		std::string filePath = FileDialogs::LoadFile("GE Scene (*.ge)\0*.ge\0");
+		std::string filePath = FileDialogs::LoadFile("GAME Scene (*.game)\0*.game\0");
 		if (!filePath.empty())
 			LoadScene(filePath);
 	}
 
 	void EditorLayer::LoadScene(const std::filesystem::path& path)
 	{
-		if (path.filename().extension().string() != ".ge")
+		if (path.filename().extension().string() != ".game")
 		{
-			GE_CORE_WARN("Could not load {0}. File is not .ge", path.filename().string());
+			GE_CORE_WARN("Could not load {0}	: File extension is not .game", path.filename().string());
 			return;
 		}
 
@@ -391,7 +391,7 @@ namespace GE
 
 	void EditorLayer::SaveSceneFromFile()
 	{
-		std::string filePath = FileDialogs::SaveFile("GE Scene (*.ge)\0*.ge\0");
+		std::string filePath = FileDialogs::SaveFile("GAME Scene(*.game)\0 * .game\0");
 		if (!filePath.empty())
 		{
 			m_ScenePath = filePath;
@@ -420,9 +420,9 @@ namespace GE
 
 	void EditorLayer::SerializeScene(Ref<Scene> scene, const std::filesystem::path& path)
 	{
-		if (path.filename().extension().string() != ".ge")
+		if (path.filename().extension().string() != ".game")
 		{
-			GE_CORE_WARN("Could not save {0}. File is not .ge", path.filename().string());
+			GE_CORE_WARN("Could not save {0}	: File extension is not .game", path.filename().string());
 			return;
 		}
 

@@ -2,8 +2,12 @@
 
 #include "SceneSerializer.h"
 
+#include "GE/Core/UUID/UUID.h"
+
 #include "GE/Scene/Components/Components.h"
 #include "GE/Scene/Entity/Entity.h"
+
+#include "GE/Scripting/Scripting.h"
 
 #include <yaml-cpp/yaml.h>
 
@@ -81,10 +85,23 @@ namespace YAML {
 		}
 	};
 
-}
+	template<>
+	struct convert<GE::UUID>
+	{
+		static Node encode(const GE::UUID& uuid)
+		{
+			Node node;
+			node.push_back((uint64_t)uuid);
+			return node;
+		}
 
-namespace GE
-{
+		static bool decode(const Node& node, GE::UUID& uuid)
+		{
+			uuid = node[0].as<uint64_t>();
+			return true;
+		}
+	};
+
 	YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec2& v)
 	{
 		out << YAML::Flow; // [0, 1, 2, ...]
@@ -106,6 +123,10 @@ namespace GE
 		return out;
 	}
 
+}
+
+namespace GE
+{
 	static std::string GetStringFromRigidBody2DType(Rigidbody2DComponent::BodyType type)
 	{
 		switch (type)
@@ -263,6 +284,65 @@ namespace GE
 				{
 					auto& src = deserializedEntity.GetOrAddComponent<ScriptComponent>();
 					src.ClassName = scriptComponent["ClassName"].as<std::string>();
+
+					// Fields
+					auto fields = scriptComponent["ScriptFields"];
+					if (fields)
+					{
+						Ref<ScriptClass> scriptClass = Scripting::GetScriptClass(src.ClassName);
+						GE_CORE_ASSERT(scriptClass, "Script Class does not exist.");
+						const auto& scriptClassFields = scriptClass->GetFields();
+						auto& scriptFieldMap = Scripting::GetScriptFieldMap(deserializedEntity);
+
+						for (auto field : fields)
+						{
+							std::string scriptFieldName = field["Name"].as<std::string>();
+				
+							if (scriptFieldMap.find(scriptFieldName) == scriptFieldMap.end())
+							{
+								GE_CORE_WARN("Cannot deserialize Script Field. Script Name not found.");
+								continue;
+							}
+
+							std::string scriptFieldTypeString = field["Type"].as<std::string>();
+							ScriptFieldType scriptFieldType = StringToScriptFieldType(scriptFieldTypeString);
+							
+							ScriptFieldInstance& fieldInstance = scriptFieldMap[scriptFieldName];
+							fieldInstance.Field = scriptClassFields.at(scriptFieldName);
+							
+							switch (scriptFieldType)
+							{
+							case GE::ScriptFieldType::None:
+								break;
+							case GE::ScriptFieldType::Char:
+								break;
+							case GE::ScriptFieldType::Int:
+								break;
+							case GE::ScriptFieldType::UInt:
+								break;
+							case GE::ScriptFieldType::Float:
+							{
+								float data = field["Data"].as<float>();
+								fieldInstance.SetValue<float>(data);
+								break;
+							}
+							case GE::ScriptFieldType::Byte:
+								break;
+							case GE::ScriptFieldType::Bool:
+								break;
+							case GE::ScriptFieldType::Vector2:
+								break;
+							case GE::ScriptFieldType::Vector3:
+								break;
+							case GE::ScriptFieldType::Vector4:
+								break;
+							case GE::ScriptFieldType::Entity:
+								break;
+							}
+							
+						}
+					}
+					
 				}
 
 				// RigidBody2DComponent
@@ -414,6 +494,66 @@ namespace GE
 			auto& component = entity.GetComponent<ScriptComponent>();
 			out << YAML::Key << "ClassName" << YAML::Value << component.ClassName;
 
+			// Fields
+			Ref<ScriptClass> scriptClass = Scripting::GetScriptClass(component.ClassName);
+			GE_CORE_ASSERT(scriptClass, "Cannot Serialize Entity. Script Class not found.");
+			const auto& fields = scriptClass->GetFields();
+			if (fields.size() > 0)
+			{
+				out << YAML::Key << "ScriptFields" << YAML::Value;
+				out << YAML::BeginSeq;
+
+				auto& scriptFields = Scripting::GetScriptFieldMap(entity);
+				for (const auto& [name, field] : fields)
+				{
+					if (scriptFields.find(name) == scriptFields.end())
+						continue;
+
+					out << YAML::BeginMap; // ScriptFields
+
+					out << YAML::Key << "Name" << YAML::Value << name;
+					out << YAML::Key << "Type" << YAML::Value << ScriptFieldTypeToString(field.Type);
+					out << YAML::Key << "Data" << YAML::Value;
+
+					ScriptFieldInstance& scriptField = scriptFields.at(name);
+					switch (field.Type)
+					{
+					case ScriptFieldType::Char:
+						out << scriptField.GetValue<char>();
+						break;
+					case ScriptFieldType::Int:
+						out << scriptField.GetValue<int>();
+						break;
+					case ScriptFieldType::UInt:
+						out << scriptField.GetValue<uint32_t>();
+						break;
+					case ScriptFieldType::Float:
+						out << scriptField.GetValue<float>();
+						break;
+					case ScriptFieldType::Byte:
+						out << scriptField.GetValue<int8_t>();
+						break;
+					case ScriptFieldType::Bool:
+						out << scriptField.GetValue<bool>();
+						break;
+					case ScriptFieldType::Vector2:
+						out << scriptField.GetValue<glm::vec2>();
+						break;
+					case ScriptFieldType::Vector3:
+						out << scriptField.GetValue<glm::vec3>();
+						break;
+					case ScriptFieldType::Vector4:
+						out << scriptField.GetValue<glm::vec4>();
+						break;
+					case ScriptFieldType::Entity:
+						out << scriptField.GetValue<UUID>();
+						break;
+					}
+					
+					out << YAML::EndMap; // ScriptFields
+				}
+				out << YAML::EndSeq;
+			}
 			out << YAML::EndMap; // ScriptComponent
 		}
 

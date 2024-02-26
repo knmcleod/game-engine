@@ -4,6 +4,8 @@
 #include "GE/Core/Input/Input.h"
 #include "GE/Core/Input/KeyCodes.h"
 
+#include <mono/jit/jit.h>
+#include <mono/metadata/assembly.h>
 #include <mono/metadata/attrdefs.h>
 
 #include <glm/glm.hpp>
@@ -115,47 +117,6 @@ namespace GE
 
 			printf("%s.%s", nameSpace, name);
 		}
-	}
-
-	static const char* ScriptFieldTypeToString(ScriptFieldType fieldType)
-	{
-		switch (fieldType)
-		{
-		case GE::ScriptFieldType::None:
-			return "None";
-			break;
-		case GE::ScriptFieldType::Char:
-			return "Char";
-			break;
-		case GE::ScriptFieldType::Int:
-			return "Int";
-			break;
-		case GE::ScriptFieldType::UInt:
-			return "UInt";
-			break;
-		case GE::ScriptFieldType::Float:
-			return "Float";
-			break;
-		case GE::ScriptFieldType::Byte:
-			return "Byte";
-			break;
-		case GE::ScriptFieldType::Bool:
-			return "Boolean";
-			break;
-		case GE::ScriptFieldType::Vector2:
-			return "Vector2";
-			break;
-		case GE::ScriptFieldType::Vector3:
-			return "Vector3";
-			break;
-		case GE::ScriptFieldType::Vector4:
-			return "Vector4";
-			break;
-		case GE::ScriptFieldType::Entity:
-			return "Entity";
-			break;
-		}
-		return "<Invalid>";
 	}
 
 	static ScriptFieldType MonoTypeToScriptFieldType(MonoType* monoType)

@@ -327,14 +327,14 @@ namespace GE
 					{
 						Ref<ScriptClass> scriptClass = Scripting::GetScriptClass(component.ClassName);
 						const auto& fields = scriptClass->GetFields();
-						auto& editorFieldMap = Scripting::GetScriptFieldMap(entity);
+						auto& scriptingFieldMap = Scripting::GetScriptFieldMap(entity);
 
 						for (const auto& [name, field] : fields)
 						{
 							// ScriptFieldInstance already exists, display it
-							if (editorFieldMap.find(name) != editorFieldMap.end())
+							if (scriptingFieldMap.find(name) != scriptingFieldMap.end())
 							{
-								ScriptFieldInstance& fieldInstance = editorFieldMap.at(name);
+								ScriptFieldInstance& fieldInstance = scriptingFieldMap.at(name);
 
 								if (field.Type == ScriptFieldType::Float)
 								{
@@ -350,7 +350,7 @@ namespace GE
 									float data = 0.0f;
 									if (ImGui::DragFloat(name.c_str(), &data))
 									{
-										ScriptFieldInstance& fieldInstance = editorFieldMap[name];
+										ScriptFieldInstance& fieldInstance = scriptingFieldMap[name];
 										fieldInstance.Field = field;
 										fieldInstance.SetValue<float>(data);
 										

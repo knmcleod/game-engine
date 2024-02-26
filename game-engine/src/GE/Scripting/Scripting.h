@@ -3,10 +3,6 @@
 #include "GE/Scene/Scene.h"
 #include "GE/Scene/Entity/Entity.h"
 
-#include <mono/metadata/object.h>
-#include <mono/metadata/assembly.h>
-#include <mono/jit/jit.h>
-
 #include <filesystem>
 #include <string>
 
@@ -16,6 +12,7 @@ extern "C" {
 	typedef struct _MonoMethod MonoMethod;
 	typedef struct _MonoAssembly MonoAssembly;
 	typedef struct _MonoImage MonoImage;
+	typedef struct _MonoClassField MonoClassField;
 }
 
 namespace GE
@@ -60,7 +57,7 @@ namespace GE
 			memcpy(m_ValueBuffer, &value, sizeof(T));
 		}
 	private:
-		char m_ValueBuffer[8];
+		char m_ValueBuffer[16];
 
 		friend class Scripting;
 	};
@@ -123,7 +120,7 @@ namespace GE
 		MonoMethod* m_OnCreate = nullptr;
 		MonoMethod* m_OnUpdate = nullptr;
 
-		inline static char s_FieldValueBuffer[8];
+		inline static char s_FieldValueBuffer[16];
 
 		friend class Scripting;
 	};
@@ -171,4 +168,63 @@ namespace GE
 		static void RegisterFunctions();
 		static void RegisterComponents();
 	};
+
+	static ScriptFieldType StringToScriptFieldType(std::string_view type)
+	{
+		if (type == "None")		return ScriptFieldType::None;
+		if (type == "Char")		return ScriptFieldType::Char;
+		if (type == "Int")		return ScriptFieldType::Int;
+		if (type == "UInt")		return ScriptFieldType::UInt;
+		if (type == "Float")	return ScriptFieldType::Float;
+		if (type == "Byte")		return ScriptFieldType::Byte;
+		if (type == "Bool")		return ScriptFieldType::Bool;
+		if (type == "Vector2")	return ScriptFieldType::Vector3;
+		if (type == "Vector3")	return ScriptFieldType::Vector3;
+		if (type == "Vector4")	return ScriptFieldType::Vector4;
+		if (type == "Entity")	return ScriptFieldType::Entity;
+
+		GE_CORE_ASSERT(false, "Unknown ScriptField Type.")
+			return ScriptFieldType::None;
+	}
+
+	static const char* ScriptFieldTypeToString(ScriptFieldType fieldType)
+	{
+		switch (fieldType)
+		{
+		case GE::ScriptFieldType::None:
+			return "None";
+			break;
+		case GE::ScriptFieldType::Char:
+			return "Char";
+			break;
+		case GE::ScriptFieldType::Int:
+			return "Int";
+			break;
+		case GE::ScriptFieldType::UInt:
+			return "UInt";
+			break;
+		case GE::ScriptFieldType::Float:
+			return "Float";
+			break;
+		case GE::ScriptFieldType::Byte:
+			return "Byte";
+			break;
+		case GE::ScriptFieldType::Bool:
+			return "Boolean";
+			break;
+		case GE::ScriptFieldType::Vector2:
+			return "Vector2";
+			break;
+		case GE::ScriptFieldType::Vector3:
+			return "Vector3";
+			break;
+		case GE::ScriptFieldType::Vector4:
+			return "Vector4";
+			break;
+		case GE::ScriptFieldType::Entity:
+			return "Entity";
+			break;
+		}
+		return "<Invalid>";
+	}
 }
