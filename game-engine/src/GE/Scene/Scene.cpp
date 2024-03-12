@@ -155,6 +155,7 @@ namespace GE
 			CopyComponent<CircleRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<CameraComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<NativeScriptComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<ScriptComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<Rigidbody2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<BoxCollider2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<CircleCollider2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
@@ -250,7 +251,7 @@ namespace GE
 		return { };
 	}
 	
-	Entity Scene::GetEntity(UUID uuid)
+	Entity Scene::GetEntityByUUID(UUID uuid)
 	{
 		auto view = m_Registry.view<IDComponent>();
 		for (auto entity : view)
@@ -262,20 +263,32 @@ namespace GE
 		return { };
 	}
 
+	Entity Scene::GetEntityByTag(char* tag)
+	{
+		auto view = m_Registry.view<TagComponent>();
+		for (auto entity : view)
+		{
+			const auto& nc = view.get<TagComponent>(entity);
+			if (tag == nc.Tag)
+				return Entity(entity, this);
+		}
+		return { };
+	}
+
 	Entity Scene::CreateEntity(const std::string& name)
 	{
 		return CreateEntityWithUUID(UUID(), name);
 	}
 
-	Entity Scene::CreateEntityWithUUID(UUID uuid, const std::string& name)
+	Entity Scene::CreateEntityWithUUID(UUID uuid, const std::string& tag)
 	{
 		Entity entity = { m_Registry.create(), this };
 
 		entity.AddComponent<IDComponent>(uuid);
 		entity.AddComponent<TransformComponent>();
 
-		auto& tag = entity.AddComponent<TagComponent>();
-		tag.Tag = name.empty() ? "Entity" : name;
+		auto& name = entity.AddComponent<TagComponent>();
+		name.Tag = tag.empty() ? "Entity" : tag;
 
 		return entity;
 	}
@@ -302,8 +315,11 @@ namespace GE
 		m_Registry.destroy(entity.GetEntityID());
 	}
 
-	void Scene::ResizeViewport(uint32_t width, uint32_t height)
+	void Scene::OnResizeViewport(uint32_t width, uint32_t height)
 	{
+		if (m_ViewportWidth == width && m_ViewportHeight == height)
+			return;
+
 		m_ViewportWidth = width;
 		m_ViewportHeight = height;
 

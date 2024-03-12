@@ -75,5 +75,7 @@ namespace GE
 
 		UUID GetUUID() { return GetComponent<IDComponent>().ID; }
 		const std::string& GetName() { return GetComponent<TagComponent>().Tag; }
+	
+		
 	};
 }

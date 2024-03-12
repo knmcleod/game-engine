@@ -55,6 +55,7 @@ namespace GE
 		~Scene();
 		
 		std::string GetName() { return m_Name; }
+		void SetName(std::string name) { m_Name = name; }
 
 		bool IsRunning() { return m_SceneState == SceneState::Run; }
 
@@ -64,13 +65,15 @@ namespace GE
 		void OnEntitySelected(Entity entity);
 
 		Entity GetPrimaryCameraEntity();
-		Entity GetEntity(UUID uuid);
+		Entity GetEntityByUUID(UUID uuid);
+		Entity GetEntityByTag(char* tag);
+
 		Entity CreateEntity(const std::string& name = std::string());
 		Entity CreateEntityWithUUID(UUID uuid, const std::string& name = std::string());
 		Entity DuplicateEntity(Entity entity);
 		void DestroyEntity(Entity entity);
 
-		void ResizeViewport(uint32_t width, uint32_t height);
+		void OnResizeViewport(uint32_t width, uint32_t height);
 
 		void OnStop();
 

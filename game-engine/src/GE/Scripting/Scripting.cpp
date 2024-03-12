@@ -36,8 +36,8 @@ namespace GE
 	{
 		Scene* scene = Scripting::GetScene();
 		
-		Entity entity = scene->GetEntity(uuid);
-		if (entity.HasComponent<TransformComponent>())
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity && entity.HasComponent<TransformComponent>())
 		{
 			auto& tc = entity.GetComponent<TransformComponent>();
 			*translation = tc.Translation;
@@ -48,7 +48,7 @@ namespace GE
 	{
 		Scene* scene = Scripting::GetScene();
 
-		Entity entity = scene->GetEntity(uuid);
+		Entity entity = scene->GetEntityByUUID(uuid);
 		if (entity.HasComponent<TransformComponent>())
 		{
 			auto& tc = entity.GetComponent<TransformComponent>();
@@ -60,7 +60,7 @@ namespace GE
 	static void Rigidbody2DComponent_ApplyLinearImpulse(UUID uuid, glm::vec2* impluse, glm::vec2* point, bool wake)
 	{
 		Scene* scene = Scripting::GetScene();
-		Entity entity = scene->GetEntity(uuid);
+		Entity entity = scene->GetEntityByUUID(uuid);
 		if (entity.HasComponent<Rigidbody2DComponent>())
 		{
 			auto& rbc = entity.GetComponent<Rigidbody2DComponent>();
@@ -73,7 +73,7 @@ namespace GE
 	static void Rigidbody2DComponent_ApplyLinearImpulseToCenter(UUID uuid, glm::vec2* impluse, bool wake)
 	{
 		Scene* scene = Scripting::GetScene();
-		Entity entity = scene->GetEntity(uuid);
+		Entity entity = scene->GetEntityByUUID(uuid);
 		if (entity.HasComponent<Rigidbody2DComponent>())
 		{
 			auto& rbc = entity.GetComponent<Rigidbody2DComponent>();
@@ -87,12 +87,35 @@ namespace GE
 	{
 		Scene* scene = Scripting::GetScene();
 		GE_CORE_ASSERT(scene, "Scene is Undefined.");
-		Entity entity = scene->GetEntity(uuid);
+		Entity entity = scene->GetEntityByUUID(uuid);
 		GE_CORE_ASSERT(entity, "Entity is Undefined.");
 
 		MonoType* type = mono_reflection_type_get_type(componentType);
 		GE_CORE_ASSERT(s_HasComponentsFuncs.find(type) != s_HasComponentsFuncs.end(), "Unable to find Component Type.");
 		return s_HasComponentsFuncs.at(type)(entity);
+	}
+
+	static UUID Entity_FindEntityByTag(MonoString* tagString)
+	{
+		char* cTag = mono_string_to_utf8(tagString);
+
+		Scene* scene = Scripting::GetScene();
+		GE_CORE_ASSERT(scene, "Scene is Undefined.");
+		Entity entity = scene->GetEntityByTag(cTag);
+		mono_free(cTag);
+
+		if (!entity)
+		{
+			GE_CORE_WARN("Entity not found in Scene.");
+			return 0;
+		}
+		
+		return entity.GetUUID();
+	}
+	
+	static MonoObject* Entity_GetScriptInstance(UUID uuid)
+	{
+		return Scripting::GetObjectInstance(uuid);
 	}
 
 	static bool Input_IsKeyDown(KeyCode keyCode)
@@ -196,14 +219,14 @@ namespace GE
 
 	void ScriptInstance::InvokeOnCreate()
 	{
-		if (m_OnCreate == nullptr || m_Instance == nullptr)
+		if (!m_OnCreate || !m_Instance)
 			return;
 		m_ScriptClass->InvokeMethod(m_Instance, m_OnCreate);
 	}
 
 	void ScriptInstance::InvokeOnUpdate(float timestep)
 	{
-		if (m_Instance == nullptr)
+		if (!m_Instance)
 			return;
 
 		void* param = &timestep;
@@ -268,6 +291,17 @@ namespace GE
 		UUID uuid = entity.GetUUID();
 
 		return s_Data->ScriptFields[uuid];
+	}
+
+	MonoObject* Scripting::GetObjectInstance(UUID uuid)
+	{
+		if (s_Data->ScriptInstances.find(uuid) == s_Data->ScriptInstances.end())
+		{
+			GE_CORE_WARN("Script Instance doesnot exist for given UUID.");
+			return nullptr;
+		}
+
+		return s_Data->ScriptInstances.at(uuid)->GetMonoObject();
 	}
 
 	bool Scripting::ScriptClassExists(const std::string& fullName)
@@ -348,6 +382,10 @@ namespace GE
 					instance->SetFieldValue(name, fieldInstance.m_ValueBuffer);
 				}
 			}
+			else
+			{
+				s_Data->ScriptFields[uuid] = (ScriptFieldMap&)( sc.ClassName, instance );
+			}
 
 			instance->InvokeOnCreate();
 		}
@@ -356,7 +394,9 @@ namespace GE
 	void Scripting::OnUpdateScript(Entity entity, float timestep)
 	{
 		UUID uuid = entity.GetUUID();
-		GE_CORE_ASSERT(s_Data->ScriptInstances.find(uuid) != s_Data->ScriptInstances.end(), "Cannot find Entity in Script Instances.");
+		//GE_CORE_ASSERT(s_Data->ScriptInstances.find(uuid) != s_Data->ScriptInstances.end(), "Cannot find Entity in Script Instances.");
+		if (!uuid || !s_Data->ScriptInstances.at(uuid))
+			return;
 
 		s_Data->ScriptInstances[uuid]->InvokeOnUpdate(timestep);
 	}
@@ -499,6 +539,8 @@ namespace GE
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_ApplyLinearImpulseToCenter);
 
 		GE_ADD_INTERNAL_CALL(Entity_HasComponent);
+		GE_ADD_INTERNAL_CALL(Entity_FindEntityByTag);
+		GE_ADD_INTERNAL_CALL(Entity_GetScriptInstance);
 
 		GE_ADD_INTERNAL_CALL(Input_IsKeyDown);
 	}

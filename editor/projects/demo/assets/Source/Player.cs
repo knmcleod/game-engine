@@ -18,8 +18,6 @@ namespace demo
 
         void OnCreate()
         {
-            Console.WriteLine("Player::OnCreate()");
-
             m_TransformComponent = GetComponent<TransformComponent>();
             m_Rigidbody2DComponent = GetComponent<Rigidbody2DComponent>();
         }
@@ -42,14 +40,29 @@ namespace demo
             {
                 Velocity.x += Speed * timestep;
             }
+            m_TransformComponent.Translation += Velocity;
 
-            Vector3 translation = m_TransformComponent.Translation;
-            translation += Velocity;
-            m_TransformComponent.Translation = translation;
+            //Vector3 translation = m_TransformComponent.Translation;
+            //translation += Velocity;
+            //m_TransformComponent.Translation = translation;
 
-            if (Input.IsKeyDown(KeyCode.KEY_E))
+            if (Input.IsKeyDown(KeyCode.KEY_SPACE))
             {
                 m_Rigidbody2DComponent.ApplyLinearImpulseToCenter(Velocity.XY, false);
+            }
+
+            Entity cameraEntity = FindEntityByTag("Camera");
+            if(cameraEntity != null)
+            {
+                Camera camera = cameraEntity.As<Camera>();
+                if (Input.IsKeyDown(KeyCode.KEY_Q))
+                {
+                    camera.FollowDistance += Speed * timestep;
+                }
+                else if (Input.IsKeyDown(KeyCode.KEY_E))
+                {
+                    camera.FollowDistance -= Speed * timestep;
+                }
             }
         }
     }

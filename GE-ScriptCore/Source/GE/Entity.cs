@@ -11,7 +11,7 @@ namespace GE
         }
 
         public readonly ulong ID;
-        
+
         public Vector3 Translation
         {
             get
@@ -21,7 +21,7 @@ namespace GE
             }
             set
             {
-                InternalCalls.TransformComponent_SetTranslation(ID, ref value); 
+                InternalCalls.TransformComponent_SetTranslation(ID, ref value);
             }
         }
 
@@ -32,11 +32,23 @@ namespace GE
         }
         public T GetComponent<T>() where T : Component, new()
         {
-            if(!HasComponent<T>())
+            if (!HasComponent<T>())
                 return null;
 
             T component = new T() { Entity = this };
             return component;
+        }
+
+        public Entity FindEntityByTag(string tag)
+        {
+            ulong uuid = InternalCalls.Entity_FindEntityByTag(tag);
+            return new Entity(uuid);
+        }
+
+        public T As<T>() where T : Entity, new ()
+        {
+            object instance = InternalCalls.Entity_GetScriptInstance(ID);
+            return instance as T;    
         }
     }
 }

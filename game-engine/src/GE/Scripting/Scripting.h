@@ -109,6 +109,8 @@ namespace GE
 		{
 			Internal_SetFieldValue(name, &data);
 		}
+
+		MonoObject* GetMonoObject() { return m_Instance; }
 	private:
 		void Internal_GetFieldValue(const std::string& name, void* buffer);
 		void Internal_SetFieldValue(const std::string& name, const void* value);
@@ -135,6 +137,8 @@ namespace GE
 		static Ref<ScriptClass> GetScriptClass(const std::string& name);
 
 		static ScriptFieldMap& GetScriptFieldMap(Entity entity);
+
+		static MonoObject* GetObjectInstance(UUID uuid);
 
 		// fullName includes namespace
 		static bool ScriptClassExists(const std::string& fullName);

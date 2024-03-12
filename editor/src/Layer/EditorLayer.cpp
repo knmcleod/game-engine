@@ -43,14 +43,14 @@ namespace GE
 	void EditorLayer::OnUpdate(Timestep timestep)
 	{
 		// Resize
+		m_ActiveScene->OnResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+
 		if (FramebufferSpecification spec = m_Framebuffer->GetSpecification();
 			m_ViewportSize.x > 0.0f && m_ViewportSize.y > 0.0f && // zero sized framebuffer is invalid
 			(spec.Width != m_ViewportSize.x || spec.Height != m_ViewportSize.y))
 		{
 			m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 			m_EditorCamera.SetViewport(m_ViewportSize.x, m_ViewportSize.y);
-			m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-
 		}
 
 		Renderer2D::ResetStats();
@@ -339,7 +339,7 @@ namespace GE
 
 	void EditorLayer::OnSceneRuntime()
 	{
-		m_EditorScene = Scene::Copy(m_ActiveScene);
+		m_EditorScene = Scene::Copy(m_ActiveScene); // Copy ActiveScene(Editor) to revert after Run
 		m_ActiveScene->OnRuntimeStart();
 
 		m_ScenePanel->SetScene(m_ActiveScene);
@@ -347,7 +347,7 @@ namespace GE
 
 	void EditorLayer::OnSceneSimulate()
 	{
-		m_EditorScene = Scene::Copy(m_ActiveScene);
+		m_EditorScene = Scene::Copy(m_ActiveScene); // Copy ActiveScene(Editor) to revert after Simulate
 		m_ActiveScene->OnSimulationStart();
 
 		m_ScenePanel->SetScene(m_ActiveScene);
@@ -356,7 +356,7 @@ namespace GE
 	void EditorLayer::OnSceneStop()
 	{
 		m_ActiveScene->OnStop();
-		m_ActiveScene = Scene::Copy(m_EditorScene);
+		m_ActiveScene = Scene::Copy(m_EditorScene); // Revert to copy of ActiveScene(Editor)
 
 		m_ScenePanel->SetScene(m_ActiveScene);
 	}
@@ -370,9 +370,9 @@ namespace GE
 
 	void EditorLayer::LoadScene(const std::filesystem::path& path)
 	{
-		if (path.filename().extension().string() != ".game")
+		if (path.extension().string() != ".game")
 		{
-			GE_CORE_WARN("Could not load {0}	: File extension is not .game", path.filename().string());
+			GE_CORE_WARN("Could not load {0} : File extension is not .game", path.filename().string());
 			return;
 		}
 
@@ -383,7 +383,8 @@ namespace GE
 		SceneSerializer serializer(m_ActiveScene);
 		if (serializer.DeserializeText(path.string()))
 		{
-			m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+			m_ActiveScene->OnResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+			m_ActiveScene->SetName(path.filename().string());
 			m_ScenePanel->SetScene(m_ActiveScene);
 			m_ScenePath = path;
 		}
@@ -413,7 +414,7 @@ namespace GE
 			OnSceneStop();
 
 		m_ActiveScene = CreateRef<Scene>();
-		m_ActiveScene->ResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+		m_ActiveScene->OnResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 		m_ScenePanel->SetScene(m_ActiveScene);
 		m_ScenePath = std::filesystem::path();
 	}

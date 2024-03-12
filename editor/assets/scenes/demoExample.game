@@ -1,0 +1,56 @@
+Scene: demoExample.game
+Entities:
+  - Entity: 11677086725533177951
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      FixedAspectRatio: false
+      Primary: false
+      Camera:
+        Far: 1
+        Near: -1
+        FOV: 10
+        Type: 1
+    ScriptComponent:
+      ClassName: demo.Camera
+      ScriptFields:
+        - Name: FollowDistance
+          Type: Float
+          Data: 5
+        - Name: FollowEntity
+          Type: Entity
+          Data: 0
+  - Entity: 7684260973497798982
+    TagComponent:
+      Tag: Player
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    SpriteRendererComponent:
+      Color: [1, 1, 1, 1]
+      TilingFactor: 1
+    ScriptComponent:
+      ClassName: demo.Player
+      ScriptFields:
+        - Name: Speed
+          Type: Float
+          Data: 5
+        - Name: Velocity
+          Type: Vector3
+          Data: [0, 0, 0]
+    Rigidbody2DComponent:
+      Type: Dynamic
+      FixedRotation: false
+    BoxCollider2DComponent:
+      Offset: [0, 0]
+      Size: [0.5, 0.5]
+      Density: 1
+      Friction: 0.5
+      Restitution: 0
+      RestitutionThreshold: 0.5
+      Show: true
