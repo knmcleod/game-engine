@@ -24,7 +24,7 @@ namespace GE
         internal extern static ulong Entity_FindEntityByTag(string tag);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal extern static object Entity_GetScriptInstance(ulong entityID);
+        internal extern static object Entity_GetScriptInstance(ulong uuid);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static bool Input_IsKeyDown(KeyCode keyCode);

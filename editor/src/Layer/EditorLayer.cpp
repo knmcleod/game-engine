@@ -1,4 +1,5 @@
 #include "EditorLayer.h"
+#include "GE/Scripting/Scripting.h"
 
 namespace GE
 {
@@ -169,10 +170,6 @@ namespace GE
 		{
 			if (ImGui::BeginMenu("File"))
 			{
-				// Disabling fullscreen would allow the window to be moved to the front of other windows, 
-				// which we can't undo at the moment without finer window depth/z control.
-				//ImGui::MenuItem("Fullscreen", NULL, &opt_fullscreen_persistant);
-
 				if (ImGui::MenuItem("New", "Ctrl+N")) NewScene();
 				if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S")) SaveSceneFromFile();
 				if (ImGui::MenuItem("Load", "Ctrl+O")) LoadSceneFromFile();
@@ -180,6 +177,13 @@ namespace GE
 				if (ImGui::MenuItem("Exit")) Application::GetApplication().Close();
 				ImGui::EndMenu();
 			}
+
+			if (ImGui::BeginMenu("Scripting"))
+			{
+				if (ImGui::MenuItem("Reload", "Ctrl+R")) Scripting::ReloadAssembly();
+				ImGui::EndMenu();
+			}
+
 			ImGui::EndMenuBar();
 		}
 
@@ -302,6 +306,15 @@ namespace GE
 				
 			break;
 		}
+		case KEY_R:
+		{
+			if (control)
+			{
+				Scripting::ReloadAssembly();
+			}
+
+			break;
+		}
 		default:
 			GE_CORE_INFO("Key not bound.");
 			break;
@@ -314,7 +327,7 @@ namespace GE
 		switch (e.GetMouseButton())
 		{
 		case GE_MOUSE_BUTTON_1:
-			if (m_ViewportHovered)
+			if (m_ViewportHovered && m_HoveredEntity)
 				m_ScenePanel->SetSelectedEntity(m_HoveredEntity);
 			break;
 		case GE_MOUSE_BUTTON_2:

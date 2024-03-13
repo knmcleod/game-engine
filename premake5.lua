@@ -12,16 +12,17 @@ workspace "game-engine"
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 IncludeDir = {}
-IncludeDir["glfw"] = "game-engine/vender/glfw/include"
+IncludeDir["box2d"] = "game-engine/vender/box2d/include"
+IncludeDir["entt"] = "game-engine/vender/entt/single_include"
+IncludeDir["filewatch"] = "game-engine/vender/filewatch"
 IncludeDir["GLAD"] = "game-engine/vender/GLAD/include"
-IncludeDir["ImGui"] = "game-engine/vender/imgui"
+IncludeDir["glfw"] = "game-engine/vender/glfw/include"
 IncludeDir["glm"] = "game-engine/vender/glm"
+IncludeDir["ImGui"] = "game-engine/vender/imgui"
+IncludeDir["mono"] = "game-engine/vender/mono/mono/msvc/include"
 IncludeDir["spdlog"] = "game-engine/vender/spdlog/include"
 IncludeDir["stb"] = "game-engine/vender/stb_image"
-IncludeDir["entt"] = "game-engine/vender/entt/single_include"
 IncludeDir["yaml_cpp"] = "game-engine/vender/yaml-cpp/include"
-IncludeDir["box2d"] = "game-engine/vender/box2d/include"
-IncludeDir["mono"] = "game-engine/vender/mono/mono/msvc/include"
 
 Library = {}
 Library["mono"] = "game-engine/vender/mono/mono/msvc/build/sgen/x64/lib/%{cfg.buildcfg}/libmono-static-sgen.lib"
@@ -33,11 +34,11 @@ Library["WinVersion"] = "Version.lib"
 Library["BCrypt"] = "Bcrypt.lib"
 
 group "Dependencies"
-	include "game-engine/vender/glfw"
+	include "game-engine/vender/box2d"
 	include "game-engine/vender/GLAD"
+	include "game-engine/vender/glfw"
 	include "game-engine/vender/ImGui"
 	include "game-engine/vender/yaml-cpp"
-	include "game-engine/vender/box2d"
 group ""
 
 group "Scripting"
@@ -61,10 +62,10 @@ project "game-engine"
 	{
 		"%{prj.name}/src/**.h",
 		"%{prj.name}/src/**.cpp",
-		"%{prj.name}/vender/stb_image/stb_image.h",
-		"%{prj.name}/vender/stb_image/stb_image.cpp",
 		"%{prj.name}/vender/glm/glm/**.hpp",
-		"%{prj.name}/vender/glm/glm/**.inl"
+		"%{prj.name}/vender/glm/glm/**.inl",
+		"%{prj.name}/vender/stb_image/stb_image.h",
+		"%{prj.name}/vender/stb_image/stb_image.cpp"
 	}
 
 	defines
@@ -76,25 +77,26 @@ project "game-engine"
 	includedirs
 	{
 		"%{prj.name}/src",
-		"%{IncludeDir.glfw}",
+		"%{IncludeDir.box2d}",
+		"%{IncludeDir.entt}",
+		"%{IncludeDir.filewatch}",
 		"%{IncludeDir.GLAD}",
-		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.glfw}",
 		"%{IncludeDir.glm}",
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.mono}",
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
-		"%{IncludeDir.entt}",
-		"%{IncludeDir.yaml_cpp}",
-		"%{IncludeDir.box2d}",
-		"%{IncludeDir.mono}"
+		"%{IncludeDir.yaml_cpp}"
 	}
 
 	links
 	{
-		"glfw",
+		"box2d",
 		"GLAD",
+		"glfw",
 		"ImGui",
 		"yaml-cpp",
-		"box2d",
 		"opengl32.lib",
 		"game-engine/vender/mono/mono/msvc/build/sgen/x64/lib/%{cfg.buildcfg}/libmono-static-sgen.lib"
 	}
@@ -145,10 +147,11 @@ project "editor"
 	{
 		"game-engine/src",
 		"game-engine/vender",
-		"%{IncludeDir.spdlog}",
-		"%{IncludeDir.ImGui}",
-		"%{IncludeDir.glm}",
 		"%{IncludeDir.entt}",
+		"%{IncludeDir.filewatch}",
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.mono}"
 	}
 
@@ -195,10 +198,11 @@ project "demo"
 	{
 		"game-engine/src",
 		"game-engine/vender",
-		"%{IncludeDir.spdlog}",
-		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.entt}",
 		"%{IncludeDir.glm}",
-		"%{IncludeDir.entt}"
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.spdlog}",
+		
 	}
 
 	links

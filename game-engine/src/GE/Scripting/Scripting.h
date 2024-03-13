@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <string>
 
+#include <FileWatch.h>
+
 extern "C" {
 	typedef struct _MonoClass MonoClass;
 	typedef struct _MonoObject MonoObject;
@@ -146,6 +148,8 @@ namespace GE
 		static void Init();
 		static void Shutdown();
 
+		static void ReloadAssembly();
+
 		static void OnStop();
 
 		static void OnCreateScript(Entity entity);
@@ -161,6 +165,8 @@ namespace GE
 		static void LoadAssemblyClasses();
 
 		static char* ReadBytes(const std::filesystem::path& filePath, uint32_t* fileSize);
+
+		static void OnApplicationAssemblyFileSystemEvent(const std::string& path, const filewatch::Event changeType);
 
 		friend class ScriptClass;
 		friend class ScriptGlue;

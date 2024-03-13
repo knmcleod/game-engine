@@ -42,10 +42,13 @@ namespace GE
         public Entity FindEntityByTag(string tag)
         {
             ulong uuid = InternalCalls.Entity_FindEntityByTag(tag);
+            if(uuid == 0)
+                return null;
+
             return new Entity(uuid);
         }
 
-        public T As<T>() where T : Entity, new ()
+        public T As<T>() where T : Entity, new()
         {
             object instance = InternalCalls.Entity_GetScriptInstance(ID);
             return instance as T;    

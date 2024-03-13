@@ -16,12 +16,19 @@ namespace demo
         public float Speed;
         public Vector3 Velocity;
 
+        Camera camera;
+
         void OnCreate()
         {
             m_TransformComponent = GetComponent<TransformComponent>();
             m_Rigidbody2DComponent = GetComponent<Rigidbody2DComponent>();
-        }
 
+            Entity cameraEntity = FindEntityByTag("Camera");
+            if (cameraEntity != null)
+            {
+                camera = cameraEntity.As<Camera>();
+            }
+        }
         void OnUpdate(float timestep)
         {
             if (Input.IsKeyDown(KeyCode.KEY_W))
@@ -51,10 +58,8 @@ namespace demo
                 m_Rigidbody2DComponent.ApplyLinearImpulseToCenter(Velocity.XY, false);
             }
 
-            Entity cameraEntity = FindEntityByTag("Camera");
-            if(cameraEntity != null)
+            if(camera != null)
             {
-                Camera camera = cameraEntity.As<Camera>();
                 if (Input.IsKeyDown(KeyCode.KEY_Q))
                 {
                     camera.FollowDistance += Speed * timestep;
@@ -62,6 +67,14 @@ namespace demo
                 else if (Input.IsKeyDown(KeyCode.KEY_E))
                 {
                     camera.FollowDistance -= Speed * timestep;
+                }
+            }
+            else
+            {
+                Entity cameraEntity = FindEntityByTag("Camera");
+                if (cameraEntity != null)
+                {
+                    camera = cameraEntity.As<Camera>();
                 }
             }
         }

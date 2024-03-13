@@ -9,7 +9,7 @@ Entities:
       Scale: [1, 1, 1]
     CameraComponent:
       FixedAspectRatio: false
-      Primary: false
+      Primary: true
       Camera:
         Far: 1
         Near: -1
@@ -53,4 +53,25 @@ Entities:
       Friction: 0.5
       Restitution: 0
       RestitutionThreshold: 0.5
-      Show: true
+      Show: false
+  - Entity: 11325243841916185303
+    TagComponent:
+      Tag: Floor
+    TransformComponent:
+      Translation: [0, -2, 0]
+      Rotation: [0, 0, 0]
+      Scale: [5, 1, 1]
+    SpriteRendererComponent:
+      Color: [0.0340253711, 0.289215684, 0, 1]
+      TilingFactor: 1
+    Rigidbody2DComponent:
+      Type: Static
+      FixedRotation: true
+    BoxCollider2DComponent:
+      Offset: [0, 0]
+      Size: [0.5, 0.5]
+      Density: 1
+      Friction: 0.5
+      Restitution: 0
+      RestitutionThreshold: 0.5
+      Show: false

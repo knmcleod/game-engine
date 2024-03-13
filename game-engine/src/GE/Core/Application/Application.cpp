@@ -63,10 +63,12 @@ namespace GE
 				m_LastFrameTime = time;
 			}
 
+			ExecuteMainThread();
+
 			if (!m_Minimized)
 			{
 				{ //	Updates Layers
-					GE_PROFILE_SCOPE("LayerStack Update - Application::Run()");
+					GE_PROFILE_SCOPE("LayerStack - Application::Run()");
 					for (Layer* layer : m_LayerStack)
 					{
 						layer->OnUpdate(timestep);
@@ -84,7 +86,7 @@ namespace GE
 			}
 
 			{ //	Updates Window
-				GE_PROFILE_SCOPE("Window Update - Application::Run()");
+				GE_PROFILE_SCOPE("Window - Application::Run()");
 				m_Window->OnUpdate();
 			}
 		}
@@ -93,6 +95,63 @@ namespace GE
 	void Application::Close()
 	{
 		m_Running = false;
+	}
+
+#pragma region Layer Handling
+
+	void Application::PushLayer(Layer* layer)
+	{
+		GE_PROFILE_FUNCTION();
+
+		m_LayerStack.PushLayer(layer);
+		layer->OnAttach();
+	}
+
+	void Application::PushOverlay(Layer* overlay)
+	{
+		GE_PROFILE_FUNCTION();
+
+		m_LayerStack.PushOverlay(overlay);
+		overlay->OnAttach();
+	}
+
+	void Application::PopLayer(Layer* layer)
+	{
+		GE_PROFILE_FUNCTION();
+
+		if (m_LayerStack.PopLayer(layer))
+			layer->OnDetach();
+	}
+
+	void Application::PopOverlay(Layer* overlay)
+	{
+		GE_PROFILE_FUNCTION();
+
+		if (m_LayerStack.PopOverlay(overlay))
+			overlay->OnDetach();
+	}
+#pragma endregion
+
+	void Application::SubmitToMainThread(const std::function<void()>& function)
+	{
+		// Lock for this scope, won't lock again till unlocked
+		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+
+		m_MainThread.emplace_back(function);
+	}
+
+	void Application::ExecuteMainThread()
+	{
+		std::vector<std::function<void()>> copy;
+		{
+			// Lock for this scope, won't lock again till unlocked(finished)
+			std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+			copy = m_MainThread;
+			m_MainThread.clear();
+		}
+
+		for (auto& func : copy)
+			func();
 	}
 
 	void Application::OnEvent(Event& e)
@@ -134,36 +193,4 @@ namespace GE
 		return false;
 	}
 
-	//	Layer Handling
-	void Application::PushLayer(Layer* layer)
-	{
-		GE_PROFILE_FUNCTION();
-
-		m_LayerStack.PushLayer(layer);
-		layer->OnAttach();
-	}
-
-	void Application::PushOverlay(Layer* overlay)
-	{
-		GE_PROFILE_FUNCTION();
-
-		m_LayerStack.PushOverlay(overlay);
-		overlay->OnAttach();
-	}
-
-	void Application::PopLayer(Layer* layer)
-	{
-		GE_PROFILE_FUNCTION();
-
-		if(m_LayerStack.PopLayer(layer))
-			layer->OnDetach();
-	}
-
-	void Application::PopOverlay(Layer* overlay)
-	{
-		GE_PROFILE_FUNCTION();
-
-		if(m_LayerStack.PopOverlay(overlay))
-			overlay->OnDetach();
-	}
 }

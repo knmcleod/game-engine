@@ -26,8 +26,6 @@ namespace GE
 		inline Window& GetWindow() { return *m_Window; };
 		inline ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer; }
 
-		void OnEvent(Event& e);
-
 		// Runs Window - Updates Layers and Timestep
 		void Run();
 		void Close();
@@ -35,13 +33,21 @@ namespace GE
 		void PushOverlay(Layer* layer);
 		void PopLayer(Layer* layer);
 		void PopOverlay(Layer* layer);
+
+		void SubmitToMainThread(const std::function<void()>& function);
+
+		void OnEvent(Event& e);
 	private:
 		bool OnWindowClose(WindowCloseEvent& e);
 		bool OnWindowResize(WindowResizeEvent& e);
 
+		void ExecuteMainThread();
 	private:
 		static Application* s_Instance;
 		ApplicationSpecification m_Specification;
+
+		std::vector<std::function<void()>> m_MainThread;
+		std::mutex m_MainThreadMutex;
 
 		Scope<Window> m_Window;
 		LayerStack m_LayerStack;
