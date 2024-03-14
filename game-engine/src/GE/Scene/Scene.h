@@ -25,9 +25,12 @@ namespace GE
 		{
 			Run = 0,
 			Simulate = 1,
-			Stop = 2
+			Stop = 2,
+			Pause = 3 // Called during Run or Simulate
 		};
 		SceneState m_SceneState = SceneState::Stop;
+
+		int m_StepFrames = 0;
 
 		b2World* m_PhysicsWorld = nullptr;
 
@@ -57,7 +60,11 @@ namespace GE
 		std::string GetName() { return m_Name; }
 		void SetName(std::string name) { m_Name = name; }
 
-		bool IsRunning() { return m_SceneState == SceneState::Run; }
+		static std::string Scene::SceneStateToString(Scene::SceneState state);
+
+		// Returns true if the scenes state is Run. Does not account for Simulation
+		bool IsRunning() const { return m_SceneState == SceneState::Run; }
+		bool IsPaused() const { return m_SceneState == SceneState::Pause; }
 
 		static Ref<Scene> Copy(const Ref<Scene> scene);
 		void Render(const EditorCamera& camera);
@@ -82,6 +89,10 @@ namespace GE
 
 		void OnSimulationStart();
 		void OnSimulationUpdate(Timestep timestep, EditorCamera& camera);
+
+		void OnPauseStart();
+		void OnPauseUpdate(Timestep timestep, EditorCamera& camera);
+		void OnStep(int steps);
 
 		void OnEditorUpdate(Timestep timestep, EditorCamera& camera);
 

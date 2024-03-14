@@ -6,6 +6,22 @@ namespace GE
     internal class InternalCalls
     {
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void Log_Core_Info(string debugMessage);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void Log_Core_Trace(string debugMessage);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void Log_Core_Warn(string debugMessage);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void Log_Core_Error(string debugMessage);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void Log_Core_Assert(object arg, string debugMessage);
+
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static void TransformComponent_GetTranslation(ulong uuid, out Vector3 translation);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]

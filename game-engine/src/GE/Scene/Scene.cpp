@@ -124,6 +124,23 @@ namespace GE
 
 	}
 
+	std::string Scene::SceneStateToString(Scene::SceneState state)
+	{
+		switch (state)
+		{
+		case SceneState::Run:
+			return "Run";
+		case SceneState::Simulate:
+			return "Simulate";
+		case SceneState::Pause:
+			return "Pause";
+		case SceneState::Stop:
+			return "Stop";
+		}
+
+		return "<Not Found>";
+	}
+
 	Ref<Scene> Scene::Copy(const Ref<Scene> scene)
 	{
 		Ref<Scene> newScene = CreateRef<Scene>();
@@ -272,7 +289,7 @@ namespace GE
 			if (tag == nc.Tag)
 				return Entity(entity, this);
 		}
-		return { };
+		return Entity{ };
 	}
 
 	Entity Scene::CreateEntity(const std::string& name)
@@ -337,9 +354,6 @@ namespace GE
 	
 	void Scene::OnStop()
 	{
-		DestroyPhysics2D();
-		DestroyScripting();
-
 		m_SceneState = Scene::SceneState::Stop;
 	}
 
@@ -427,7 +441,40 @@ namespace GE
 	{
 		UpdatePhysics2D(timestep);
 		UpdateScripting(timestep);
+		camera.OnUpdate(timestep);
 		Render(camera);
+	}
+
+	/*
+	*	OnStop shouldn't be called before
+	* 
+	*/
+	void Scene::OnPauseStart()
+	{
+		m_SceneState = Scene::SceneState::Pause;
+
+	}
+
+	/*
+	*	Physics2D & Scripting must already be initialized
+	* 
+	*/
+	void Scene::OnPauseUpdate(Timestep timestep, EditorCamera& camera)
+	{
+		if (m_StepFrames > 0)
+		{
+			UpdatePhysics2D(timestep);
+			UpdateScripting(timestep);
+			m_StepFrames--;
+		}
+		camera.OnUpdate(timestep);
+		Render(camera);
+
+	}
+
+	void Scene::OnStep(int steps)
+	{
+		m_StepFrames += steps;
 	}
 
 	void Scene::OnEditorUpdate(Timestep timestep, EditorCamera& camera)
@@ -456,7 +503,6 @@ namespace GE
 
 	void Scene::InitializePhysics2D()
 	{
-
 		m_PhysicsWorld = new b2World({ 0.0f, -9.8f });
 		auto view = m_Registry.view<Rigidbody2DComponent>();
 		for (auto e : view)
@@ -525,24 +571,27 @@ namespace GE
 	void Scene::UpdatePhysics2D(Timestep timestep)
 	{
 		GE_PROFILE_SCOPE("Scene - UpdatePhysics2D");
-		const int32_t velocityInteration = 5;
-		const int32_t positionInteration = 5;
-		m_PhysicsWorld->Step(timestep, velocityInteration, positionInteration);
-
-		auto view = m_Registry.view<Rigidbody2DComponent>();
-		for (auto e : view)
+		if (m_PhysicsWorld)
 		{
-			Entity entity = { e, this };
-			auto& transformComponent = entity.GetComponent<TransformComponent>();
-			auto& rb2D = entity.GetComponent<Rigidbody2DComponent>();
+			const int32_t velocityInteration = 5;
+			const int32_t positionInteration = 5;
+			m_PhysicsWorld->Step(timestep, velocityInteration, positionInteration);
 
-			GE_CORE_ASSERT(rb2D.RuntimeBody != nullptr, "Rigidbody2DComponent has no Runtime Body.");
-			b2Body* body = (b2Body*)rb2D.RuntimeBody;
-			const auto& position = body->GetPosition();
-			transformComponent.Translation.x = position.x;
-			transformComponent.Translation.y = position.y;
+			auto view = m_Registry.view<Rigidbody2DComponent>();
+			for (auto e : view)
+			{
+				Entity entity = { e, this };
+				auto& transformComponent = entity.GetComponent<TransformComponent>();
+				auto& rb2D = entity.GetComponent<Rigidbody2DComponent>();
 
-			transformComponent.Rotation.z = body->GetAngle();
+				GE_CORE_ASSERT(rb2D.RuntimeBody != nullptr, "Rigidbody2DComponent has no Runtime Body.");
+				b2Body* body = (b2Body*)rb2D.RuntimeBody;
+				const auto& position = body->GetPosition();
+				transformComponent.Translation.x = position.x;
+				transformComponent.Translation.y = position.y;
+
+				transformComponent.Rotation.z = body->GetAngle();
+			}
 		}
 	}
 

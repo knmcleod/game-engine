@@ -4,9 +4,3 @@ C:\Users\knmcl\OneDrive\Desktop\Saves\CS\game-engine\game-engine\editor\Resource
 C:\Users\knmcl\OneDrive\Desktop\Saves\CS\game-engine\game-engine\editor\Resources\Scripts\Intermediates\Debug\GE-ScriptCore.pdb
 C:\Users\knmcl\OneDrive\Desktop\Saves\CS\game-engine\game-engine\editor\Resources\Scripts\GE-ScriptCore.dll
 C:\Users\knmcl\OneDrive\Desktop\Saves\CS\game-engine\game-engine\editor\Resources\Scripts\GE-ScriptCore.pdb
-C:\Users\knmcl\dev\game-engine\game-engine\editor\Resources\Scripts\Intermediates\Debug\GE-ScriptCore.csproj.AssemblyReference.cache
-C:\Users\knmcl\dev\game-engine\game-engine\editor\Resources\Scripts\Intermediates\Debug\GE-ScriptCore.csproj.CoreCompileInputs.cache
-C:\Users\knmcl\dev\game-engine\game-engine\editor\Resources\Scripts\Intermediates\Debug\GE-ScriptCore.dll
-C:\Users\knmcl\dev\game-engine\game-engine\editor\Resources\Scripts\Intermediates\Debug\GE-ScriptCore.pdb
-C:\Users\knmcl\dev\game-engine\game-engine\editor\Resources\Scripts\GE-ScriptCore.dll
-C:\Users\knmcl\dev\game-engine\game-engine\editor\Resources\Scripts\GE-ScriptCore.pdb

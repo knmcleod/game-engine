@@ -6,14 +6,14 @@ namespace GE
 	extern const std::filesystem::path g_AssetsPath;
 
 	EditorLayer::EditorLayer(const std::string& name)
-		: Layer(name), m_ViewportSize(1.0f)
+		: Layer(name), m_ViewportSize(1.0f), m_ViewportBounds{ { glm::vec2() },{ glm::vec2() } }
 	{
 	}
 
 	void EditorLayer::OnAttach()
 	{
 		GE_PROFILE_FUNCTION();
-
+		GE_INFO("Editor Layer OnAttach Start.");
 		// Framebuffer
 		FramebufferSpecification framebufferSpec;
 		framebufferSpec.AttachmentSpecification = { FramebufferTextureFormat::RGBA8, FramebufferTextureFormat::RED_INTEGER, FramebufferTextureFormat::DEPTH24STENCIL8 };
@@ -31,14 +31,18 @@ namespace GE
 		m_EditorCamera = EditorCamera(45.0f, 1.778f, 0.1f, 100.0f);
 
 		m_PlayButtonTexture = Texture2D::Create("assets/textures/UI/Play_Button.png");
+		m_SimulateButtonTexture = Texture2D::Create("assets/textures/UI/Simulate_Button.png");
 		m_PauseButtonTexture = Texture2D::Create("assets/textures/UI/Pause_Button.png");
+		m_StepButtonTexture = Texture2D::Create("assets/textures/UI/Step_Button.png");
+		m_StopButtonTexture = Texture2D::Create("assets/textures/UI/Stop_Button.png");
 
+		GE_INFO("Editor Layer OnAttach Complete.");
 	}
 
 	void EditorLayer::OnDetach()
 	{
 		GE_PROFILE_FUNCTION();
-		RenderCommand::ShutDown();
+
 	}
 
 	void EditorLayer::OnUpdate(Timestep timestep)
@@ -78,9 +82,12 @@ namespace GE
 		}
 		case Scene::SceneState::Simulate:
 		{
-			m_EditorCamera.OnUpdate(timestep);
-
 			m_ActiveScene->OnSimulationUpdate(timestep, m_EditorCamera);
+			break;
+		}
+		case Scene::SceneState::Pause:
+		{
+			m_ActiveScene->OnPauseUpdate(timestep, m_EditorCamera);
 			break;
 		}
 		default:
@@ -189,7 +196,7 @@ namespace GE
 
 		// Statistics
 		{
-			ImGui::Begin("Statistics");
+			ImGui::Begin("Renderer Statistics");
 
 			Renderer2D::Statistics stats = Renderer2D::GetStats();
 			ImGui::Text("Renderer2D Stats: ");
@@ -249,12 +256,12 @@ namespace GE
 				ImGui::EndDragDropTarget();
 			}
 
-			UI_Toolbar();
-
 			ImGui::End();
 			ImGui::PopStyleVar();
 
 		}
+
+		UI_Toolbar();
 
 		ImGui::End();
 
@@ -298,12 +305,12 @@ namespace GE
 		{
 			if (control)
 			{
-				if(shift)
+				if (shift)
 					SaveSceneFromFile();
 				else
 					SaveScene();
 			}
-				
+
 			break;
 		}
 		case KEY_R:
@@ -316,7 +323,7 @@ namespace GE
 			break;
 		}
 		default:
-			GE_CORE_INFO("Key not bound.");
+			GE_CORE_WARN("Key not bound.");
 			break;
 		}
 		return true;
@@ -352,7 +359,10 @@ namespace GE
 
 	void EditorLayer::OnSceneRuntime()
 	{
-		m_EditorScene = Scene::Copy(m_ActiveScene); // Copy ActiveScene(Editor) to revert after Run
+		m_LastSceneState = m_ActiveScene->m_SceneState;
+		if (m_LastSceneState != Scene::SceneState::Pause)
+			m_EditorScene = Scene::Copy(m_ActiveScene); // Copy ActiveScene to revert after Run
+		
 		m_ActiveScene->OnRuntimeStart();
 
 		m_ScenePanel->SetScene(m_ActiveScene);
@@ -360,17 +370,31 @@ namespace GE
 
 	void EditorLayer::OnSceneSimulate()
 	{
-		m_EditorScene = Scene::Copy(m_ActiveScene); // Copy ActiveScene(Editor) to revert after Simulate
+		m_LastSceneState = m_ActiveScene->m_SceneState;
+		if (m_LastSceneState != Scene::SceneState::Pause)
+			m_EditorScene = Scene::Copy(m_ActiveScene); // Copy ActiveScene to revert after Simulate
+
 		m_ActiveScene->OnSimulationStart();
+
+		m_ScenePanel->SetScene(m_ActiveScene);
+	}
+
+	void EditorLayer::OnScenePause()
+	{
+		m_LastSceneState = m_ActiveScene->m_SceneState;
+		m_ActiveScene->OnPauseStart();
 
 		m_ScenePanel->SetScene(m_ActiveScene);
 	}
 
 	void EditorLayer::OnSceneStop()
 	{
+		std::string str1 = Scene::SceneStateToString(m_ActiveScene->m_SceneState);
+		GE_INFO("Scene Before Stop. Assigned State = " + str1);
 		m_ActiveScene->OnStop();
-		m_ActiveScene = Scene::Copy(m_EditorScene); // Revert to copy of ActiveScene(Editor)
-
+		m_ActiveScene = Scene::Copy(m_EditorScene); // Revert to copy of ActiveScene from Editor
+		std::string str2 = Scene::SceneStateToString(m_ActiveScene->m_SceneState);
+		GE_INFO("Scene After Stop. Assigned State = " + str2);
 		m_ScenePanel->SetScene(m_ActiveScene);
 	}
 
@@ -452,26 +476,66 @@ namespace GE
 
 	void EditorLayer::UI_Toolbar()
 	{
-		ImGui::Begin("##UItoolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+		ImGui::Begin("##UItoolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
+		{ // Scene State Control Buttons
 
-		float size = ImGui::GetWindowHeight() - 5.0f;
-		ImGui::SameLine((ImGui::GetWindowContentRegionMax().x * 0.5f) - (size *0.5f));
-		Ref<Texture2D> icon = m_ActiveScene->m_SceneState == Scene::SceneState::Run || m_ActiveScene->m_SceneState == Scene::SceneState::Simulate 
-			? m_PauseButtonTexture : m_PlayButtonTexture;
-		if (ImGui::ImageButton((ImTextureID)icon->GetID(), ImVec2(10.0f, 10.0f)))
-		{
-			if (m_ActiveScene->m_SceneState == Scene::SceneState::Run)
-				OnSceneStop();
-			else if (m_ActiveScene->m_SceneState == Scene::SceneState::Stop)
-				OnSceneRuntime();
+			if (!m_ActiveScene->IsPaused())
+			{
+				if (m_ActiveScene->m_SceneState != Scene::SceneState::Simulate)
+				{
+					// Scene Runtime Start & Stop
+					Ref<Texture2D> playStopButtonTexture = m_ActiveScene->m_SceneState == Scene::SceneState::Run ? m_StopButtonTexture : m_PlayButtonTexture;
+
+					ImGui::SameLine();
+					if (ImGui::ImageButton((ImTextureID)playStopButtonTexture->GetID(), ImVec2(15.0f, 15.0f)))
+					{
+						(m_ActiveScene->m_SceneState == Scene::SceneState::Run) ? OnSceneStop() : OnSceneRuntime();
+					}
+				}
+
+				// Scene Simulate Start & Stop
+				if (!m_ActiveScene->IsRunning())
+				{
+					Ref<Texture2D> simulateStopButtonTexture = m_ActiveScene->m_SceneState == Scene::SceneState::Simulate ? m_StopButtonTexture : m_SimulateButtonTexture;
+					
+					ImGui::SameLine();
+					if (ImGui::ImageButton((ImTextureID)simulateStopButtonTexture->GetID(), ImVec2(15.0f, 15.0f)))
+					{
+						(m_ActiveScene->m_SceneState == Scene::SceneState::Simulate) ? OnSceneStop() : OnSceneSimulate();
+					}
+				}
+			}
+			
+			// Scene Pause during Runtime || Simulate
+			if (m_ActiveScene->m_SceneState != Scene::SceneState::Stop)
+			{
+				Ref<Texture2D> playSimulatePauseButtonTexture = (m_ActiveScene->m_SceneState == Scene::SceneState::Run || m_ActiveScene->m_SceneState == Scene::SceneState::Simulate) ? m_PauseButtonTexture 
+					: ( m_LastSceneState == Scene::SceneState::Simulate ? m_SimulateButtonTexture : (m_LastSceneState == Scene::SceneState::Run ? m_PlayButtonTexture : m_PauseButtonTexture) );
+				ImGui::SameLine();
+				if (ImGui::ImageButton((ImTextureID)playSimulatePauseButtonTexture->GetID(), ImVec2(15.0f, 15.0f)))
+				{
+					(m_ActiveScene->m_SceneState == Scene::SceneState::Run || m_ActiveScene->m_SceneState == Scene::SceneState::Simulate) ? OnScenePause() : (
+						(m_ActiveScene->m_SceneState == Scene::SceneState::Pause && m_LastSceneState == Scene::SceneState::Simulate) ? OnSceneSimulate() : (
+							(m_ActiveScene->m_SceneState == Scene::SceneState::Pause && m_LastSceneState == Scene::SceneState::Run) ? OnSceneRuntime() : GE_CORE_INFO("Could not execute Pause/Run/Simulate.")));
+				}
+
+				if (m_ActiveScene->IsPaused())
+				{
+					Ref<Texture2D> stepButtonTexture = m_StepButtonTexture;
+					ImGui::SameLine();
+					if (ImGui::ImageButton((ImTextureID)stepButtonTexture->GetID(), ImVec2(15.0f, 15.0f)))
+						m_ActiveScene->OnStep(m_StepFrameMultiplier); // Adds step frames to queue. Handled in OnUpdate.
+
+				}
+
+			}
 		}
-		/*if (ImGui::ImageButton((ImTextureID)icon->GetID(), ImVec2(10.0f, 10.0f)))
-		{
-			if (m_ActiveScene->m_SceneState == Scene::SceneState::Simulate)
-				OnSceneStop();
-			else if (m_ActiveScene->m_SceneState == Scene::SceneState::Stop)
-				OnSceneSimulate();
-		}*/
+
+		ImGui::End();
+
+		ImGui::Begin("Scene Step");
+
+		ImGui::DragInt("Scene Step Rate", &m_StepFrameMultiplier);
 
 		ImGui::End();
 	}

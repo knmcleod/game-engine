@@ -21,7 +21,7 @@ namespace GE
 	Application::Application(const ApplicationSpecification specification) : m_Specification(specification)
 	{
 		GE_PROFILE_FUNCTION();
-
+		GE_CORE_INFO("Core Application Constructor Start.");
 		GE_CORE_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
 
@@ -40,13 +40,16 @@ namespace GE
 		// Creates ImGui Layer
 		m_ImGuiLayer = new ImGuiLayer();
 		PushOverlay(m_ImGuiLayer);
+		GE_CORE_INFO("Core Application Constructor Complete.");
 	}
 
 	Application::~Application()
 	{
+		GE_CORE_INFO("Core Application Destructor Start.");
 		Scripting::Shutdown();
 
 		RenderCommand::ShutDown();
+		GE_CORE_INFO("Core Application Destructor Complete.");
 	}
 
 	void Application::Run()
@@ -94,6 +97,7 @@ namespace GE
 
 	void Application::Close()
 	{
+		GE_CORE_INFO("Application Closed.");
 		m_Running = false;
 	}
 

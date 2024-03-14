@@ -30,6 +30,7 @@ namespace GE
 
 		void OnSceneRuntime();
 		void OnSceneSimulate();
+		void OnScenePause();
 		void OnSceneStop();
 
 		void LoadSceneFromFile();
@@ -47,6 +48,8 @@ namespace GE
 	private:
 		EditorCamera m_EditorCamera;
 
+		int m_StepFrameMultiplier = 1;
+
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
 		glm::vec2 m_ViewportSize = glm::vec2();
@@ -55,10 +58,11 @@ namespace GE
 		Ref<Framebuffer> m_Framebuffer;
 		Ref<Scene> m_EditorScene, m_ActiveScene;
 		std::filesystem::path m_ScenePath;
+		Scene::SceneState m_LastSceneState;
 
 		Ref<SceneHierarchyPanel> m_ScenePanel;
 		Ref<AssetPanel> m_AssetPanel;
-		Ref<Texture2D> m_PlayButtonTexture, m_PauseButtonTexture;
+		Ref<Texture2D> m_PlayButtonTexture, m_SimulateButtonTexture, m_PauseButtonTexture, m_StepButtonTexture, m_StopButtonTexture;
 
 		Entity m_HoveredEntity;
 		

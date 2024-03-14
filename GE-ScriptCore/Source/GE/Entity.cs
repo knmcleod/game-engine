@@ -42,14 +42,18 @@ namespace GE
         public Entity FindEntityByTag(string tag)
         {
             ulong uuid = InternalCalls.Entity_FindEntityByTag(tag);
-            if(uuid == 0)
+            if (uuid == 0)
+            {
+                GE.Log.LogCoreWarn("Cannot find Entity by Tag. Returning null. UUID = " + uuid);
                 return null;
-
+            }
+            GE.Log.LogCoreInfo("Found Entity by Tag. Returning new Entity(" + uuid + ")");
             return new Entity(uuid);
         }
 
         public T As<T>() where T : Entity, new()
         {
+            Log.LogCoreTrace("Getting Script Instance of UUID = " + ID);
             object instance = InternalCalls.Entity_GetScriptInstance(ID);
             return instance as T;    
         }

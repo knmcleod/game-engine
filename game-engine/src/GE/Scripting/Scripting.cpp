@@ -7,6 +7,8 @@
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/attrdefs.h>
+#include <mono/metadata/mono-debug.h>
+#include <mono/metadata/threads.h>
 
 #include <box2d/b2_body.h>
 #include <glm/glm.hpp>
@@ -33,6 +35,66 @@ namespace GE
 #define GE_ADD_INTERNAL_CALL(Name) mono_add_internal_call("GE.InternalCalls::" #Name, Name)
 
 #pragma region Interal Call Declarations
+#pragma region Log
+
+	static void Log_Core_Info(MonoString* debugMessage)
+	{
+		Scene* scene = Scripting::GetScene();
+		GE_CORE_ASSERT(scene, "Scene is Undefined.");
+
+		char* cStr = mono_string_to_utf8(debugMessage);
+		GE_CORE_INFO(cStr);
+		mono_free(cStr);
+
+	}
+
+	static void Log_Core_Trace(MonoString* debugMessage)
+	{
+		Scene* scene = Scripting::GetScene();
+		GE_CORE_ASSERT(scene, "Scene is Undefined.");
+
+		char* cStr = mono_string_to_utf8(debugMessage);
+		GE_CORE_TRACE(cStr);
+		mono_free(cStr);
+
+	}
+
+	static void Log_Core_Warn(MonoString* debugMessage)
+	{
+		Scene* scene = Scripting::GetScene();
+		GE_CORE_ASSERT(scene, "Scene is Undefined.");
+
+		char* cStr = mono_string_to_utf8(debugMessage);
+		GE_CORE_WARN(cStr);
+		mono_free(cStr);
+
+	}
+
+	static void Log_Core_Error(MonoString* debugMessage)
+	{
+		Scene* scene = Scripting::GetScene();
+		GE_CORE_ASSERT(scene, "Scene is Undefined.");
+
+		char* cStr = mono_string_to_utf8(debugMessage);
+		GE_CORE_ERROR(cStr);
+		mono_free(cStr);
+
+	}
+
+	static void Log_Core_Assert(MonoObject* object, MonoString* debugMessage)
+	{
+		Scene* scene = Scripting::GetScene();
+		GE_CORE_ASSERT(scene, "Scene is Undefined.");
+
+		char* cStr = mono_string_to_utf8(debugMessage);
+		GE_CORE_ASSERT(!object, cStr);
+		mono_free(cStr);
+
+	}
+
+
+#pragma endregion
+
 	static void TransformComponent_GetTranslation(UUID uuid, glm::vec3* translation)
 	{
 		Scene* scene = Scripting::GetScene();
@@ -102,15 +164,16 @@ namespace GE
 		GE_CORE_ASSERT(scene, "Scene is Undefined.");
 
 		char* cTag = mono_string_to_utf8(tagString);
+		GE_CORE_INFO("Name = " + std::string(cTag));
 		Entity entity = scene->GetEntityByTag(cTag);
 		mono_free(cTag);
 
-		if (!entity)
+		if (entity == Entity{})
 		{
-			GE_CORE_WARN("Entity not found in Scene.");
+			GE_CORE_INFO("Entity undefined. Returning 0.");
 			return 0;
 		}
-		
+		GE_CORE_INFO("Entity Found. Returning UUID = " + entity.GetUUID());
 		return entity.GetUUID();
 	}
 	
@@ -180,6 +243,7 @@ namespace GE
 		std::unordered_map<UUID, ScriptFieldMap> ScriptFields;
 
 		Scene* SceneContext = nullptr;
+
 	};
 
 	static ScriptingData* s_ScriptingData;
@@ -204,7 +268,8 @@ namespace GE
 
 	MonoObject* ScriptClass::InvokeMethod(MonoObject* instance, MonoMethod* method, void** params)
 	{
-		return mono_runtime_invoke(method, instance, params, nullptr);
+		MonoObject* exception = nullptr;
+		return mono_runtime_invoke(method, instance, params, &exception);
 	}
 
 #pragma endregion
@@ -304,7 +369,10 @@ namespace GE
 	{
 		//GE_CORE_ASSERT(s_ScriptingData->ScriptInstances.find(uuid) != s_ScriptingData->ScriptInstances.end(), "Script Instance does not exist for given UUID.");
 		if (s_ScriptingData->ScriptInstances.find(uuid) == s_ScriptingData->ScriptInstances.end())
+		{
+			GE_CORE_WARN("Script Instance not found. Returning null.");
 			return nullptr;
+		}
 
 		return s_ScriptingData->ScriptInstances.at(uuid)->GetMonoObject();
 	}
@@ -321,7 +389,7 @@ namespace GE
 		InitMono();
 		ScriptGlue::RegisterFunctions();
 
-		LoadAssembly("Resources/Scripts/GE-ScriptCore.dll");
+		LoadAssembly("projects/demo/assets/Resources/Binaries/GE-ScriptCore.dll");
 		LoadApplicationAssembly("projects/demo/assets/Resources/Binaries/demo.dll");
 		LoadAssemblyClasses();
 
@@ -346,6 +414,8 @@ namespace GE
 		GE_CORE_ASSERT(rootDomain, "Mono Scripting initialization failure.");
 
 		s_ScriptingData->RootDomain = rootDomain;
+
+		mono_thread_set_main(mono_thread_current());
 	}
 
 	void Scripting::ShutdownMono()
@@ -418,6 +488,7 @@ namespace GE
 
 		MonoImageOpenStatus monoStatus;
 		MonoImage* image = mono_image_open_from_data_full(fileData, fileSize, 1, &monoStatus, 0);
+		delete[] fileData;
 
 		if (monoStatus != MONO_IMAGE_OK)
 		{
@@ -428,10 +499,8 @@ namespace GE
 
 		std::string pathString = assemblyPath.string();
 		MonoAssembly* assembly = mono_assembly_load_from_full(image, pathString.c_str(), &monoStatus, 0);
+
 		mono_image_close(image);
-
-		delete[] fileData;
-
 		return assembly;
 	}
 
@@ -511,6 +580,9 @@ namespace GE
 
 	void Scripting::ReloadAssembly()
 	{
+		GE_CORE_TRACE("Assembly Reload Started.");
+		s_ScriptingData->ApplicationAssemblyFileWatcher.reset();
+
 		mono_domain_set(mono_get_root_domain(), false); // Set domain to root domain
 
 		mono_domain_unload(s_ScriptingData->AppDomain); // Unload old app domain
@@ -523,6 +595,7 @@ namespace GE
 		ScriptGlue::RegisterComponents();
 
 		s_ScriptingData->EntityClass = ScriptClass("GE", "Entity", true);
+		GE_CORE_TRACE("Assembly Reload Complete");
 	}
 
 	char* Scripting::ReadBytes(const std::filesystem::path& filePath, uint32_t* fileSize)
@@ -559,7 +632,6 @@ namespace GE
 
 			Application::GetApplication().SubmitToMainThread([]()
 				{
-					s_ScriptingData->ApplicationAssemblyFileWatcher.reset();
 					ReloadAssembly();
 				});
 		}
@@ -570,6 +642,12 @@ namespace GE
 
 	void ScriptGlue::RegisterFunctions()
 	{
+		GE_ADD_INTERNAL_CALL(Log_Core_Info);
+		GE_ADD_INTERNAL_CALL(Log_Core_Trace);
+		GE_ADD_INTERNAL_CALL(Log_Core_Warn);
+		GE_ADD_INTERNAL_CALL(Log_Core_Error);
+		GE_ADD_INTERNAL_CALL(Log_Core_Assert);
+
 		GE_ADD_INTERNAL_CALL(TransformComponent_GetTranslation);
 		GE_ADD_INTERNAL_CALL(TransformComponent_SetTranslation);
 

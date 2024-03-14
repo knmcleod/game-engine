@@ -26,7 +26,10 @@ namespace demo
             Entity cameraEntity = FindEntityByTag("Camera");
             if (cameraEntity != null)
             {
-                camera = cameraEntity.As<Camera>();
+                Log.LogCoreInfo("Player.OnCreate. Finding Camera");
+                camera = FindEntityByTag("Camera").As<Camera>();
+                if (camera != null)
+                    Log.LogCoreInfo("Camera.OnCreate. Player Found. UUID = " + camera.ID);
             }
         }
         void OnUpdate(float timestep)
@@ -60,6 +63,7 @@ namespace demo
 
             if(camera != null)
             {
+                Log.LogCoreInfo("Player.OnUpdate. Camera Found");
                 if (Input.IsKeyDown(KeyCode.KEY_Q))
                 {
                     camera.FollowDistance += Speed * timestep;
@@ -71,11 +75,10 @@ namespace demo
             }
             else
             {
-                Entity cameraEntity = FindEntityByTag("Camera");
-                if (cameraEntity != null)
-                {
-                    camera = cameraEntity.As<Camera>();
-                }
+                Log.LogCoreInfo("Player.OnUpdate. Finding Camera.");
+                camera = FindEntityByTag("Camera").As<Camera>();
+                if (camera != null)
+                    Log.LogCoreInfo("Camera.OnCreate. Player Found. UUID = " + camera.ID);
             }
         }
     }
