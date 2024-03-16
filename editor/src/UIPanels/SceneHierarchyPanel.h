@@ -4,7 +4,6 @@
 #include "GE/Scene/Scene.h"
 #include "GE/Scene/Entity/Entity.h"
 
-#include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
 
 namespace GE

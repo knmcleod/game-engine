@@ -35,18 +35,18 @@
 #endif
 
 #ifdef GE_PLATFORM_WINDOWS
-#define GE_DYNAMIC_LINK
-#ifdef GE_DYNAMIC_LINK
-#ifdef GE_BUILD_DLL
-#define GE_API __declspec(dllexport)
+	#define GE_DYNAMIC_LINK
+	#ifdef GE_DYNAMIC_LINK
+		#ifdef GE_BUILD_DLL
+			#define GE_API __declspec(dllexport)
+		#else
+			#define GE_API __declspec(dllimport)
+		#endif
+	#else
+		#define GE_API
+	#endif
 #else
-#define GE_API __declspec(dllimport)
-#endif
-#else
-#define GE_API
-#endif
-#else
-#error "GE only supports Windows!"
+	#error "GE only supports Windows!"
 #endif // GE_PLATFORM_WINDOWS
 
 #ifdef GE_DEBUG

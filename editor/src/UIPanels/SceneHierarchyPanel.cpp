@@ -5,6 +5,7 @@
 #include "GE/Scripting/Scripting.h"
 
 #include <filesystem>
+#include <imgui/imgui.h>
 
 namespace GE
 {
