@@ -487,7 +487,7 @@ namespace GE
 					Ref<Texture2D> playStopButtonTexture = m_ActiveScene->m_SceneState == Scene::SceneState::Run ? m_StopButtonTexture : m_PlayButtonTexture;
 
 					ImGui::SameLine();
-					if (ImGui::ImageButton((ImTextureID)playStopButtonTexture->GetID(), ImVec2(15.0f, 15.0f)))
+					if (ImGui::ImageButton((ImTextureID)playStopButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
 					{
 						(m_ActiveScene->m_SceneState == Scene::SceneState::Run) ? OnSceneStop() : OnSceneRuntime();
 					}
@@ -499,7 +499,7 @@ namespace GE
 					Ref<Texture2D> simulateStopButtonTexture = m_ActiveScene->m_SceneState == Scene::SceneState::Simulate ? m_StopButtonTexture : m_SimulateButtonTexture;
 					
 					ImGui::SameLine();
-					if (ImGui::ImageButton((ImTextureID)simulateStopButtonTexture->GetID(), ImVec2(15.0f, 15.0f)))
+					if (ImGui::ImageButton((ImTextureID)simulateStopButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
 					{
 						(m_ActiveScene->m_SceneState == Scene::SceneState::Simulate) ? OnSceneStop() : OnSceneSimulate();
 					}
@@ -512,7 +512,7 @@ namespace GE
 				Ref<Texture2D> playSimulatePauseButtonTexture = (m_ActiveScene->m_SceneState == Scene::SceneState::Run || m_ActiveScene->m_SceneState == Scene::SceneState::Simulate) ? m_PauseButtonTexture 
 					: ( m_LastSceneState == Scene::SceneState::Simulate ? m_SimulateButtonTexture : (m_LastSceneState == Scene::SceneState::Run ? m_PlayButtonTexture : m_PauseButtonTexture) );
 				ImGui::SameLine();
-				if (ImGui::ImageButton((ImTextureID)playSimulatePauseButtonTexture->GetID(), ImVec2(15.0f, 15.0f)))
+				if (ImGui::ImageButton((ImTextureID)playSimulatePauseButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
 				{
 					(m_ActiveScene->m_SceneState == Scene::SceneState::Run || m_ActiveScene->m_SceneState == Scene::SceneState::Simulate) ? OnScenePause() : (
 						(m_ActiveScene->m_SceneState == Scene::SceneState::Pause && m_LastSceneState == Scene::SceneState::Simulate) ? OnSceneSimulate() : (
@@ -523,7 +523,7 @@ namespace GE
 				{
 					Ref<Texture2D> stepButtonTexture = m_StepButtonTexture;
 					ImGui::SameLine();
-					if (ImGui::ImageButton((ImTextureID)stepButtonTexture->GetID(), ImVec2(15.0f, 15.0f)))
+					if (ImGui::ImageButton((ImTextureID)stepButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
 						m_ActiveScene->OnStep(m_StepFrameMultiplier); // Adds step frames to queue. Handled in OnUpdate.
 
 				}
@@ -531,13 +531,16 @@ namespace GE
 			}
 		}
 
+		{
+			ImGui::Begin("Pause & Step Controls", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
+
+			ImGui::DragInt("Step Rate", &m_StepFrameMultiplier);
+			ImGui::Checkbox("Camera Toggle", &m_ActiveScene->m_UseEditorCameraPaused);
+
+			ImGui::End();
+		}
 		ImGui::End();
-
-		ImGui::Begin("Scene Step");
-
-		ImGui::DragInt("Scene Step Rate", &m_StepFrameMultiplier);
-
-		ImGui::End();
+		
 	}
 #pragma endregion
 

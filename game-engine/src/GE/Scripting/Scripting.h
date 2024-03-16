@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GE/Core/Buffer.h"
 #include "GE/Scene/Scene.h"
 #include "GE/Scene/Entity/Entity.h"
 
@@ -163,8 +164,6 @@ namespace GE
 		static void LoadApplicationAssembly(const std::filesystem::path& filepath);
 		static void LoadAssembly(const std::filesystem::path& filepath);
 		static void LoadAssemblyClasses();
-
-		static char* ReadBytes(const std::filesystem::path& filePath, uint32_t* fileSize);
 
 		static void OnApplicationAssemblyFileSystemEvent(const std::string& path, const filewatch::Event changeType);
 

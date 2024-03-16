@@ -355,6 +355,9 @@ namespace GE
 	void Scene::OnStop()
 	{
 		m_SceneState = Scene::SceneState::Stop;
+
+		DestroyPhysics2D();
+		DestroyScripting();
 	}
 
 	void Scene::OnRuntimeStart()
@@ -467,8 +470,63 @@ namespace GE
 			UpdateScripting(timestep);
 			m_StepFrames--;
 		}
-		camera.OnUpdate(timestep);
-		Render(camera);
+
+		if (m_UseEditorCameraPaused)
+		{
+			camera.OnUpdate(timestep);
+			Render(camera);
+		}
+		else
+		{
+			Camera* mainCamera = nullptr;
+			glm::mat4* cameraTransform;
+
+			// Finds & Updates Primary Camera Transform
+			{
+				auto view = m_Registry.view<TransformComponent, CameraComponent>();
+				for (auto entity : view)
+				{
+					auto [transform, camera] = view.get<TransformComponent, CameraComponent>(entity);
+					if (camera.Primary)
+					{
+						mainCamera = &camera.Camera;
+						cameraTransform = &transform.GetTransform();
+						break;
+					}
+				}
+			}
+
+			if (mainCamera)
+			{
+				GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- 2D Renderer");
+
+				Renderer2D::Start(*mainCamera, *cameraTransform);
+
+				// Sprites
+				{
+					auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
+					for (auto entity : view)
+					{
+						auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
+
+						Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+					}
+				}
+
+				// Circles
+				{
+					auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
+					for (auto entity : view)
+					{
+						auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
+
+						Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
+					}
+				}
+
+				Renderer2D::End();
+			}
+		}
 
 	}
 

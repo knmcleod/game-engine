@@ -47,7 +47,7 @@ namespace GE
                 GE.Log.LogCoreWarn("Cannot find Entity by Tag. Returning null. UUID = " + uuid);
                 return null;
             }
-            GE.Log.LogCoreInfo("Found Entity by Tag. Returning new Entity(" + uuid + ")");
+            GE.Log.LogCoreInfo("Found Entity by Tag. Returning Entity(" + uuid + ")");
             return new Entity(uuid);
         }
 

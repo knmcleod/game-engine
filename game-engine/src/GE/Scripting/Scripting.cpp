@@ -1,6 +1,7 @@
 #include "GE/GEpch.h"
 
 #include "Scripting.h"
+#include "GE/Core/FileSystem/FileSystem.h"
 #include "GE/Core/Input/Input.h"
 #include "GE/Core/Input/KeyCodes.h"
 
@@ -34,8 +35,9 @@ namespace GE
 
 #define GE_ADD_INTERNAL_CALL(Name) mono_add_internal_call("GE.InternalCalls::" #Name, Name)
 
-#pragma region Interal Call Declarations
-#pragma region Log
+#pragma region Internal Call Declarations
+
+#pragma region Log Internal Calls
 
 	static void Log_Core_Info(MonoString* debugMessage)
 	{
@@ -91,7 +93,6 @@ namespace GE
 		mono_free(cStr);
 
 	}
-
 
 #pragma endregion
 
@@ -158,23 +159,19 @@ namespace GE
 		return s_HasComponentsFuncs.at(type)(entity);
 	}
 
-	static UUID Entity_FindEntityByTag(MonoString* tagString)
+	static uint64_t Entity_FindEntityByTag(MonoString* tagString)
 	{
 		Scene* scene = Scripting::GetScene();
 		GE_CORE_ASSERT(scene, "Scene is Undefined.");
 
 		char* cTag = mono_string_to_utf8(tagString);
-		GE_CORE_INFO("Name = " + std::string(cTag));
 		Entity entity = scene->GetEntityByTag(cTag);
 		mono_free(cTag);
 
-		if (entity == Entity{})
-		{
-			GE_CORE_INFO("Entity undefined. Returning 0.");
+		if (!entity)
 			return 0;
-		}
-		GE_CORE_INFO("Entity Found. Returning UUID = " + entity.GetUUID());
-		return entity.GetUUID();
+
+		return (uint64_t)entity.GetUUID();
 	}
 	
 	static MonoObject* Entity_GetScriptInstance(uint64_t uuid)
@@ -209,9 +206,7 @@ namespace GE
 	static ScriptFieldType MonoTypeToScriptFieldType(MonoType* monoType)
 	{
 		const char* typeName = mono_type_get_name(monoType);
-		//GE_CORE_INFO(typeName);
 		ScriptFieldType type = s_ScriptFieldTypeNames.at(typeName);
-		//GE_CORE_INFO(ScriptFieldTypeToString(type));
 
 		if (s_ScriptFieldTypeNames.find(typeName) == s_ScriptFieldTypeNames.end())
 			return ScriptFieldType::None;
@@ -269,6 +264,7 @@ namespace GE
 	MonoObject* ScriptClass::InvokeMethod(MonoObject* instance, MonoMethod* method, void** params)
 	{
 		MonoObject* exception = nullptr;
+		mono_thread_attach(mono_get_root_domain());
 		return mono_runtime_invoke(method, instance, params, &exception);
 	}
 
@@ -283,6 +279,7 @@ namespace GE
 		m_OnCreate = m_ScriptClass->GetMethod("OnCreate", 0);
 		m_OnUpdate = m_ScriptClass->GetMethod("OnUpdate", 1);
 
+		// Invoke Constructor
 		{
 			void* param = &uuid;
 			m_ScriptClass->InvokeMethod(m_Instance, m_Constructor, &param);
@@ -291,7 +288,7 @@ namespace GE
 
 	void ScriptInstance::InvokeOnCreate()
 	{
-		if (!m_OnCreate || !m_Instance)
+		if (!m_OnCreate || m_Instance == NULL || !m_ScriptClass)
 			return;
 		m_ScriptClass->InvokeMethod(m_Instance, m_OnCreate);
 	}
@@ -310,7 +307,10 @@ namespace GE
 		const auto& fields = m_ScriptClass->GetFields();
 		auto instance = fields.find(name);
 		if (instance == fields.end())
+		{
+			GE_CORE_WARN("Cannot get Script Instance Field Value. Name = " + name);
 			return;
+		}
 
 		const ScriptField& field = instance->second;
 		mono_field_get_value(m_Instance, field.Field, buffer);
@@ -321,7 +321,10 @@ namespace GE
 		const auto& fields = m_ScriptClass->GetFields();
 		auto instance = fields.find(name);
 		if (instance == fields.end())
+		{
+			GE_CORE_WARN("Cannot set Script Instance Field Value. Name = " + name);
 			return;
+		}
 
 		const ScriptField& field = instance->second;
 		mono_field_set_value(m_Instance, field.Field, (void*)value);
@@ -344,7 +347,10 @@ namespace GE
 	{
 		auto instance = s_ScriptingData->ScriptInstances.find(uuid);
 		if (instance == s_ScriptingData->ScriptInstances.end())
+		{
+			GE_CORE_WARN("Cannot find Script Instance by UUID. Returning nullptr.");
 			return nullptr;
+		}
 		return instance->second;
 	}
 
@@ -352,13 +358,16 @@ namespace GE
 	{
 		auto scriptClass = s_ScriptingData->ScriptClasses.find(name);
 		if (scriptClass == s_ScriptingData->ScriptClasses.end())
+		{
+			GE_CORE_WARN("Cannot find Script Class by name. Returning nullptr.");
 			return nullptr;
+		}
 		return scriptClass->second;
 	}
 
 	ScriptFieldMap& Scripting::GetScriptFieldMap(Entity entity)
 	{
-		GE_CORE_ASSERT(entity, "Entity does not exist.");
+		GE_CORE_ASSERT(entity, "Cannot get Entity ScriptFields. Entity does not exist.");
 
 		UUID uuid = entity.GetUUID();
 
@@ -367,10 +376,9 @@ namespace GE
 
 	MonoObject* Scripting::GetObjectInstance(UUID uuid)
 	{
-		//GE_CORE_ASSERT(s_ScriptingData->ScriptInstances.find(uuid) != s_ScriptingData->ScriptInstances.end(), "Script Instance does not exist for given UUID.");
 		if (s_ScriptingData->ScriptInstances.find(uuid) == s_ScriptingData->ScriptInstances.end())
 		{
-			GE_CORE_WARN("Script Instance not found. Returning null.");
+			GE_CORE_WARN("Script Instance not found. Returning nullptr.");
 			return nullptr;
 		}
 
@@ -401,9 +409,11 @@ namespace GE
 
 	void Scripting::Shutdown()
 	{
+		GE_CORE_INFO("Scripting Shutdown Start");
 		ShutdownMono();
 
 		delete s_ScriptingData;
+		GE_CORE_INFO("Scripting Shutdown Complete");
 	}
 
 	void Scripting::InitMono()
@@ -433,7 +443,6 @@ namespace GE
 	void Scripting::OnStop()
 	{
 		s_ScriptingData->SceneContext = nullptr;
-		s_ScriptingData->ScriptClasses.clear();
 		s_ScriptingData->ScriptInstances.clear();
 	}
 
@@ -457,6 +466,7 @@ namespace GE
 			}
 			else
 			{
+				// Removw?
 				s_ScriptingData->ScriptFields[uuid] = (ScriptFieldMap&)( sc.ClassName, instance );
 			}
 
@@ -467,9 +477,11 @@ namespace GE
 	void Scripting::OnUpdateScript(Entity entity, float timestep)
 	{
 		UUID uuid = entity.GetUUID();
-		//GE_CORE_ASSERT(s_ScriptingData->ScriptInstances.find(uuid) != s_ScriptingData->ScriptInstances.end(), "Cannot find Entity in Script Instances.");
 		if (!uuid || s_ScriptingData->ScriptInstances.find(uuid) == s_ScriptingData->ScriptInstances.end())
+		{
+			GE_CORE_WARN("Tried to Update Entity/Script Instance that does not exist");
 			return;
+		}
 
 		s_ScriptingData->ScriptInstances[uuid]->InvokeOnUpdate(timestep);
 	}
@@ -483,12 +495,11 @@ namespace GE
 
 	MonoAssembly* Scripting::LoadMonoAssembly(const std::filesystem::path& assemblyPath)
 	{
-		uint32_t fileSize = 0;
-		char* fileData = ReadBytes(assemblyPath, &fileSize);
+		Buffer fileData = FileSystem::ReadBinaryFile(assemblyPath);
 
 		MonoImageOpenStatus monoStatus;
-		MonoImage* image = mono_image_open_from_data_full(fileData, fileSize, 1, &monoStatus, 0);
-		delete[] fileData;
+		MonoImage* image = mono_image_open_from_data_full(fileData.As<char>(), fileData.Size, 1, &monoStatus, 0);
+		fileData.Release();
 
 		if (monoStatus != MONO_IMAGE_OK)
 		{
@@ -528,6 +539,7 @@ namespace GE
 		s_ScriptingData->CoreAssemblyImage = mono_assembly_get_image(s_ScriptingData->CoreAssembly);
 		//PrintMonoAssemblyTypes(s_ScriptingData->CoreAssembly);
 	}
+	
 	void Scripting::LoadAssemblyClasses()
 	{
 		s_ScriptingData->ScriptClasses.clear();
@@ -598,32 +610,6 @@ namespace GE
 		GE_CORE_TRACE("Assembly Reload Complete");
 	}
 
-	char* Scripting::ReadBytes(const std::filesystem::path& filePath, uint32_t* fileSize)
-	{
-		std::ifstream stream(filePath, std::ios::binary | std::ios::ate);
-		if (!stream)
-		{
-			GE_CORE_ASSERT(false, "Failed to open scripting file.");
-			return nullptr;
-		}
-
-		std::streampos end = stream.tellg();
-		stream.seekg(0, std::ios::beg);
-		uint32_t size = end - stream.tellg();
-		if (size == 0)
-		{
-			GE_CORE_ASSERT(false, "File is empty.");
-			return nullptr;
-		}
-
-		char* buffer = new char[size];
-		stream.read(buffer, size);
-		stream.close();
-
-		*fileSize = size;
-		return buffer;
-	}
-	
 	void Scripting::OnApplicationAssemblyFileSystemEvent(const std::string& path, const filewatch::Event changeType)
 	{
 		if (!s_ScriptingData->AssemblyReloadPending && changeType == filewatch::Event::modified)
@@ -631,7 +617,7 @@ namespace GE
 			s_ScriptingData->AssemblyReloadPending = true;
 
 			Application::GetApplication().SubmitToMainThread([]()
-				{
+				{	
 					ReloadAssembly();
 				});
 		}

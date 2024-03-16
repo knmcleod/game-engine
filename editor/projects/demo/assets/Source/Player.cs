@@ -25,12 +25,8 @@ namespace demo
 
             Entity cameraEntity = FindEntityByTag("Camera");
             if (cameraEntity != null)
-            {
-                Log.LogCoreInfo("Player.OnCreate. Finding Camera");
                 camera = FindEntityByTag("Camera").As<Camera>();
-                if (camera != null)
-                    Log.LogCoreInfo("Camera.OnCreate. Player Found. UUID = " + camera.ID);
-            }
+
         }
         void OnUpdate(float timestep)
         {
@@ -50,20 +46,16 @@ namespace demo
             {
                 Velocity.x += Speed * timestep;
             }
-            m_TransformComponent.Translation += Velocity;
-
-            //Vector3 translation = m_TransformComponent.Translation;
-            //translation += Velocity;
-            //m_TransformComponent.Translation = translation;
+            //m_TransformComponent.Translation += Velocity;
 
             if (Input.IsKeyDown(KeyCode.KEY_SPACE))
             {
+                Log.LogCoreInfo("Velocity Applied = ( " + Velocity.x + ", " + Velocity.y + ", " + Velocity.z +")");
                 m_Rigidbody2DComponent.ApplyLinearImpulseToCenter(Velocity.XY, false);
             }
 
             if(camera != null)
             {
-                Log.LogCoreInfo("Player.OnUpdate. Camera Found");
                 if (Input.IsKeyDown(KeyCode.KEY_Q))
                 {
                     camera.FollowDistance += Speed * timestep;
@@ -75,10 +67,7 @@ namespace demo
             }
             else
             {
-                Log.LogCoreInfo("Player.OnUpdate. Finding Camera.");
                 camera = FindEntityByTag("Camera").As<Camera>();
-                if (camera != null)
-                    Log.LogCoreInfo("Camera.OnCreate. Player Found. UUID = " + camera.ID);
             }
         }
     }

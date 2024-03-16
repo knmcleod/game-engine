@@ -310,7 +310,13 @@ namespace GE
 
 							for (const auto& [name, field] : fields)
 							{
-								if (field.Type == ScriptFieldType::Float)
+								if (field.Type == ScriptFieldType::Bool)
+								{
+									bool data = scriptInstance->GetFieldValue<bool>(name);
+									if (ImGui::Checkbox(name.c_str(), &data))
+										scriptInstance->SetFieldValue<bool>(name, data);
+								}
+								else if (field.Type == ScriptFieldType::Float)
 								{
 									float data = scriptInstance->GetFieldValue<float>(name);
 									if (ImGui::DragFloat(name.c_str(), &data))
@@ -335,54 +341,6 @@ namespace GE
 										scriptInstance->SetFieldValue<glm::vec4>(name, data);
 								}
 
-								/*switch (field.Type)
-								{
-									case GE::ScriptFieldType::None:
-										break;
-									case GE::ScriptFieldType::Char:
-									{
-										char data = scriptInstance->GetFieldValue<char>(name);
-										if (ImGui::InputText(name.c_str(), &data, sizeof(data))
-											scriptInstance->SetFieldValue<char>(name, data);
-										break;
-									}
-									case GE::ScriptFieldType::Float:
-									{
-										float data = scriptInstance->GetFieldValue<float>(name);
-										if (ImGui::DragFloat(name.c_str(), &data))
-											scriptInstance->SetFieldValue<float>(name, data);
-										break;
-									}
-									case GE::ScriptFieldType::Bool:
-									{
-										bool data = scriptInstance->GetFieldValue<bool>(name);
-										if (ImGui::Checkbox(name.c_str(), &data))
-											scriptInstance->SetFieldValue<bool>(name, data);
-										break;
-									}
-									case GE::ScriptFieldType::Vector2:
-									{
-										glm::vec2 data = scriptInstance->GetFieldValue<glm::vec2>(name);
-										if (ImGui::DragFloat2(name.c_str(), &data))
-											scriptInstance->SetFieldValue<glm::vec2>(name, data);
-										break;
-									}
-									case GE::ScriptFieldType::Vector3:
-									{
-										glm::vec3 data = scriptInstance->GetFieldValue<glm::vec3>(name);
-										if (ImGui::DragFloat3(name.c_str(), &data))
-											scriptInstance->SetFieldValue<glm::vec3>(name, data);
-										break;
-									}
-									case GE::ScriptFieldType::Vector4:
-									{
-										glm::vec4 data = scriptInstance->GetFieldValue<glm::vec4>(name);
-										if (ImGui::DragFloat4(name.c_str(), &data))
-											scriptInstance->SetFieldValue<glm::vec4>(name, data);
-										break;
-									}
-								}*/
-
 							}
 						}
 					}
@@ -399,7 +357,13 @@ namespace GE
 							{
 								ScriptFieldInstance& fieldInstance = scriptingFieldMap.at(name);
 
-								if (field.Type == ScriptFieldType::Float)
+								if (field.Type == ScriptFieldType::Bool)
+								{
+									bool data = fieldInstance.GetValue<bool>();
+									if (ImGui::Checkbox(name.c_str(), &data))
+										fieldInstance.SetValue<bool>(data);
+								}
+								else if (field.Type == ScriptFieldType::Float)
 								{
 									float data = fieldInstance.GetValue<float>();
 									if (ImGui::DragFloat(name.c_str(), &data))
@@ -424,60 +388,19 @@ namespace GE
 										fieldInstance.SetValue<glm::vec4>(data);
 								}
 
-								/*switch (field.Type)
-								{
-									case GE::ScriptFieldType::None:
-										break;
-									case GE::ScriptFieldType::Char:
-									{
-										char data = fieldInstance.GetValue<char>();
-										if (ImGui::InputText(name.c_str(), &data))
-											fieldInstance.SetValue<char>(data);
-										break;
-									}
-									case GE::ScriptFieldType::Float:
-									{
-										float data = fieldInstance.GetValue<float>();
-										if (ImGui::DragFloat(name.c_str(), &data))
-											fieldInstance.SetValue<float>(data);
-										break;
-									}
-									case GE::ScriptFieldType::Bool:
-									{
-										bool data = fieldInstance.GetValue<bool>();
-										if (ImGui::Checkbox(name.c_str(), &data))
-											fieldInstance.SetValue<bool>(data);
-										break;
-									}
-									case GE::ScriptFieldType::Vector2:
-									{
-										glm::vec2 data = fieldInstance.GetValue<glm::vec2>();
-										if (ImGui::DragFloat2(name.c_str(), &data))
-											fieldInstance.SetValue<glm::vec2>(data);
-										break;
-									}
-									case GE::ScriptFieldType::Vector3:
-									{
-										glm::vec3 data = fieldInstance.GetValue<glm::vec3>();
-										if (ImGui::DragFloat3(name.c_str(), &data))
-											fieldInstance.SetValue<glm::vec3>(data);
-										break;
-									}
-									case GE::ScriptFieldType::Vector4:
-									{
-										glm::vec4 data = fieldInstance.GetValue<glm::vec4>();
-										if (ImGui::DragFloat4(name.c_str(), &data))
-											fieldInstance.SetValue<glm::vec4>(data);
-										break;
-									}
-								}*/
 							}
 							else // Add ScriptFieldInstance for display
 							{
 								ScriptFieldInstance& fieldInstance = scriptingFieldMap[name];
 								fieldInstance.Field = field;
 
-								if (field.Type == ScriptFieldType::Float)
+								if (field.Type == ScriptFieldType::Bool)
+								{
+									bool data = false;
+									if (ImGui::Checkbox(name.c_str(), &data))
+										fieldInstance.SetValue<bool>(data);
+								}
+								else if (field.Type == ScriptFieldType::Float)
 								{
 									float data = 0.0f;
 									if (ImGui::DragFloat(name.c_str(), &data))
@@ -502,53 +425,6 @@ namespace GE
 										fieldInstance.SetValue<glm::vec4>(data);
 								}
 
-								/*switch (field.Type)
-								{
-									case GE::ScriptFieldType::None:
-										break;
-									case GE::ScriptFieldType::Char:
-									{
-										char data = 'e';
-										if (ImGui::InputText(name.c_str(), &data))
-											fieldInstance.SetValue<char>(data);
-										break;
-									}
-									case GE::ScriptFieldType::Float:
-									{
-										float data = 0.0f;
-										if (ImGui::DragFloat(name.c_str(), &data))
-											fieldInstance.SetValue<float>(data);
-										break;
-									}
-									case GE::ScriptFieldType::Bool:
-									{
-										bool data = false;
-										if (ImGui::Checkbox(name.c_str(), &data))
-											fieldInstance.SetValue<bool>(data);
-										break;
-									}
-									case GE::ScriptFieldType::Vector2:
-									{
-										glm::vec2 data = glm::vec2();
-										if (ImGui::DragFloat2(name.c_str(), &data))
-											fieldInstance.SetValue<glm::vec2>(data);
-										break;
-									}
-									case GE::ScriptFieldType::Vector3:
-									{
-										glm::vec3 data = glm::vec3();
-										if (ImGui::DragFloat3(name.c_str(), &data))
-											fieldInstance.SetValue<glm::vec3>(data);
-										break;
-									}
-									case GE::ScriptFieldType::Vector4:
-									{
-										glm::vec4 data = glm::vec4();
-										if (ImGui::DragFloat4(name.c_str(), &data))
-											fieldInstance.SetValue<glm::vec4>(data);
-										break;
-									}
-								}*/
 							}
 
 						}
