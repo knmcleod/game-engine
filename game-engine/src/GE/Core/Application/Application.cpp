@@ -2,13 +2,12 @@
 
 #include "Application.h"
 
+#include "GE/Core/EntryPoint.h"
 #include "GE/Core/Time/Time.h"
 
 #include "GE/Rendering/RenderCommand.h"
 #include "GE/Rendering/Shader/Shader.h"
 #include "GE/Rendering/VertexArray/VertexArray.h"
-
-#include "GE/Scripting/Scripting.h"
 
 #include <GLFW/glfw3.h>
 
@@ -35,8 +34,6 @@ namespace GE
 		
 		RenderCommand::Init();
 
-		Scripting::Init();
-
 		// Creates ImGui Layer
 		m_ImGuiLayer = new ImGuiLayer();
 		PushOverlay(m_ImGuiLayer);
@@ -46,7 +43,6 @@ namespace GE
 	Application::~Application()
 	{
 		GE_CORE_INFO("Core Application Destructor Start.");
-		Scripting::Shutdown();
 
 		RenderCommand::ShutDown();
 		GE_CORE_INFO("Core Application Destructor Complete.");

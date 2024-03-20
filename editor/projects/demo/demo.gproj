@@ -1,0 +1,6 @@
+Project:
+  Name: demo
+  ProjectPath: projects/demo
+  AssetPath: assets
+  ScenePath: scenes/demoExample.scene
+  ScriptPath: scripts/Resources/Binaries/demo.dll

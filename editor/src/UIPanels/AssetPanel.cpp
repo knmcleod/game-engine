@@ -1,6 +1,7 @@
 #include "AssetPanel.h"
 
 #include "GE/Core/Core.h"
+#include "GE/Project/Project.h"
 #include "GE/Scene/Scene.h"
 
 #include <imgui/imgui.h>
@@ -8,9 +9,8 @@
 
 namespace GE
 {
-	extern const std::filesystem::path g_AssetsPath = "assets";
-
-	AssetPanel::AssetPanel() : m_CurrentDir(g_AssetsPath)
+	AssetPanel::AssetPanel()
+		: m_BasePath(Project::GetAssetPath()), m_CurrentPath(m_BasePath)
 	{
 
 	}
@@ -19,25 +19,25 @@ namespace GE
 	{
 		ImGui::Begin("Asset Panel");
 
-		if (m_CurrentDir != std::filesystem::path(g_AssetsPath))
+		if (m_CurrentPath != m_BasePath)
 		{
 			if (ImGui::Button("<- Back"))
 			{
-				m_CurrentDir = m_CurrentDir.parent_path();
+				m_CurrentPath = m_CurrentPath.parent_path();
 			}
 		}
 
-		for (auto& dir : std::filesystem::directory_iterator(m_CurrentDir))
+		for (auto& dir : std::filesystem::directory_iterator(m_CurrentPath))
 		{
 			auto path = dir.path();
-			auto relativePath = std::filesystem::relative(dir.path(), g_AssetsPath);
+			auto relativePath = std::filesystem::relative(dir.path(), m_BasePath);
 			std::string filenameString = relativePath.filename().string();
 
 			if (dir.is_directory())
 			{
 				if (ImGui::Button(filenameString.c_str()))
 				{
-					m_CurrentDir /= dir.path().filename();
+					m_CurrentPath /= dir.path().filename();
 				}
 			}
 			else

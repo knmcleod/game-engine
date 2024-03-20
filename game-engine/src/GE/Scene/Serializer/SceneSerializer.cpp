@@ -4,6 +4,8 @@
 
 #include "GE/Core/UUID/UUID.h"
 
+#include "GE/Project/Project.h"
+
 #include "GE/Scene/Components/Components.h"
 #include "GE/Scene/Entity/Entity.h"
 
@@ -155,12 +157,219 @@ namespace GE
 		return Rigidbody2DComponent::BodyType::Static;
 	}
 
+	static void SerializeEntity(YAML::Emitter& out, Entity entity)
+	{
+		GE_CORE_ASSERT(entity.HasComponent<IDComponent>(), "Cannot serialize Entity without ID.");
+
+		out << YAML::BeginMap; // Entity
+		out << YAML::Key << "Entity" << YAML::Value << entity.GetUUID();
+
+		if (entity.HasComponent<TagComponent>())
+		{
+			out << YAML::Key << "TagComponent";
+			out << YAML::BeginMap; // TagComponent
+			auto& tag = entity.GetComponent<TagComponent>().Tag;
+
+			out << YAML::Key << "Tag" << YAML::Value << tag;
+
+			out << YAML::EndMap; // TagComponent
+		}
+
+		if (entity.HasComponent<TransformComponent>())
+		{
+			out << YAML::Key << "TransformComponent";
+			out << YAML::BeginMap; // TransformComponent
+			auto& component = entity.GetComponent<TransformComponent>();
+
+			out << YAML::Key << "Translation" << YAML::Value << component.Translation;
+			out << YAML::Key << "Rotation" << YAML::Value << component.Rotation;
+			out << YAML::Key << "Scale" << YAML::Value << component.Scale;
+
+			out << YAML::EndMap; // TransformComponent
+		}
+
+		if (entity.HasComponent<CameraComponent>())
+		{
+			out << YAML::Key << "CameraComponent";
+			out << YAML::BeginMap; // CameraComponent
+			auto& component = entity.GetComponent<CameraComponent>();
+			auto& camera = component.Camera;
+
+			out << YAML::Key << "FixedAspectRatio" << YAML::Value << component.FixedAspectRatio;
+			out << YAML::Key << "Primary" << YAML::Value << component.Primary;
+
+			out << YAML::Key << "Camera" << YAML::Value;
+			out << YAML::BeginMap; // Camera
+
+			out << YAML::Key << "Far" << YAML::Value << camera.GetFarClip();
+			out << YAML::Key << "Near" << YAML::Value << camera.GetNearClip();
+			out << YAML::Key << "FOV" << YAML::Value << camera.GetCameraFOV();
+			out << YAML::Key << "Type" << YAML::Value << (int)camera.GetProjectionType();
+
+			out << YAML::EndMap; // Camera
+			out << YAML::EndMap; // CameraComponent
+		}
+
+		if (entity.HasComponent<SpriteRendererComponent>())
+		{
+			out << YAML::Key << "SpriteRendererComponent";
+			out << YAML::BeginMap; // SpriteRendererComponent
+			auto& component = entity.GetComponent<SpriteRendererComponent>();
+			out << YAML::Key << "Color" << YAML::Value << component.Color;
+			if (component.Texture)
+			{
+				out << YAML::Key << "Texture" << YAML::Value << component.Texture->GetProjectPath();
+			}
+
+			if (component.TilingFactor)
+			{
+				out << YAML::Key << "TilingFactor" << YAML::Value << component.TilingFactor;
+			}
+			out << YAML::EndMap; // SpriteRendererComponent
+		}
+
+		if (entity.HasComponent<CircleRendererComponent>())
+		{
+			out << YAML::Key << "CircleRendererComponent";
+			out << YAML::BeginMap; // CircleRendererComponent
+			auto& component = entity.GetComponent<CircleRendererComponent>();
+			out << YAML::Key << "Color" << YAML::Value << component.Color;
+			out << YAML::Key << "Radius" << YAML::Value << component.Radius;
+			out << YAML::Key << "Thickness" << YAML::Value << component.Thickness;
+			out << YAML::Key << "Fade" << YAML::Value << component.Fade;
+			out << YAML::EndMap; // CircleRendererComponent
+		}
+
+		if (entity.HasComponent<NativeScriptComponent>())
+		{
+			out << YAML::Key << "NativeScriptComponent";
+			out << YAML::BeginMap; // NativeScriptComponent
+			auto& component = entity.GetComponent<NativeScriptComponent>();
+
+			out << YAML::EndMap; // NativeScriptComponent
+		}
+
+		if (entity.HasComponent<ScriptComponent>())
+		{
+			out << YAML::Key << "ScriptComponent";
+			out << YAML::BeginMap; // ScriptComponent
+			auto& component = entity.GetComponent<ScriptComponent>();
+			out << YAML::Key << "ClassName" << YAML::Value << component.ClassName;
+
+			// Fields
+			Ref<ScriptClass> scriptClass = Scripting::GetScriptClass(component.ClassName);
+			if (scriptClass)
+			{
+				const auto& fields = scriptClass->GetFields();
+				if (fields.size() > 0)
+				{
+					out << YAML::Key << "ScriptFields" << YAML::Value;
+					out << YAML::BeginSeq;
+
+					auto& scriptFieldMap = Scripting::GetScriptFieldMap(entity);
+					for (const auto& [name, field] : fields)
+					{
+						if (scriptFieldMap.find(name) == scriptFieldMap.end())
+							continue;
+
+						out << YAML::BeginMap; // ScriptFields
+
+						out << YAML::Key << "Name" << YAML::Value << name;
+						out << YAML::Key << "Type" << YAML::Value << ScriptFieldTypeToString(field.Type);
+						out << YAML::Key << "Data" << YAML::Value;
+
+						ScriptFieldInstance& scriptFieldInstance = scriptFieldMap.at(name);
+						switch (field.Type)
+						{
+						case ScriptFieldType::Char:
+							out << scriptFieldInstance.GetValue<char>();
+							break;
+						case ScriptFieldType::Int:
+							out << scriptFieldInstance.GetValue<int>();
+							break;
+						case ScriptFieldType::UInt:
+							out << scriptFieldInstance.GetValue<uint32_t>();
+							break;
+						case ScriptFieldType::Float:
+							out << scriptFieldInstance.GetValue<float>();
+							break;
+						case ScriptFieldType::Byte:
+							out << scriptFieldInstance.GetValue<int8_t>();
+							break;
+						case ScriptFieldType::Bool:
+							out << scriptFieldInstance.GetValue<bool>();
+							break;
+						case ScriptFieldType::Vector2:
+							out << scriptFieldInstance.GetValue<glm::vec2>();
+							break;
+						case ScriptFieldType::Vector3:
+							out << scriptFieldInstance.GetValue<glm::vec3>();
+							break;
+						case ScriptFieldType::Vector4:
+							out << scriptFieldInstance.GetValue<glm::vec4>();
+							break;
+						case ScriptFieldType::Entity:
+							out << scriptFieldInstance.GetValue<UUID>();
+							break;
+						}
+
+						out << YAML::EndMap; // ScriptFields
+					}
+					out << YAML::EndSeq;
+				}
+			}
+			out << YAML::EndMap; // ScriptComponent
+		}
+
+		if (entity.HasComponent<Rigidbody2DComponent>())
+		{
+			out << YAML::Key << "Rigidbody2DComponent";
+			out << YAML::BeginMap; // Rigidbody2DComponent
+			auto& component = entity.GetComponent<Rigidbody2DComponent>();
+			out << YAML::Key << "Type" << YAML::Value << GetStringFromRigidBody2DType(component.Type);
+			out << YAML::Key << "FixedRotation" << YAML::Value << component.FixedRotation;
+			out << YAML::EndMap; // Rigidbody2DComponent
+		}
+
+		if (entity.HasComponent<BoxCollider2DComponent>())
+		{
+			out << YAML::Key << "BoxCollider2DComponent";
+			out << YAML::BeginMap; // BoxCollider2DComponent
+			auto& component = entity.GetComponent<BoxCollider2DComponent>();
+			out << YAML::Key << "Offset" << YAML::Value << component.Offset;
+			out << YAML::Key << "Size" << YAML::Value << component.Size;
+			out << YAML::Key << "Density" << YAML::Value << component.Density;
+			out << YAML::Key << "Friction" << YAML::Value << component.Friction;
+			out << YAML::Key << "Restitution" << YAML::Value << component.Restitution;
+			out << YAML::Key << "RestitutionThreshold" << YAML::Value << component.RestitutionThreshold;
+			out << YAML::Key << "Show" << YAML::Value << component.Show;
+			out << YAML::EndMap; // BoxCollider2DComponent
+		}
+
+		if (entity.HasComponent<CircleCollider2DComponent>())
+		{
+			out << YAML::Key << "CircleCollider2DComponent";
+			out << YAML::BeginMap; // CircleCollider2DComponent
+			auto& component = entity.GetComponent<CircleCollider2DComponent>();
+			out << YAML::Key << "Offset" << YAML::Value << component.Offset;
+			out << YAML::Key << "Radius" << YAML::Value << component.Radius;
+			out << YAML::Key << "Density" << YAML::Value << component.Density;
+			out << YAML::Key << "Friction" << YAML::Value << component.Friction;
+			out << YAML::Key << "Restitution" << YAML::Value << component.Restitution;
+			out << YAML::Key << "RestitutionThreshold" << YAML::Value << component.RestitutionThreshold;
+			out << YAML::Key << "Show" << YAML::Value << component.Show;
+			out << YAML::EndMap; // CircleCollider2DComponent
+		}
+
+		out << YAML::EndMap; // Entity
+	}
+
 	SceneSerializer::SceneSerializer(const Ref<Scene>& scene) : m_Scene(scene)
 	{
 
 	}
 
-	void SceneSerializer::SerializeText(const std::string& filePath)
+	bool SceneSerializer::SerializeText(const std::string& filePath)
 	{
 		YAML::Emitter out;
 		out << YAML::BeginMap;
@@ -171,7 +380,7 @@ namespace GE
 			{
 				Entity entity = { entityID, m_Scene.get() };
 				if (!entity)
-					return;
+					return false;
 				SerializeEntity(out, entity);
 			});
 
@@ -180,6 +389,7 @@ namespace GE
 
 		std::ofstream fout(filePath);
 		fout << out.c_str();
+		return true;
 	}
 
 	void SceneSerializer::SerializeBinary(const std::string& filePath)
@@ -251,7 +461,10 @@ namespace GE
 					src.Color = spriteRendererComponent["Color"].as<glm::vec4>();
 					if (spriteRendererComponent["Texture"])
 					{
-						src.Texture = Texture2D::Create(spriteRendererComponent["Texture"].as<std::string>());
+						std::string texturePath = spriteRendererComponent["Texture"].as<std::string>();
+						auto path = Project::GetActive()->GetPathToAsset(texturePath);
+						GE_CORE_INFO("Deserializing Entity Sprite Renderer Texture at Path = {}", path.string());
+						src.Texture = Texture2D::Create(path.string());
 					}
 
 					if (spriteRendererComponent["TilingFactor"])
@@ -431,210 +644,4 @@ namespace GE
 		return false;
 	}
 
-	static void SerializeEntity(YAML::Emitter& out, Entity entity)
-	{
-		GE_CORE_ASSERT(entity.HasComponent<IDComponent>(), "Cannot serialize Entity without ID.");
-
-		out << YAML::BeginMap; // Entity
-		out << YAML::Key << "Entity" << YAML::Value << entity.GetUUID();
-
-		if (entity.HasComponent<TagComponent>())
-		{
-			out << YAML::Key << "TagComponent";
-			out << YAML::BeginMap; // TagComponent
-			auto& tag = entity.GetComponent<TagComponent>().Tag;
-
-			out << YAML::Key << "Tag" << YAML::Value << tag;
-
-			out << YAML::EndMap; // TagComponent
-		}
-
-		if (entity.HasComponent<TransformComponent>())
-		{
-			out << YAML::Key << "TransformComponent";
-			out << YAML::BeginMap; // TransformComponent
-			auto& component = entity.GetComponent<TransformComponent>();
-
-			out << YAML::Key << "Translation" << YAML::Value << component.Translation;
-			out << YAML::Key << "Rotation" << YAML::Value << component.Rotation;
-			out << YAML::Key << "Scale" << YAML::Value << component.Scale;
-
-			out << YAML::EndMap; // TransformComponent
-		}
-
-		if (entity.HasComponent<CameraComponent>())
-		{
-			out << YAML::Key << "CameraComponent";
-			out << YAML::BeginMap; // CameraComponent
-			auto& component = entity.GetComponent<CameraComponent>();
-			auto& camera = component.Camera;
-
-			out << YAML::Key << "FixedAspectRatio" << YAML::Value << component.FixedAspectRatio;
-			out << YAML::Key << "Primary" << YAML::Value << component.Primary;
-			
-			out << YAML::Key << "Camera" << YAML::Value;
-			out << YAML::BeginMap; // Camera
-
-			out << YAML::Key << "Far" << YAML::Value << camera.GetFarClip();
-			out << YAML::Key << "Near" << YAML::Value << camera.GetNearClip();
-			out << YAML::Key << "FOV" << YAML::Value << camera.GetCameraFOV();
-			out << YAML::Key << "Type" << YAML::Value << (int)camera.GetProjectionType();
-
-			out << YAML::EndMap; // Camera
-			out << YAML::EndMap; // CameraComponent
-		}
-
-		if (entity.HasComponent<SpriteRendererComponent>())
-		{
-			out << YAML::Key << "SpriteRendererComponent";
-			out << YAML::BeginMap; // SpriteRendererComponent
-			auto& component = entity.GetComponent<SpriteRendererComponent>();
-			out << YAML::Key << "Color" << YAML::Value << component.Color;
-			if (component.Texture)
-			{
-				out << YAML::Key << "Texture" << YAML::Value << component.Texture->GetPath();
-			}
-
-			if (component.TilingFactor)
-			{
-				out << YAML::Key << "TilingFactor" << YAML::Value << component.TilingFactor;
-			}
-			out << YAML::EndMap; // SpriteRendererComponent
-		}
-
-		if (entity.HasComponent<CircleRendererComponent>())
-		{
-			out << YAML::Key << "CircleRendererComponent";
-			out << YAML::BeginMap; // CircleRendererComponent
-			auto& component = entity.GetComponent<CircleRendererComponent>();
-			out << YAML::Key << "Color" << YAML::Value << component.Color;
-			out << YAML::Key << "Radius" << YAML::Value << component.Radius;
-			out << YAML::Key << "Thickness" << YAML::Value << component.Thickness;
-			out << YAML::Key << "Fade" << YAML::Value << component.Fade;
-			out << YAML::EndMap; // CircleRendererComponent
-		}
-
-		if (entity.HasComponent<NativeScriptComponent>())
-		{
-			out << YAML::Key << "NativeScriptComponent";
-			out << YAML::BeginMap; // NativeScriptComponent
-			auto& component = entity.GetComponent<NativeScriptComponent>();
-
-			out << YAML::EndMap; // NativeScriptComponent
-		}
-
-		if (entity.HasComponent<ScriptComponent>())
-		{
-			out << YAML::Key << "ScriptComponent";
-			out << YAML::BeginMap; // ScriptComponent
-			auto& component = entity.GetComponent<ScriptComponent>();
-			out << YAML::Key << "ClassName" << YAML::Value << component.ClassName;
-
-			// Fields
-			Ref<ScriptClass> scriptClass = Scripting::GetScriptClass(component.ClassName);
-			if (scriptClass)
-			{
-				const auto& fields = scriptClass->GetFields();
-				if (fields.size() > 0)
-				{
-					out << YAML::Key << "ScriptFields" << YAML::Value;
-					out << YAML::BeginSeq;
-
-					auto& scriptFieldMap = Scripting::GetScriptFieldMap(entity);
-					for (const auto& [name, field] : fields)
-					{
-						if (scriptFieldMap.find(name) == scriptFieldMap.end())
-							continue;
-
-						out << YAML::BeginMap; // ScriptFields
-
-						out << YAML::Key << "Name" << YAML::Value << name;
-						out << YAML::Key << "Type" << YAML::Value << ScriptFieldTypeToString(field.Type);
-						out << YAML::Key << "Data" << YAML::Value;
-
-						ScriptFieldInstance& scriptFieldInstance = scriptFieldMap.at(name);
-						switch (field.Type)
-						{
-						case ScriptFieldType::Char:
-							out << scriptFieldInstance.GetValue<char>();
-							break;
-						case ScriptFieldType::Int:
-							out << scriptFieldInstance.GetValue<int>();
-							break;
-						case ScriptFieldType::UInt:
-							out << scriptFieldInstance.GetValue<uint32_t>();
-							break;
-						case ScriptFieldType::Float:
-							out << scriptFieldInstance.GetValue<float>();
-							break;
-						case ScriptFieldType::Byte:
-							out << scriptFieldInstance.GetValue<int8_t>();
-							break;
-						case ScriptFieldType::Bool:
-							out << scriptFieldInstance.GetValue<bool>();
-							break;
-						case ScriptFieldType::Vector2:
-							out << scriptFieldInstance.GetValue<glm::vec2>();
-							break;
-						case ScriptFieldType::Vector3:
-							out << scriptFieldInstance.GetValue<glm::vec3>();
-							break;
-						case ScriptFieldType::Vector4:
-							out << scriptFieldInstance.GetValue<glm::vec4>();
-							break;
-						case ScriptFieldType::Entity:
-							out << scriptFieldInstance.GetValue<UUID>();
-							break;
-						}
-
-						out << YAML::EndMap; // ScriptFields
-					}
-					out << YAML::EndSeq;
-				}
-			}
-			out << YAML::EndMap; // ScriptComponent
-		}
-
-		if (entity.HasComponent<Rigidbody2DComponent>())
-		{
-			out << YAML::Key << "Rigidbody2DComponent";
-			out << YAML::BeginMap; // Rigidbody2DComponent
-			auto& component = entity.GetComponent<Rigidbody2DComponent>();
-			out << YAML::Key << "Type" << YAML::Value << GetStringFromRigidBody2DType(component.Type);
-			out << YAML::Key << "FixedRotation" << YAML::Value << component.FixedRotation;
-			out << YAML::EndMap; // Rigidbody2DComponent
-		}
-
-		if (entity.HasComponent<BoxCollider2DComponent>())
-		{
-			out << YAML::Key << "BoxCollider2DComponent";
-			out << YAML::BeginMap; // BoxCollider2DComponent
-			auto& component = entity.GetComponent<BoxCollider2DComponent>();
-			out << YAML::Key << "Offset" << YAML::Value << component.Offset;
-			out << YAML::Key << "Size" << YAML::Value << component.Size;
-			out << YAML::Key << "Density" << YAML::Value << component.Density;
-			out << YAML::Key << "Friction" << YAML::Value << component.Friction;
-			out << YAML::Key << "Restitution" << YAML::Value << component.Restitution;
-			out << YAML::Key << "RestitutionThreshold" << YAML::Value << component.RestitutionThreshold;
-			out << YAML::Key << "Show" << YAML::Value << component.Show;
-			out << YAML::EndMap; // BoxCollider2DComponent
-		}
-
-		if (entity.HasComponent<CircleCollider2DComponent>())
-		{
-			out << YAML::Key << "CircleCollider2DComponent";
-			out << YAML::BeginMap; // CircleCollider2DComponent
-			auto& component = entity.GetComponent<CircleCollider2DComponent>();
-			out << YAML::Key << "Offset" << YAML::Value << component.Offset;
-			out << YAML::Key << "Radius" << YAML::Value << component.Radius;
-			out << YAML::Key << "Density" << YAML::Value << component.Density;
-			out << YAML::Key << "Friction" << YAML::Value << component.Friction;
-			out << YAML::Key << "Restitution" << YAML::Value << component.Restitution;
-			out << YAML::Key << "RestitutionThreshold" << YAML::Value << component.RestitutionThreshold;
-			out << YAML::Key << "Show" << YAML::Value << component.Show;
-			out << YAML::EndMap; // CircleCollider2DComponent
-		}
-
-		out << YAML::EndMap; // Entity
-	}
 }

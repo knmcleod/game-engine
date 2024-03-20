@@ -1,5 +1,6 @@
 #include "GE/GEpch.h"
 
+#include "GE/Core/Application/Application.h"
 #include "GE/Core/Util/PlatformUtils.h"
 
 #include <GLFW/glfw3.h>

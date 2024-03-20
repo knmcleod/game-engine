@@ -11,7 +11,7 @@ namespace GE
 	public:
 		SceneSerializer(const Ref<Scene>& scene);
 
-		void SerializeText(const std::string& filePath);
+		bool SerializeText(const std::string& filePath);
 		void SerializeBinary(const std::string& filePath);
 
 		bool DeserializeText(const std::string& filePath);

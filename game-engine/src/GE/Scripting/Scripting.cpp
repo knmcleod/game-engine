@@ -1,9 +1,15 @@
 #include "GE/GEpch.h"
 
 #include "Scripting.h"
+
+#include "GE/Core/Application/Application.h"
 #include "GE/Core/FileSystem/FileSystem.h"
 #include "GE/Core/Input/Input.h"
 #include "GE/Core/Input/KeyCodes.h"
+
+#include "GE/Physics/PhysicsUtils.h"
+
+#include "GE/Project/Project.h"
 
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
@@ -120,6 +126,8 @@ namespace GE
 		}
 	}
 
+#pragma region Rigidbody Internal Calls
+
 	// Point is World position
 	static void Rigidbody2DComponent_ApplyLinearImpulse(UUID uuid, glm::vec2* impluse, glm::vec2* point, bool wake)
 	{
@@ -147,6 +155,46 @@ namespace GE
 		}
 	}
 
+	static void Rigidbody2DComponent_GetLinearVelocity(UUID uuid, glm::vec2* velocity)
+	{
+		Scene* scene = Scripting::GetScene();
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity.HasComponent<Rigidbody2DComponent>())
+		{
+			auto& rbc = entity.GetComponent<Rigidbody2DComponent>();
+			b2Body* body = (b2Body*)rbc.RuntimeBody;
+			const b2Vec2& linearVelocity = body->GetLinearVelocity();
+			*velocity = glm::vec2(linearVelocity.x, linearVelocity.y);
+		}
+	}
+
+	static Rigidbody2DComponent::BodyType Rigidbody2DComponent_GetType(UUID entityID)
+	{
+		Scene* scene = Scripting::GetScene();
+		Entity entity = scene->GetEntityByUUID(entityID);
+
+		if (entity.HasComponent<Rigidbody2DComponent>())
+		{
+			auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
+			b2Body* body = (b2Body*)rb2d.RuntimeBody;
+			return PhysicsUtils::Rigidbody2DTypeFromBox2DBody(body->GetType());
+		}
+	}
+
+	static void Rigidbody2DComponent_SetType(UUID entityID, Rigidbody2DComponent::BodyType bodyType)
+	{
+		Scene* scene = Scripting::GetScene();
+		Entity entity = scene->GetEntityByUUID(entityID);
+
+		if (entity.HasComponent<Rigidbody2DComponent>())
+		{
+			auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
+			b2Body* body = (b2Body*)rb2d.RuntimeBody;
+			body->SetType(PhysicsUtils::Rigidbody2DTypeToBox2DBody(bodyType));
+		}
+	}
+
+#pragma endregion
 	static bool Entity_HasComponent(UUID uuid, MonoReflectionType* componentType)
 	{
 		Scene* scene = Scripting::GetScene();
@@ -397,8 +445,9 @@ namespace GE
 		InitMono();
 		ScriptGlue::RegisterFunctions();
 
-		LoadAssembly("projects/demo/assets/Resources/Binaries/GE-ScriptCore.dll");
-		LoadApplicationAssembly("projects/demo/assets/Resources/Binaries/demo.dll");
+		LoadAssembly(Project::GetPathToAsset("scripts/Resources/Binaries/GE-ScriptCore.dll"));
+		LoadApplicationAssembly(Project::GetPathToAsset(Project::GetActive()->GetSpec().ScriptPath));
+
 		LoadAssemblyClasses();
 
 		ScriptGlue::RegisterComponents();
@@ -466,7 +515,6 @@ namespace GE
 			}
 			else
 			{
-				// Removw?
 				s_ScriptingData->ScriptFields[uuid] = (ScriptFieldMap&)( sc.ClassName, instance );
 			}
 
@@ -639,6 +687,9 @@ namespace GE
 
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_ApplyLinearImpulse);
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_ApplyLinearImpulseToCenter);
+		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_GetLinearVelocity);
+		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_GetType);
+		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_SetType);
 
 		GE_ADD_INTERNAL_CALL(Entity_HasComponent);
 		GE_ADD_INTERNAL_CALL(Entity_FindEntityByTag);

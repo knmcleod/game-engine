@@ -2,11 +2,13 @@
 
 #include "Scene.h"
 
+#include "GE/Physics/PhysicsUtils.h"
+
+#include "GE/Rendering/Renderer/2D/Renderer2D.h"
+
 #include "GE/Scene/Components/Components.h"
 #include "GE/Scene/Entity/ScriptableEntity.h"
 #include "GE/Scripting/Scripting.h"
-
-#include "GE/Rendering/Renderer/2D/Renderer2D.h"
 
 #include <box2d/b2_world.h>
 #include <box2d/b2_body.h>
@@ -320,6 +322,7 @@ namespace GE
 		CopyComponentIfExists<CircleRendererComponent>(newEntity, entity);
 		CopyComponentIfExists<CameraComponent>(newEntity, entity);
 		CopyComponentIfExists<NativeScriptComponent>(newEntity, entity);
+		CopyComponentIfExists<ScriptComponent>(newEntity, entity);
 		CopyComponentIfExists<Rigidbody2DComponent>(newEntity, entity);
 		CopyComponentIfExists<BoxCollider2DComponent>(newEntity, entity);
 		CopyComponentIfExists<CircleCollider2DComponent>(newEntity, entity);
@@ -541,23 +544,6 @@ namespace GE
 	}
 
 #pragma region Physics
-	static b2BodyType GetBox2DType(Rigidbody2DComponent::BodyType type)
-	{
-		switch (type)
-		{
-		case GE::Rigidbody2DComponent::BodyType::Static:
-			return b2_staticBody;
-			break;
-		case GE::Rigidbody2DComponent::BodyType::Dynamic:
-			return b2_dynamicBody;
-			break;
-		case GE::Rigidbody2DComponent::BodyType::Kinematic:
-			return b2_kinematicBody;
-			break;
-		}
-		GE_CORE_ASSERT(false, "Unsupported Rigidbody2D type.");
-		return b2_staticBody;
-	}
 
 	void Scene::InitializePhysics2D()
 	{
@@ -570,7 +556,7 @@ namespace GE
 			auto& rb2D = entity.GetComponent<Rigidbody2DComponent>();
 
 			b2BodyDef bodyDef;
-			bodyDef.type = GetBox2DType(rb2D.Type);
+			bodyDef.type = PhysicsUtils::Rigidbody2DTypeToBox2DBody(rb2D.Type);
 			bodyDef.position.Set(transformComponent.Translation.x, transformComponent.Translation.y);
 			bodyDef.angle = transformComponent.Rotation.z;
 

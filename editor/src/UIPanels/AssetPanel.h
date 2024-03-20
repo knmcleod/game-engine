@@ -11,6 +11,7 @@ namespace GE
 
 		void OnImGuiRender();
 	private:
-		std::filesystem::path m_CurrentDir;
+		std::filesystem::path m_BasePath;
+		std::filesystem::path m_CurrentPath;
 	};
 }

@@ -9,10 +9,24 @@
 
 namespace GE
 {
+	struct ApplicationCommandLineArgs
+	{
+		int Count = 0;
+		char** Args = nullptr;
+
+		const char* operator[](int index) const
+		{
+			GE_CORE_ASSERT(index < Count, "Cannot assign Argument to index in-use.");
+			return Args[index];
+		}
+	};
+
 	struct ApplicationSpecification
 	{
 		std::string Name = "Game Engine";
 		std::string WorkingDirectory;
+
+		ApplicationCommandLineArgs CommandLineArgs;
 	};
 
 	class Application
@@ -43,7 +57,6 @@ namespace GE
 
 		void ExecuteMainThread();
 	private:
-		static Application* s_Instance;
 		ApplicationSpecification m_Specification;
 
 		std::vector<std::function<void()>> m_MainThread;
@@ -58,9 +71,11 @@ namespace GE
 
 		float m_LastFrameTime = 0.0f;
 
+	private:
+		static Application* s_Instance;
 	};
 
 	//Defined in Client
-	Application* CreateApplication();
+	Application* CreateApplication(ApplicationCommandLineArgs args);
 }
 

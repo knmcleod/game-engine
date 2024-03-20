@@ -27,12 +27,17 @@ namespace GE
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static void TransformComponent_SetTranslation(ulong uuid, ref Vector3 translation);
 
+
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static void Rigidbody2DComponent_ApplyLinearImpulse(ulong uuid, ref Vector2 impulse, ref Vector2 point, ref bool wake);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static void Rigidbody2DComponent_ApplyLinearImpulseToCenter(ulong uuid, ref Vector2 impulse, ref bool wake);
 
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void Rigidbody2DComponent_GetLinearVelocity(ulong uuid, out Vector2 velocity);
+
+        
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static bool Entity_HasComponent(ulong uuid, Type componentType);
 
@@ -41,6 +46,7 @@ namespace GE
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static object Entity_GetScriptInstance(ulong uuid);
+
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static bool Input_IsKeyDown(KeyCode keyCode);

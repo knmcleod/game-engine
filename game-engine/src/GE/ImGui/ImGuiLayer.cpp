@@ -4,11 +4,11 @@
 
 #include "GE/Core/Application/Application.h"
 
-#include <imgui/backends/imgui_impl_glfw.h>
-#include <imgui/backends/imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
-#include <imgui/backends/imgui_impl_opengl3.h>
+
 #include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_opengl3.h>
+#include <imgui/imgui_internal.h>
 
 namespace GE
 {
@@ -127,5 +127,11 @@ namespace GE
 		colors[ImGuiCol_TitleBg] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
 		colors[ImGuiCol_TitleBgActive] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
 		colors[ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+	}
+	
+	uint32_t ImGuiLayer::GetActiveWidgetID() const
+	{
+		ImGuiContext& imguiContext = *GImGui;
+		return imguiContext.ActiveId;
 	}
 }

@@ -5,14 +5,14 @@
 #include "GE/Core/Debug/Instrumentor.h"
 
 #ifdef GE_PLATFORM_WINDOWS
-	extern GE::Application* GE::CreateApplication();
+	extern GE::Application* GE::CreateApplication(ApplicationCommandLineArgs args);
 
 	int main(int argc, char** argv)
 	{
 		GE::Log::Init();
 
 		GE_PROFILE_BEGIN_SESSION("Startup", "GE_PROFILE_STARTUP.json");
-		GE::Application* app = GE::CreateApplication();
+		GE::Application* app = GE::CreateApplication({ argc, argv });
 		GE_PROFILE_END_SESSION();
 
 		GE_PROFILE_BEGIN_SESSION("Runtime", "GE_PROFILE_RUNTIME.json");

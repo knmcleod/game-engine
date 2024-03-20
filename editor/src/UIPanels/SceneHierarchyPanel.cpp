@@ -1,7 +1,8 @@
 #include "SceneHierarchyPanel.h"
 
-#include "GE/Scene/Components/Components.h"
+#include "GE/Project/Project.h"
 #include "GE/Rendering/Textures/Texture.h"
+#include "GE/Scene/Components/Components.h"
 #include "GE/Scripting/Scripting.h"
 
 #include <filesystem>
@@ -9,8 +10,6 @@
 
 namespace GE
 {
-	extern const std::filesystem::path g_AssetsPath;
-
 	template<typename T, typename UIFunction>
 	static void DrawComponent(const std::string& name, Entity entity, UIFunction function)
 	{
@@ -79,6 +78,7 @@ namespace GE
 	void SceneHierarchyPanel::SetScene(const Ref<Scene>& scene)
 	{
 		m_Scene = scene;
+		//m_Scene = Scene::Copy(scene);
 		m_SelectedEntity = Entity();
 	}
 
@@ -262,7 +262,7 @@ namespace GE
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
 					{
 						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path texturePath = std::filesystem::path(g_AssetsPath) / path;
+						std::filesystem::path texturePath = Project::GetActive()->GetPathToAsset(path);
 
 						component.Texture = Texture2D::Create(texturePath.string());
 					}

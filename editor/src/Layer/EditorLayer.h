@@ -38,15 +38,20 @@ namespace GE
 		void SaveSceneFromFile();
 		void SaveScene();
 		void NewScene();
-
 		void SerializeScene(Ref<Scene> scene, const std::filesystem::path& path);
 
-		// UI 
+		bool LoadProjectFromFile();
+		void LoadProject(const std::filesystem::path& path);
+		void SaveProjectFromFile();
+		void SaveProject();
+		Ref<Project> NewProject();
 
+		// UI 
 		void UI_Toolbar();
 
 	private:
 		EditorCamera m_EditorCamera;
+		Entity m_HoveredEntity;
 
 		int m_StepFrameMultiplier = 1;
 
@@ -56,15 +61,14 @@ namespace GE
 		glm::vec2 m_ViewportBounds[2];
 
 		Ref<Framebuffer> m_Framebuffer;
-		Ref<Scene> m_EditorScene, m_ActiveScene;
-		std::filesystem::path m_ScenePath;
-		Scene::SceneState m_LastSceneState;
-
 		Ref<SceneHierarchyPanel> m_ScenePanel;
 		Ref<AssetPanel> m_AssetPanel;
-		Ref<Texture2D> m_PlayButtonTexture, m_SimulateButtonTexture, m_PauseButtonTexture, m_StepButtonTexture, m_StopButtonTexture;
 
-		Entity m_HoveredEntity;
+		Ref<Project> m_ActiveProject;
+		Ref<Scene> m_EditorScene, m_ActiveScene;
+		Scene::SceneState m_LastSceneState;
+
+		Ref<Texture2D> m_PlayButtonTexture, m_SimulateButtonTexture, m_PauseButtonTexture, m_StepButtonTexture, m_StopButtonTexture;
 		
 	};
 }

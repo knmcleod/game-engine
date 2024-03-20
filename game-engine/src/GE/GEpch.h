@@ -18,8 +18,7 @@
 //	-- Core	--
 #include "GE/Core/Core.h"
 
-//	-- Entry Point	--
-#include "GE/Core/EntryPoint.h"
+#include "GE/Core/Debug/Instrumentor.h"
 
 #ifdef GE_PLATFORM_WINDOWS
 	#include <Windows.h>

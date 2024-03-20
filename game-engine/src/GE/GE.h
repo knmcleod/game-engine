@@ -34,6 +34,10 @@
 #include "GE/Core/UUID/UUID.h"
 #pragma endregion
 
+#pragma region Project
+#include "GE/Project/Project.h"
+#pragma endregion
+
 #pragma region Rendering
 //	--	Renderer	--
 #include "GE/Rendering/RenderCommand.h"

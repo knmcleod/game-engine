@@ -32,10 +32,10 @@ namespace GE
 
 	struct ScriptField
 	{
-		std::string Name;
-		ScriptFieldType Type;
+		std::string Name = "Script Field";
+		ScriptFieldType Type = ScriptFieldType::None;
 
-		MonoClassField* Field;
+		MonoClassField* Field = nullptr;
 	};
 
 	class ScriptFieldInstance

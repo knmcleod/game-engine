@@ -14,7 +14,6 @@ namespace demo
         private Rigidbody2DComponent m_Rigidbody2DComponent;
 
         public float Speed;
-        public Vector3 Velocity;
 
         Camera camera;
 
@@ -30,29 +29,29 @@ namespace demo
         }
         void OnUpdate(float timestep)
         {
+            Vector3 velocity = Vector3.Zero;
+
             if (Input.IsKeyDown(KeyCode.KEY_W))
             {
-                Velocity.y += Speed * timestep;
+                velocity.y = 1.0f * Speed;
             }
             else if (Input.IsKeyDown(KeyCode.KEY_S))
             {
-                Velocity.y -= Speed * timestep;
+                velocity.y = -1.0f * Speed;
             }
             else if (Input.IsKeyDown(KeyCode.KEY_A))
             {
-                Velocity.x -= Speed * timestep;
+                velocity.x = -1.0f * Speed;
             }
             else if (Input.IsKeyDown(KeyCode.KEY_D))
             {
-                Velocity.x += Speed * timestep;
+                velocity.x = 1.0f * Speed;
             }
-            //m_TransformComponent.Translation += Velocity;
 
-            if (Input.IsKeyDown(KeyCode.KEY_SPACE))
-            {
-                Log.LogCoreInfo("Velocity Applied = ( " + Velocity.x + ", " + Velocity.y + ", " + Velocity.z +")");
-                m_Rigidbody2DComponent.ApplyLinearImpulseToCenter(Velocity.XY, false);
-            }
+            velocity *= timestep;
+
+            Log.LogCoreInfo("Velocity Applied = ( " + velocity.x + ", " + velocity.y + ", " + velocity.z + ")");
+            m_Rigidbody2DComponent.ApplyLinearImpulseToCenter(velocity.XY, true);
 
             if(camera != null)
             {

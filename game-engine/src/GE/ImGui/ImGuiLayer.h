@@ -12,7 +12,6 @@ namespace GE
 	{
 	private:
 		bool m_BlockEvents = true;
-		float m_Time = 0.0f;
 
 	public:
 		ImGuiLayer();
@@ -28,6 +27,8 @@ namespace GE
 		void End();
 
 		void SetDarkTheme(ImGuiStyle& style);
+
+		uint32_t GetActiveWidgetID() const;
 
 	};
 	

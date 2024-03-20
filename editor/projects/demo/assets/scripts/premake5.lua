@@ -1,3 +1,5 @@
+local GERootDir = os.getenv("GE_DIR")
+
 workspace "demo"
 	architecture "x86_64"
 	startproject "demo"
@@ -9,8 +11,13 @@ workspace "demo"
 		"Dist"
 	}
 
+	flags
+	{
+		"MultiProcessorCompile"
+	}
+
 group "GE"
-	include "../../../../GE-ScriptCore"
+	include (GERootDir .. "/GE-ScriptCore")
 group ""
 
 project "demo"

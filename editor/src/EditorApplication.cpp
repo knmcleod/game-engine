@@ -14,10 +14,14 @@ namespace GE
 
 	};
 
-	Application* CreateApplication()
+	Application* CreateApplication(ApplicationCommandLineArgs args)
 	{
-		ApplicationSpecification spec;
-		spec.Name = "Game Editor Application";
-		return new EditorApplication(spec);
+		ApplicationSpecification appSpec;
+		appSpec.Name = "Game Editor";
+		appSpec.CommandLineArgs = args;
+
+		//Project::New()->Save("projects/demo/demo.gproj");
+
+		return new EditorApplication(appSpec);
 	}
 }
