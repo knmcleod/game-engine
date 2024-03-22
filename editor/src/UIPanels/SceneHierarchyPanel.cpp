@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <imgui/imgui.h>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace GE
 {
@@ -78,7 +79,6 @@ namespace GE
 	void SceneHierarchyPanel::SetScene(const Ref<Scene>& scene)
 	{
 		m_Scene = scene;
-		//m_Scene = Scene::Copy(scene);
 		m_SelectedEntity = Entity();
 	}
 

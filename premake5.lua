@@ -20,6 +20,8 @@ IncludeDir["glfw"] = "game-engine/vender/glfw/include"
 IncludeDir["glm"] = "game-engine/vender/glm"
 IncludeDir["ImGui"] = "game-engine/vender/imgui"
 IncludeDir["mono"] = "game-engine/vender/mono/mono/msvc/include"
+IncludeDir["msdf_atlas_gen"] = "game-engine/vender/msdf-atlas-gen"
+IncludeDir["msdf_gen"] = "game-engine/vender/msdf-atlas-gen/msdfgen"
 IncludeDir["spdlog"] = "game-engine/vender/spdlog/include"
 IncludeDir["stb"] = "game-engine/vender/stb_image"
 IncludeDir["yaml_cpp"] = "game-engine/vender/yaml-cpp/include"
@@ -38,6 +40,8 @@ group "Dependencies"
 	include "game-engine/vender/GLAD"
 	include "game-engine/vender/glfw"
 	include "game-engine/vender/ImGui"
+	include "game-engine/vender/msdf-atlas-gen"
+	include "game-engine/vender/msdf-atlas-gen/msdfgen"
 	include "game-engine/vender/yaml-cpp"
 group ""
 
@@ -85,6 +89,8 @@ project "game-engine"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.mono}",
+		"%{IncludeDir.msdf_atlas_gen}",
+		"%{IncludeDir.msdf_gen}",
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.yaml_cpp}"
@@ -96,6 +102,8 @@ project "game-engine"
 		"GLAD",
 		"glfw",
 		"ImGui",
+		"msdf-atlas-gen",
+		"msdfgen",
 		"yaml-cpp",
 		"opengl32.lib",
 		"game-engine/vender/mono/mono/msvc/build/sgen/x64/lib/%{cfg.buildcfg}/libmono-static-sgen.lib"
@@ -151,8 +159,8 @@ project "editor"
 		"%{IncludeDir.filewatch}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
-		"%{IncludeDir.spdlog}",
-		"%{IncludeDir.mono}"
+		"%{IncludeDir.mono}",
+		"%{IncludeDir.spdlog}"
 	}
 
 	links

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <GE/GE.h>
-
 #include "../UIPanels/SceneHierarchyPanel.h"
 #include "../UIPanels/AssetPanel.h"
 

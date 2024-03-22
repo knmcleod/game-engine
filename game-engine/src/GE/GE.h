@@ -51,6 +51,8 @@
 #include "GE/Rendering/VertexArray/VertexArray.h"
 #include "GE/Rendering/VertexArray/Buffer.h"
 
+#include "GE/Rendering/Text/Font.h"
+
 //	--	Texture	--
 #include "GE/Rendering/Textures/Texture.h"
 #include "GE/Rendering/Textures/SubTexture.h"

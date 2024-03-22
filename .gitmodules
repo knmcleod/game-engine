@@ -19,3 +19,6 @@
 [submodule "game-engine/vender/box2d"]
 	path = game-engine/vender/box2d
 	url = https://github.com/knmcleod/box2d.git
+[submodule "game-engine/vender/msdf-atlas-gen"]
+	path = game-engine/vender/msdf-atlas-gen
+	url = https://github.com/knmcleod/msdf-atlas-gen.git

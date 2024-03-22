@@ -8,7 +8,7 @@
 
 namespace GE
 {
-	Ref<Texture2D> Texture2D::Create(uint32_t width, uint32_t height, uint32_t channels, void* data, uint32_t size)
+	Ref<Texture2D> Texture2D::Create(const TextureConfiguration& textureConfig)
 	{
 		switch (Renderer::GetAPI())
 		{
@@ -17,7 +17,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return CreateRef<OpenGLTexture2D>(width, height, channels, data, size);
+			return CreateRef<OpenGLTexture2D>(textureConfig);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");

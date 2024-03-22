@@ -1,12 +1,19 @@
 #include "EditorLayer.h"
+
 #include "GE/Scripting/Scripting.h"
+
+//#include <imgui/imgui.h>
+//#include <glm/gtc/type_ptr.hpp>
 
 namespace GE
 {
+	static Font* s_font;
 
 	EditorLayer::EditorLayer(const std::string& name)
 		: Layer(name), m_ViewportSize(1.0f), m_ViewportBounds{ { glm::vec2() },{ glm::vec2() } }
 	{
+		std::filesystem::path filePath("assets/fonts/arial.ttf");
+		s_font =  new Font(filePath);
 	}
 
 	void EditorLayer::OnAttach()
@@ -32,7 +39,7 @@ namespace GE
 		if (commandLineArgs.Count > 1)
 		{
 			auto projectFilePath = commandLineArgs[1];
-			GE_CORE_INFO("Loading Project from commandLineArgs. {}", projectFilePath);
+			GE_INFO("Loading Project from commandLineArgs. Path = {}", projectFilePath);
 			LoadProject(projectFilePath);
 		}
 		else
@@ -98,7 +105,7 @@ namespace GE
 		}
 		default:
 		{
-			GE_CORE_ASSERT(false, "Unsupported Scene State. Active Scene will not Update.");
+			GE_ASSERT(false, "Unsupported Scene State. Active Scene will not Update.");
 			break;
 		}
 		}
@@ -239,7 +246,14 @@ namespace GE
 
 			{
 				ImGui::DragInt("Step Rate", &m_StepFrameMultiplier);
-				ImGui::Checkbox("Camera Toggle", &m_ActiveScene->m_UseEditorCameraPaused);
+				ImGui::Checkbox("Camera Toggle", &m_ActiveScene->m_UseEditorCamera);
+			}
+
+			ImGui::Separator();
+
+			{
+				if(s_font->GetTexture() != nullptr)
+					ImGui::Image((ImTextureID)s_font->GetTexture()->GetID(), { 512, 512 }, {0, 1}, {1, 0});
 			}
 
 			ImGui::End();
@@ -376,7 +390,7 @@ namespace GE
 			break;
 		}
 		default:
-			GE_CORE_WARN("Key not bound.");
+			GE_WARN("Key not bound.");
 			break;
 		}
 		return true;
@@ -393,7 +407,7 @@ namespace GE
 		case GE_MOUSE_BUTTON_2:
 			break;
 		default:
-			GE_CORE_WARN("Mouse Button not bound.");
+			GE_WARN("Mouse Button not bound.");
 			break;
 		}
 		return true;
@@ -462,14 +476,14 @@ namespace GE
 	{
 		if (path.extension().string() != ".scene")
 		{
-			GE_CORE_WARN("Could not load {0} : File extension is not .scene", path.filename().string());
+			GE_WARN("Could not load {0} : File extension is not .scene", path.filename().string());
 			return;
 		}
 
 		if (m_ActiveScene && m_ActiveScene->m_SceneState != Scene::SceneState::Stop)
 			OnSceneStop();
 
-		GE_CORE_TRACE("Loading Scene from Path = {}", path.string());
+		GE_TRACE("Loading Scene from Path = {}", path.string());
 
 		m_ActiveScene = CreateRef<Scene>();
 		SceneSerializer serializer(m_ActiveScene);
@@ -478,7 +492,7 @@ namespace GE
 			m_ActiveScene->OnResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 			m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_ActiveScene);
 
-			GE_CORE_INFO("Scene Load Complete");
+			GE_INFO("Scene Load Complete");
 		}
 	}
 
@@ -486,9 +500,7 @@ namespace GE
 	{
 		std::string filePath = FileDialogs::SaveFile("GAME Scene(*.scene)\0 * .scene\0");
 		if (!filePath.empty())
-		{
 			SerializeScene(m_ActiveScene, filePath);
-		}
 	}
 
 	void EditorLayer::SaveScene()
@@ -515,15 +527,15 @@ namespace GE
 	{
 		if (path.filename().extension().string() != ".scene")
 		{
-			GE_CORE_WARN("Could not save {0}	: File extension is not .scene", path.filename().string());
+			GE_WARN("Could not save {0}	: File extension is not .scene", path.filename().string());
 			return;
 		}
 
-		GE_CORE_TRACE("Serializing Scene at Path = {}", path.string());
+		GE_TRACE("Serializing Scene at Path = {}", path.string());
 		SceneSerializer serializer(scene);
 		if (serializer.SerializeText(path.string()))
 		{
-			GE_CORE_INFO("Scene Serialization Complete");
+			GE_INFO("Scene Serialization Complete");
 		}
 	}
 
@@ -545,10 +557,10 @@ namespace GE
 	{
 		if (path.extension().string() != ".gproj")
 		{
-			GE_CORE_WARN("Could not load {0} : File extension is not .gproj", path.filename().string());
+			GE_WARN("Could not load {0} : File extension is not .gproj", path.filename().string());
 			return;
 		}
-		GE_CORE_TRACE("Loading Editor Project");
+		GE_TRACE("Loading Project");
 		if (Project::Load(path))
 		{
 			Scripting::Init();
@@ -557,7 +569,7 @@ namespace GE
 			LoadScene(fullPath);
 			m_AssetPanel = CreateRef<AssetPanel>();
 
-			GE_CORE_INFO("Editor Project Load Complete");
+			GE_INFO("Project Load Complete");
 		}
 	}
 
@@ -636,7 +648,7 @@ namespace GE
 				{
 					(m_ActiveScene->m_SceneState == Scene::SceneState::Run || m_ActiveScene->m_SceneState == Scene::SceneState::Simulate) ? OnScenePause() : (
 						(m_ActiveScene->m_SceneState == Scene::SceneState::Pause && m_LastSceneState == Scene::SceneState::Simulate) ? OnSceneSimulate() : (
-							(m_ActiveScene->m_SceneState == Scene::SceneState::Pause && m_LastSceneState == Scene::SceneState::Run) ? OnSceneRuntime() : GE_CORE_INFO("Could not execute Pause/Run/Simulate.")));
+							(m_ActiveScene->m_SceneState == Scene::SceneState::Pause && m_LastSceneState == Scene::SceneState::Run) ? OnSceneRuntime() : GE_INFO("Could not execute Pause/Run/Simulate.")));
 				}
 
 				if (m_ActiveScene->IsPaused())

@@ -62,7 +62,7 @@
 // Client Log Macros
 #define GE_TRACE(...)	::GE::Log::GetClientLogger()->trace(__VA_ARGS__)
 #define GE_INFO(...)	::GE::Log::GetClientLogger()->info(__VA_ARGS__)
-#define GET_WARN(...)	::GE::Log::GetClientLogger()->warn(__VA_ARGS__)
+#define GE_WARN(...)	::GE::Log::GetClientLogger()->warn(__VA_ARGS__)
 #define GE_ERROR(...)	::GE::Log::GetClientLogger()->error(__VA_ARGS__)
 
 #ifdef GE_ENABLE_ASSERTS

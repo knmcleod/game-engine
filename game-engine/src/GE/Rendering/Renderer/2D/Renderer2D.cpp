@@ -11,16 +11,16 @@ namespace GE
 {
 	const glm::mat4 Renderer2D::s_IdentityMat4 = glm::mat4(1.0f);
 
-	static Renderer2D::Renderer2DData s_Data;
+	static Renderer2D::Renderer2DData s_RendererData;
 
 	void Renderer2D::Init()
 	{
 		GE_PROFILE_FUNCTION();
 
 		//Creates Index Buffer - Can be used for both Quad & Circle
-		uint32_t* indices = new uint32_t[s_Data.MaxIndices];
+		uint32_t* indices = new uint32_t[s_RendererData.MaxIndices];
 		uint32_t offset = 0;
-		for (uint32_t i = 0; i < s_Data.MaxIndices; i += 6)
+		for (uint32_t i = 0; i < s_RendererData.MaxIndices; i += 6)
 		{
 			indices[i + 0] = offset + 0;
 			indices[i + 1] = offset + 1;
@@ -32,16 +32,16 @@ namespace GE
 
 			offset += 4;
 		}
-		Ref<IndexBuffer> indexBuffer = IndexBuffer::Create(s_Data.MaxIndices, indices);
+		Ref<IndexBuffer> indexBuffer = IndexBuffer::Create(s_RendererData.MaxIndices, indices);
 
 		// Quad/Sprite Rendering Setup
 		{ 
 			GE_PROFILE_SCOPE("Renderer2D - Init() : Quad/Sprite Rendering Setup");
 
 			//Creates Vertex Array
-			s_Data.QuadVertexArray = VertexArray::Create();
+			s_RendererData.QuadVertexArray = VertexArray::Create();
 
-			s_Data.QuadVertexBuffer = VertexBuffer::Create(s_Data.MaxVertices * sizeof(QuadVertex));
+			s_RendererData.QuadVertexBuffer = VertexBuffer::Create(s_RendererData.MaxVertices * sizeof(QuadVertex));
 			//Sets up Layout using Vertex Buffer
 			BufferLayout layout =
 			{
@@ -52,37 +52,37 @@ namespace GE
 				{ GE::Shader::ShaderDataType::Float,	"a_TilingFactor" },
 				{ GE::Shader::ShaderDataType::Int,		"a_EntityID"	 }
 			};
-			s_Data.QuadVertexBuffer->SetLayout(layout);
+			s_RendererData.QuadVertexBuffer->SetLayout(layout);
 
 			//Add Vertex Buffer to Vertex Array
-			s_Data.QuadVertexArray->AddVertexBuffer(s_Data.QuadVertexBuffer);
+			s_RendererData.QuadVertexArray->AddVertexBuffer(s_RendererData.QuadVertexBuffer);
 
 			//Add Index Buffer to Vertex Array
-			s_Data.QuadVertexArray->AddIndexBuffer(indexBuffer);
-			s_Data.QuadVertexBufferBase = new QuadVertex[s_Data.MaxVertices];
+			s_RendererData.QuadVertexArray->AddIndexBuffer(indexBuffer);
+			s_RendererData.QuadVertexBufferBase = new QuadVertex[s_RendererData.MaxVertices];
 
 			// Texture Creation
 			uint32_t textureData = 0xFFFFFFFF;
-			//s_Data.Texture = Texture2D::Create(1, 1, 4, &textureData, sizeof(uint32_t));
-			s_Data.EmptyTexture = Texture2D::Create(1, 1, 4);
-			s_Data.EmptyTexture->SetData(&textureData, sizeof(uint32_t));
+			//s_RendererData.Texture = Texture2D::Create(1, 1, 4, &textureData, sizeof(uint32_t));
+			s_RendererData.EmptyTexture = Texture2D::Create(TextureConfiguration{});
+			s_RendererData.EmptyTexture->SetData(&textureData, sizeof(uint32_t));
 
-			int32_t samplers[s_Data.MaxTextureSlots];
-			for (uint32_t i = 0; i < s_Data.MaxTextureSlots; i++)
+			int32_t samplers[s_RendererData.MaxTextureSlots];
+			for (uint32_t i = 0; i < s_RendererData.MaxTextureSlots; i++)
 			{
 				samplers[i] = i;
 			}
 
-			s_Data.QuadShader = Shader::Create("assets/shaders/Renderer2D_Sprite.glsl");
-			s_Data.QuadShader->Bind();
-			s_Data.QuadShader->SetIntArray("u_Textures", samplers, s_Data.MaxTextureSlots);
+			s_RendererData.QuadShader = Shader::Create("assets/shaders/Renderer2D_Sprite.glsl");
+			s_RendererData.QuadShader->Bind();
+			s_RendererData.QuadShader->SetIntArray("u_Textures", samplers, s_RendererData.MaxTextureSlots);
 
-			s_Data.TextureSlots[0] = s_Data.EmptyTexture;
+			s_RendererData.TextureSlots[0] = s_RendererData.EmptyTexture;
 
-			s_Data.QuadVertices[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
-			s_Data.QuadVertices[1] = { 0.5f, -0.5f, 0.0f, 1.0f };
-			s_Data.QuadVertices[2] = { 0.5f, 0.5f, 0.0f, 1.0f };
-			s_Data.QuadVertices[3] = { -0.5f, 0.5f, 0.0f, 1.0f };
+			s_RendererData.QuadVertices[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
+			s_RendererData.QuadVertices[1] = { 0.5f, -0.5f, 0.0f, 1.0f };
+			s_RendererData.QuadVertices[2] = { 0.5f, 0.5f, 0.0f, 1.0f };
+			s_RendererData.QuadVertices[3] = { -0.5f, 0.5f, 0.0f, 1.0f };
 		}
 
 		// Circle Rendering Setup
@@ -90,9 +90,9 @@ namespace GE
 			GE_PROFILE_SCOPE("Renderer2D - Init() : Circle Rendering Setup");
 
 			//Creates Vertex Array
-			s_Data.CircleVertexArray = VertexArray::Create();
+			s_RendererData.CircleVertexArray = VertexArray::Create();
 
-			s_Data.CircleVertexBuffer = VertexBuffer::Create(s_Data.MaxVertices * sizeof(CircleVertex));
+			s_RendererData.CircleVertexBuffer = VertexBuffer::Create(s_RendererData.MaxVertices * sizeof(CircleVertex));
 			//Sets up Layout using Vertex Buffer
 			BufferLayout layout =
 			{
@@ -104,20 +104,20 @@ namespace GE
 				{ GE::Shader::ShaderDataType::Float, "a_Fade"				},
 				{ GE::Shader::ShaderDataType::Int, "a_EntityID"				}
 			};
-			s_Data.CircleVertexBuffer->SetLayout(layout);
+			s_RendererData.CircleVertexBuffer->SetLayout(layout);
 
 			//Add Vertex Buffer to Vertex Array
-			s_Data.CircleVertexArray->AddVertexBuffer(s_Data.CircleVertexBuffer);
+			s_RendererData.CircleVertexArray->AddVertexBuffer(s_RendererData.CircleVertexBuffer);
 			//Add Index Buffer to Vertex Array
-			s_Data.CircleVertexArray->AddIndexBuffer(indexBuffer);
-			s_Data.CircleVertexBufferBase = new CircleVertex[s_Data.MaxVertices];
+			s_RendererData.CircleVertexArray->AddIndexBuffer(indexBuffer);
+			s_RendererData.CircleVertexBufferBase = new CircleVertex[s_RendererData.MaxVertices];
 
-			s_Data.CircleVertices[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
-			s_Data.CircleVertices[1] = { 0.5f, -0.5f, 0.0f, 1.0f };
-			s_Data.CircleVertices[2] = { 0.5f, 0.5f, 0.0f, 1.0f };
-			s_Data.CircleVertices[3] = { -0.5f, 0.5f, 0.0f, 1.0f };
+			s_RendererData.CircleVertices[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
+			s_RendererData.CircleVertices[1] = { 0.5f, -0.5f, 0.0f, 1.0f };
+			s_RendererData.CircleVertices[2] = { 0.5f, 0.5f, 0.0f, 1.0f };
+			s_RendererData.CircleVertices[3] = { -0.5f, 0.5f, 0.0f, 1.0f };
 
-			s_Data.CircleShader = Shader::Create("assets/shaders/Renderer2D_Circle.glsl");
+			s_RendererData.CircleShader = Shader::Create("assets/shaders/Renderer2D_Circle.glsl");
 		}
 		
 		// Line Rendering Setup
@@ -125,9 +125,9 @@ namespace GE
 			GE_PROFILE_SCOPE("Renderer2D - Init() : Line Rendering Setup");
 
 			//Creates Vertex Array
-			s_Data.LineVertexArray = VertexArray::Create();
+			s_RendererData.LineVertexArray = VertexArray::Create();
 
-			s_Data.LineVertexBuffer = VertexBuffer::Create(s_Data.MaxVertices * sizeof(LineVertex));
+			s_RendererData.LineVertexBuffer = VertexBuffer::Create(s_RendererData.MaxVertices * sizeof(LineVertex));
 			//Sets up Layout using Vertex Buffer
 			BufferLayout layout =
 			{
@@ -135,14 +135,14 @@ namespace GE
 				{ GE::Shader::ShaderDataType::Float4, "a_Color"		},
 				{ GE::Shader::ShaderDataType::Int, "a_EntityID"		}
 			};
-			s_Data.LineVertexBuffer->SetLayout(layout);
+			s_RendererData.LineVertexBuffer->SetLayout(layout);
 
 			//Add Vertex Buffer to Vertex Array
-			s_Data.LineVertexArray->AddVertexBuffer(s_Data.LineVertexBuffer);
+			s_RendererData.LineVertexArray->AddVertexBuffer(s_RendererData.LineVertexBuffer);
 			
-			s_Data.LineVertexBufferBase = new LineVertex[s_Data.MaxVertices];
+			s_RendererData.LineVertexBufferBase = new LineVertex[s_RendererData.MaxVertices];
 
-			s_Data.LineShader = Shader::Create("assets/shaders/Renderer2D_Line.glsl");
+			s_RendererData.LineShader = Shader::Create("assets/shaders/Renderer2D_Line.glsl");
 		}
 
 		delete[] indices;
@@ -152,11 +152,11 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		delete[] s_Data.QuadVertexBufferBase;
+		delete[] s_RendererData.QuadVertexBufferBase;
 	
-		delete[] s_Data.CircleVertexBufferBase;
+		delete[] s_RendererData.CircleVertexBufferBase;
 	
-		delete[] s_Data.LineVertexBufferBase;
+		delete[] s_RendererData.LineVertexBufferBase;
 	
 	}
 
@@ -165,9 +165,9 @@ namespace GE
 		GE_PROFILE_FUNCTION();
 
 		glm::mat4 viewProjection = camera.GetViewProjection();
-		s_Data.QuadShader->SetMat4("u_ViewProjection", viewProjection);
-		s_Data.CircleShader->SetMat4("u_ViewProjection", viewProjection);
-		s_Data.LineShader->SetMat4("u_ViewProjection", viewProjection);
+		s_RendererData.QuadShader->SetMat4("u_ViewProjection", viewProjection);
+		s_RendererData.CircleShader->SetMat4("u_ViewProjection", viewProjection);
+		s_RendererData.LineShader->SetMat4("u_ViewProjection", viewProjection);
 
 		ResetQuadData();
 		ResetCircleData();
@@ -179,9 +179,9 @@ namespace GE
 		GE_PROFILE_FUNCTION();
 
 		glm::mat4 viewProjection = camera.GetProjection() * glm::inverse(transform);
-		s_Data.QuadShader->SetMat4("u_ViewProjection", viewProjection);
-		s_Data.CircleShader->SetMat4("u_ViewProjection", viewProjection);
-		s_Data.LineShader->SetMat4("u_ViewProjection", viewProjection);
+		s_RendererData.QuadShader->SetMat4("u_ViewProjection", viewProjection);
+		s_RendererData.CircleShader->SetMat4("u_ViewProjection", viewProjection);
+		s_RendererData.LineShader->SetMat4("u_ViewProjection", viewProjection);
 
 		ResetQuadData();
 		ResetCircleData();
@@ -197,56 +197,56 @@ namespace GE
 
 	void Renderer2D::FlushLines()
 	{
-		if (s_Data.LineVertexCount == 0)
+		if (s_RendererData.LineVertexCount == 0)
 			return;
 
-		s_Data.LineShader->Bind();
-		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.LineVertexBufferPtr - (uint8_t*)s_Data.LineVertexBufferBase);
-		s_Data.LineVertexBuffer->SetData(s_Data.LineVertexBufferBase, dataSize);
+		s_RendererData.LineShader->Bind();
+		uint32_t dataSize = (uint32_t)((uint8_t*)s_RendererData.LineVertexBufferPtr - (uint8_t*)s_RendererData.LineVertexBufferBase);
+		s_RendererData.LineVertexBuffer->SetData(s_RendererData.LineVertexBufferBase, dataSize);
 
 		// Draw Line Indices
-		s_Data.LineVertexArray->Bind();
-		RenderCommand::SetLineWidth(s_Data.LineWidth);
-		RenderCommand::DrawLines(s_Data.LineVertexArray, s_Data.LineVertexCount);
-		s_Data.Stats.DrawCalls++;
+		s_RendererData.LineVertexArray->Bind();
+		RenderCommand::SetLineWidth(s_RendererData.LineWidth);
+		RenderCommand::DrawLines(s_RendererData.LineVertexArray, s_RendererData.LineVertexCount);
+		s_RendererData.Stats.DrawCalls++;
 
 		ResetLineData();
 	}
 
 	void Renderer2D::FlushCircles()
 	{
-		if (s_Data.CircleIndexCount == 0)
+		if (s_RendererData.CircleIndexCount == 0)
 			return;
 
-		s_Data.CircleShader->Bind();
-		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.CircleVertexBufferPtr - (uint8_t*)s_Data.CircleVertexBufferBase);
-		s_Data.CircleVertexBuffer->SetData(s_Data.CircleVertexBufferBase, dataSize);
+		s_RendererData.CircleShader->Bind();
+		uint32_t dataSize = (uint32_t)((uint8_t*)s_RendererData.CircleVertexBufferPtr - (uint8_t*)s_RendererData.CircleVertexBufferBase);
+		s_RendererData.CircleVertexBuffer->SetData(s_RendererData.CircleVertexBufferBase, dataSize);
 
 		// Draw Circle Indices
-		s_Data.CircleVertexArray->Bind();
-		RenderCommand::DrawIndices(s_Data.CircleVertexArray, s_Data.CircleIndexCount);
-		s_Data.Stats.DrawCalls++;
+		s_RendererData.CircleVertexArray->Bind();
+		RenderCommand::DrawIndices(s_RendererData.CircleVertexArray, s_RendererData.CircleIndexCount);
+		s_RendererData.Stats.DrawCalls++;
 
 		ResetCircleData();
 	}
 
 	void Renderer2D::FlushQuads()
 	{
-		if (s_Data.QuadIndexCount == 0)
+		if (s_RendererData.QuadIndexCount == 0)
 			return;
 
-		s_Data.QuadShader->Bind();
-		uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.QuadVertexBufferPtr - (uint8_t*)s_Data.QuadVertexBufferBase);
-		s_Data.QuadVertexBuffer->SetData(s_Data.QuadVertexBufferBase, dataSize);
+		s_RendererData.QuadShader->Bind();
+		uint32_t dataSize = (uint32_t)((uint8_t*)s_RendererData.QuadVertexBufferPtr - (uint8_t*)s_RendererData.QuadVertexBufferBase);
+		s_RendererData.QuadVertexBuffer->SetData(s_RendererData.QuadVertexBufferBase, dataSize);
 
 		// Bind Textures
-		for (uint32_t i = 0; i < s_Data.TextureSlotIndex; i++)
-			s_Data.TextureSlots[i]->Bind(i);
+		for (uint32_t i = 0; i < s_RendererData.TextureSlotIndex; i++)
+			s_RendererData.TextureSlots[i]->Bind(i);
 
 		// Draw Quad Indices
-		s_Data.QuadVertexArray->Bind();
-		RenderCommand::DrawIndices(s_Data.QuadVertexArray, s_Data.QuadIndexCount);
-		s_Data.Stats.DrawCalls++;
+		s_RendererData.QuadVertexArray->Bind();
+		RenderCommand::DrawIndices(s_RendererData.QuadVertexArray, s_RendererData.QuadIndexCount);
+		s_RendererData.Stats.DrawCalls++;
 
 		ResetQuadData();
 	}
@@ -266,32 +266,32 @@ namespace GE
 
 		for (size_t i = 0; i < quadVertexCount; i++)
 		{
-			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertices[i];
-			s_Data.QuadVertexBufferPtr->Color = color;
-			s_Data.QuadVertexBufferPtr->TextureCoord = textureCoords[i];
-			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-			s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-			s_Data.QuadVertexBufferPtr->EntityID = entityID;
-			s_Data.QuadVertexBufferPtr++;
+			s_RendererData.QuadVertexBufferPtr->Position = transform * s_RendererData.QuadVertices[i];
+			s_RendererData.QuadVertexBufferPtr->Color = color;
+			s_RendererData.QuadVertexBufferPtr->TextureCoord = textureCoords[i];
+			s_RendererData.QuadVertexBufferPtr->TextureIndex = textureIndex;
+			s_RendererData.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+			s_RendererData.QuadVertexBufferPtr->EntityID = entityID;
+			s_RendererData.QuadVertexBufferPtr++;
 		}
 
-		s_Data.QuadIndexCount += 6;
-		s_Data.Stats.SpawnCount++;
+		s_RendererData.QuadIndexCount += 6;
+		s_RendererData.Stats.SpawnCount++;
 	}
 
 	void Renderer2D::ResetQuadData()
 	{
-		s_Data.QuadIndexCount = 0;
-		s_Data.QuadVertexBufferPtr = s_Data.QuadVertexBufferBase;
+		s_RendererData.QuadIndexCount = 0;
+		s_RendererData.QuadVertexBufferPtr = s_RendererData.QuadVertexBufferBase;
 
-		s_Data.TextureSlotIndex = 1;
+		s_RendererData.TextureSlotIndex = 1;
 	}
 
 	void Renderer2D::FillQuad(const glm::mat4& transform, const glm::vec4& color, const int entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
-		if (s_Data.QuadIndexCount >= s_Data.MaxIndices)
+		if (s_RendererData.QuadIndexCount >= s_RendererData.MaxIndices)
 			FlushQuads();
 
 		const glm::vec2 textureCoords[] = { {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f} };
@@ -305,15 +305,15 @@ namespace GE
 	void Renderer2D::FillQuad(const glm::mat4& transform, const Ref<Texture2D>& texture,
 		const float& tilingFactor, const glm::vec4& color, const int entityID)
 	{
-		if (s_Data.QuadIndexCount >= s_Data.MaxIndices)
+		if (s_RendererData.QuadIndexCount >= s_RendererData.MaxIndices)
 			FlushQuads();
 
 		const glm::vec2 textureCoords[] = { {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f} };
 		float textureIndex = 0.0f;
 
-		for (uint32_t i = 1; i < s_Data.TextureSlotIndex; i++)
+		for (uint32_t i = 1; i < s_RendererData.TextureSlotIndex; i++)
 		{
-			if (*s_Data.TextureSlots[i].get() == *texture.get())
+			if (*s_RendererData.TextureSlots[i].get() == *texture.get())
 			{
 				textureIndex = (float)i;
 				break;
@@ -322,12 +322,12 @@ namespace GE
 
 		if (textureIndex == 0.0f)
 		{
-			if (s_Data.TextureSlotIndex >= s_Data.MaxTextureSlots)
+			if (s_RendererData.TextureSlotIndex >= s_RendererData.MaxTextureSlots)
 				Flush();
 
-			textureIndex = (float)s_Data.TextureSlotIndex;
-			s_Data.TextureSlots[(int)textureIndex] = texture;
-			s_Data.TextureSlotIndex++;
+			textureIndex = (float)s_RendererData.TextureSlotIndex;
+			s_RendererData.TextureSlots[(int)textureIndex] = texture;
+			s_RendererData.TextureSlotIndex++;
 		}
 
 		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, color, entityID);
@@ -364,7 +364,7 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		if (s_Data.QuadIndexCount >= s_Data.MaxIndices)
+		if (s_RendererData.QuadIndexCount >= s_RendererData.MaxIndices)
 			FlushQuads();
 
 		glm::mat4 transform = glm::translate(s_IdentityMat4, position)
@@ -375,9 +375,9 @@ namespace GE
 
 		float textureIndex = 0.0f;
 
-		for (uint32_t i = 1; i < s_Data.TextureSlotIndex; i++)
+		for (uint32_t i = 1; i < s_RendererData.TextureSlotIndex; i++)
 		{
-			if (*s_Data.TextureSlots[i].get() == *subTexture->GetTexture().get())
+			if (*s_RendererData.TextureSlots[i].get() == *subTexture->GetTexture().get())
 			{
 				textureIndex = (float)i;
 				break;
@@ -386,16 +386,16 @@ namespace GE
 
 		if (textureIndex == 0.0f)
 		{
-			if (s_Data.TextureSlotIndex >= s_Data.MaxTextureSlots)
+			if (s_RendererData.TextureSlotIndex >= s_RendererData.MaxTextureSlots)
 				Flush();
 
-			if (s_Data.TextureSlots[s_Data.TextureSlotIndex] != NULL)
+			if (s_RendererData.TextureSlots[s_RendererData.TextureSlotIndex] != NULL)
 			{
-				s_Data.TextureSlotIndex++;
+				s_RendererData.TextureSlotIndex++;
 			}
-			textureIndex = (float)s_Data.TextureSlotIndex;
-			s_Data.TextureSlots[(int)textureIndex] = subTexture->GetTexture();
-			s_Data.TextureSlotIndex++;
+			textureIndex = (float)s_RendererData.TextureSlotIndex;
+			s_RendererData.TextureSlots[(int)textureIndex] = subTexture->GetTexture();
+			s_RendererData.TextureSlotIndex++;
 		}
 
 		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, tintColor, entityID);
@@ -421,24 +421,24 @@ namespace GE
 
 		for (size_t i = 0; i < circleVertexCount; i++)
 		{
-			s_Data.CircleVertexBufferPtr->GlobalPosition = transform * s_Data.CircleVertices[i];
-			s_Data.CircleVertexBufferPtr->LocalPosition = s_Data.CircleVertices[i] * 2.0f;
-			s_Data.CircleVertexBufferPtr->Color = color;
-			s_Data.CircleVertexBufferPtr->Radius = radius;
-			s_Data.CircleVertexBufferPtr->Thickness = thickness;
-			s_Data.CircleVertexBufferPtr->Fade = fade;
-			s_Data.CircleVertexBufferPtr->EntityID = entityID;
-			s_Data.CircleVertexBufferPtr++;
+			s_RendererData.CircleVertexBufferPtr->GlobalPosition = transform * s_RendererData.CircleVertices[i];
+			s_RendererData.CircleVertexBufferPtr->LocalPosition = s_RendererData.CircleVertices[i] * 2.0f;
+			s_RendererData.CircleVertexBufferPtr->Color = color;
+			s_RendererData.CircleVertexBufferPtr->Radius = radius;
+			s_RendererData.CircleVertexBufferPtr->Thickness = thickness;
+			s_RendererData.CircleVertexBufferPtr->Fade = fade;
+			s_RendererData.CircleVertexBufferPtr->EntityID = entityID;
+			s_RendererData.CircleVertexBufferPtr++;
 		}
 
-		s_Data.CircleIndexCount += 6;
-		s_Data.Stats.SpawnCount++;
+		s_RendererData.CircleIndexCount += 6;
+		s_RendererData.Stats.SpawnCount++;
 	}
 
 	void Renderer2D::ResetCircleData()
 	{
-		s_Data.CircleIndexCount = 0;
-		s_Data.CircleVertexBufferPtr = s_Data.CircleVertexBufferBase;
+		s_RendererData.CircleIndexCount = 0;
+		s_RendererData.CircleVertexBufferPtr = s_RendererData.CircleVertexBufferBase;
 
 	}
 
@@ -446,7 +446,7 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		if (s_Data.CircleIndexCount >= s_Data.MaxIndices)
+		if (s_RendererData.CircleIndexCount >= s_RendererData.MaxIndices)
 			FlushCircles();
 			
 		SetCircleData(transform, color, radius, thickness, fade, entityID);
@@ -458,41 +458,41 @@ namespace GE
 
 	void Renderer2D::SetLineData(const glm::vec3& initialPosition, const glm::vec3& finalPosition, const glm::vec4& color, const int entityID)
 	{
-		s_Data.LineVertexBufferPtr->Position = initialPosition;
-		s_Data.LineVertexBufferPtr->Color = color;
-		s_Data.LineVertexBufferPtr->EntityID = entityID;
-		s_Data.LineVertexBufferPtr++;
+		s_RendererData.LineVertexBufferPtr->Position = initialPosition;
+		s_RendererData.LineVertexBufferPtr->Color = color;
+		s_RendererData.LineVertexBufferPtr->EntityID = entityID;
+		s_RendererData.LineVertexBufferPtr++;
 
-		s_Data.LineVertexBufferPtr->Position = finalPosition;
-		s_Data.LineVertexBufferPtr->Color = color;
-		s_Data.LineVertexBufferPtr->EntityID = entityID;
-		s_Data.LineVertexBufferPtr++;
+		s_RendererData.LineVertexBufferPtr->Position = finalPosition;
+		s_RendererData.LineVertexBufferPtr->Color = color;
+		s_RendererData.LineVertexBufferPtr->EntityID = entityID;
+		s_RendererData.LineVertexBufferPtr++;
 
-		s_Data.LineVertexCount += 2;
-		s_Data.Stats.SpawnCount++;
+		s_RendererData.LineVertexCount += 2;
+		s_RendererData.Stats.SpawnCount++;
 	}
 
 	void Renderer2D::ResetLineData()
 	{
-		s_Data.LineVertexCount = 0;
-		s_Data.LineVertexBufferPtr = s_Data.LineVertexBufferBase;
+		s_RendererData.LineVertexCount = 0;
+		s_RendererData.LineVertexBufferPtr = s_RendererData.LineVertexBufferBase;
 	}
 
 	void Renderer2D::SetLineWidth(float thickness)
 	{
-		s_Data.LineWidth = thickness;
+		s_RendererData.LineWidth = thickness;
 	}
 
 	float Renderer2D::GetLineWidth()
 	{
-		return s_Data.LineWidth;
+		return s_RendererData.LineWidth;
 	}
 
 	void Renderer2D::FillLine(const glm::vec3& initialPosition, const glm::vec3& finalPosition, const glm::vec4& color, const int entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
-		if (s_Data.LineVertexCount >= s_Data.MaxIndices)
+		if (s_RendererData.LineVertexCount >= s_RendererData.MaxIndices)
 			FlushLines();
 
 		SetLineData(initialPosition, finalPosition, color, entityID);
@@ -516,7 +516,7 @@ namespace GE
 		glm::vec3 lineVertices[4];
 		for (size_t i = 0; i < 4; i++)
 		{
-			lineVertices[i] = transform * s_Data.QuadVertices[i];
+			lineVertices[i] = transform * s_RendererData.QuadVertices[i];
 		}
 
 		FillLine(lineVertices[0], lineVertices[1], color, entityID);
@@ -530,12 +530,12 @@ namespace GE
 #pragma region Statistics
 	Renderer2D::Statistics Renderer2D::GetStats()
 	{
-		return s_Data.Stats;
+		return s_RendererData.Stats;
 	}
 
 	void Renderer2D::ResetStats()
 	{
-		memset(&s_Data.Stats, 0, sizeof(Renderer2D::Statistics));
+		memset(&s_RendererData.Stats, 0, sizeof(Renderer2D::Statistics));
 	}
 #pragma endregion
 

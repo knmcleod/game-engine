@@ -1,10 +1,7 @@
 #pragma once
 
 #include "GE/Core/Core.h"
-#include "GE/Scene/Scene.h"
 #include "GE/Scene/Entity/Entity.h"
-
-#include <glm/gtc/type_ptr.hpp>
 
 namespace GE
 {

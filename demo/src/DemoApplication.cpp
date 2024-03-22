@@ -14,9 +14,11 @@ private:
 
 };
 
-GE::Application* GE::CreateApplication()
+GE::Application* GE::CreateApplication(ApplicationCommandLineArgs args)
 {
-	ApplicationSpecification spec;
-	spec.Name = "Game Editor Application";
-	return new DemoApplication(spec);
+	ApplicationSpecification appSpec;
+	appSpec.Name = "Demo";
+	appSpec.CommandLineArgs = args;
+
+	return new DemoApplication(appSpec);
 }

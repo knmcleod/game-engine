@@ -37,7 +37,7 @@ namespace GE
 			return GL_RED_INTEGER;
 			break;
 		default:
-			GE_CORE_ASSERT(false, "Unsupported Framebuffer Texture Format.");
+			GE_CORE_ASSERT(false, "Unsupported Framebuffer Texture InternalFormat.");
 			return 0;
 			break;
 		}
@@ -181,7 +181,7 @@ namespace GE
 					AttachColorTexture(GL_R32I, GL_RED_INTEGER, m_ColorAttachmentsID[i], m_Spec.Samples, m_Spec.Width, m_Spec.Height, i);
 					break;
 				default:
-					GE_ERROR("Unsupported Texture Format");
+					GE_ERROR("Unsupported Texture InternalFormat");
 					break;
 				}
 			}

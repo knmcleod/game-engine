@@ -31,7 +31,7 @@ namespace GE
 		SceneState m_SceneState = SceneState::Stop;
 
 		int m_StepFrames = 0;
-		bool m_UseEditorCameraPaused = false;
+		bool m_UseEditorCamera = false;
 
 		b2World* m_PhysicsWorld = nullptr;
 
