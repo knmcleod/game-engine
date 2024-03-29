@@ -17,8 +17,8 @@ namespace GE
 		virtual ~OpenGLTexture2D();
 
 		virtual TextureConfiguration GetConfig() const override { return m_Config; }
-		virtual uint32_t GetWidth() const override { return m_Width; }
-		virtual uint32_t GetHeight() const override { return m_Height; }
+		virtual uint32_t GetWidth() const override { return m_Config.Width; }
+		virtual uint32_t GetHeight() const override { return m_Config.Height; }
 		virtual uint32_t GetID() const override { return m_RendererID; }
 		virtual const std::string& GetProjectPath() const override { return m_Path; }
 
@@ -27,11 +27,7 @@ namespace GE
 		virtual void Bind(uint32_t slot = 0) const override;
 		virtual void Unbind() const override;
 	private:
-		//GLenum m_InternalFormat;
-		//GLenum m_DataFormat;
-		
 		uint32_t m_RendererID = 0;
-		uint32_t m_Width, m_Height = 0;
 		std::string m_Path;
 
 		TextureConfiguration m_Config;

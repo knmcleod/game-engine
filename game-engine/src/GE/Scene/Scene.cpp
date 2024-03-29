@@ -61,6 +61,12 @@ namespace GE
 	}
 
 	template<>
+	void Scene::OnComponentAdded<TextRendererComponent>(Entity entity)
+	{
+
+	}
+
+	template<>
 	void Scene::OnComponentAdded<NativeScriptComponent>(Entity entity)
 	{
 	}
@@ -172,6 +178,7 @@ namespace GE
 			CopyComponent<TransformComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<SpriteRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<CircleRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<TextRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<CameraComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<NativeScriptComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<ScriptComponent>(newSceneRegistry, sceneRegistry, entityMap);
@@ -183,74 +190,131 @@ namespace GE
 		return newScene;
 	}
 
+	void Scene::Render()
+	{
+		GE_PROFILE_SCOPE("Scene::Render -- Camera & 2D Renderer");
+		Camera* mainCamera = nullptr;
+		glm::mat4* cameraTransform;
+
+		// Finds & Updates Primary Camera Transform
+		{
+			GE_PROFILE_SCOPE("Scene::Render -- Camera");
+
+			auto view = m_Registry.view<TransformComponent, CameraComponent>();
+			for (auto entity : view)
+			{
+				auto [transform, camera] = view.get<TransformComponent, CameraComponent>(entity);
+				if (camera.Primary)
+				{
+					mainCamera = &camera.Camera;
+					cameraTransform = &transform.GetTransform();
+					break;
+				}
+			}
+		}
+
+		if (mainCamera)
+		{
+			GE_PROFILE_SCOPE("Scene::Render -- 2D Renderer");
+
+			Renderer2D::Start(*mainCamera, *cameraTransform);
+
+			// Sprites
+			auto spriteView = m_Registry.view<TransformComponent, SpriteRendererComponent>();
+			for (auto entity : spriteView)
+			{
+				auto [transform, sprite] = spriteView.get<TransformComponent, SpriteRendererComponent>(entity);
+
+				Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+			}
+
+			// Circles
+			auto circleView = m_Registry.view<TransformComponent, CircleRendererComponent>();
+			for (auto entity : circleView)
+			{
+				auto [transform, circle] = circleView.get<TransformComponent, CircleRendererComponent>(entity);
+
+				Renderer2D::DrawCircle(transform.GetTransform(), circle, (int)entity);
+			}
+
+			// Text
+			auto textView = m_Registry.view<TransformComponent, TextRendererComponent>();
+			for (auto entity : textView)
+			{
+				auto [transform, text] = textView.get<TransformComponent, TextRendererComponent>(entity);
+
+				Renderer2D::DrawString(transform.GetTransform(), text, (int)entity);
+			}
+
+			Renderer2D::End();
+		}
+		
+	}
+
 	void Scene::Render(const EditorCamera& camera)
 	{
 		if (&camera)
 		{
-			GE_PROFILE_SCOPE("Scene::Render");
+			GE_PROFILE_SCOPE("Scene::Render -- Editor Camera");
 			Renderer2D::Start(camera);
 
 			// Sprites
+			auto spriteView = m_Registry.view<TransformComponent, SpriteRendererComponent>();
+			for (auto entity : spriteView)
 			{
-				auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
-				for (auto entity : view)
-				{
-					auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
+				auto [transform, sprite] = spriteView.get<TransformComponent, SpriteRendererComponent>(entity);
 
-					Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
-				}
+				Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
 			}
 
 			// Circles
+			auto circleView = m_Registry.view<TransformComponent, CircleRendererComponent>();
+			for (auto entity : circleView)
 			{
-				auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
-				for (auto entity : view)
+				auto [transform, circle] = circleView.get<TransformComponent, CircleRendererComponent>(entity);
+
+				Renderer2D::DrawCircle(transform.GetTransform(), circle, (int)entity);
+
+			}
+
+			// Text
+			auto textView = m_Registry.view<TransformComponent, TextRendererComponent>();
+			for (auto entity : textView)
+			{
+				auto [tc, trc] = textView.get<TransformComponent, TextRendererComponent>(entity);
+
+				Renderer2D::DrawString(tc.GetTransform(), trc, (int)entity);
+			}
+
+			// Box Colliders
+			auto bcView = m_Registry.view<TransformComponent, BoxCollider2DComponent>();
+			for (auto entity : bcView)
+			{
+				auto [tc, bc2D] = bcView.get<TransformComponent, BoxCollider2DComponent>(entity);
+				if (bc2D.Show)
 				{
-					auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
-
-					Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
-
+					glm::vec3 translation = tc.Translation + glm::vec3(bc2D.Offset, 0.0025f);
+					glm::vec3 scale = tc.Scale * glm::vec3(bc2D.Size * 2.0f, 1.0f);
+					glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
+						* glm::rotate(Renderer2D::s_IdentityMat4, glm::radians(tc.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f))
+						* glm::scale(Renderer2D::s_IdentityMat4, scale);
+					Renderer2D::DrawRectangle(transform, glm::vec4(0, 1, 0, 1), (int)entity);
 				}
 			}
 
-			// Physics Visuals
+			// Circle Colliders
+			auto ccView = m_Registry.view<TransformComponent, CircleCollider2DComponent>();
+			for (auto entity : ccView)
 			{
-
-				// Renders Entity Box Colliders
+				auto [tc, cc2D] = ccView.get<TransformComponent, CircleCollider2DComponent>(entity);
+				if (cc2D.Show)
 				{
-					auto view = m_Registry.view<TransformComponent, BoxCollider2DComponent>();
-					for (auto e : view)
-					{
-						auto [tc, bc2D] = view.get<TransformComponent, BoxCollider2DComponent>(e);
-						if (bc2D.Show)
-						{
-							glm::vec3 translation = tc.Translation + glm::vec3(bc2D.Offset, 0.0025f);
-							glm::vec3 scale = tc.Scale * glm::vec3(bc2D.Size * 2.0f, 1.0f);
-							glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
-								* glm::rotate(Renderer2D::s_IdentityMat4, glm::radians(tc.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f))
-								* glm::scale(Renderer2D::s_IdentityMat4, scale);
-							Renderer2D::DrawRectangle(transform, glm::vec4(0, 1, 0, 1));
-						}
-					}
+					glm::vec3 translation = tc.Translation + glm::vec3(cc2D.Offset, 0.0025f);
+					glm::vec3 scale = tc.Scale * glm::vec3(glm::vec2(cc2D.Radius * 2.0f), 1.0f);
+					glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
+						* glm::scale(Renderer2D::s_IdentityMat4, scale);
+					Renderer2D::DrawCircle(transform, glm::vec4(0, 1, 0, 1), cc2D.Radius, 0.5f, 0.4f, (int)entity);
 				}
-
-				// Renders Entity Circle Colliders
-				{
-					auto view = m_Registry.view<TransformComponent, CircleCollider2DComponent>();
-					for (auto e : view)
-					{
-						auto [tc, cc2D] = view.get<TransformComponent, CircleCollider2DComponent>(e);
-						if (cc2D.Show)
-						{
-							glm::vec3 translation = tc.Translation + glm::vec3(cc2D.Offset, 0.0025f);
-							glm::vec3 scale = tc.Scale * glm::vec3(glm::vec2(cc2D.Radius * 2.0f), 1.0f);
-							glm::mat4 transform = glm::translate(Renderer2D::s_IdentityMat4, translation)
-								* glm::scale(Renderer2D::s_IdentityMat4, scale);
-							Renderer2D::FillCircle(transform, glm::vec4(0, 1, 0, 1), cc2D.Radius, 0.5f, 0.4f);
-						}
-					}
-				}
-
 			}
 
 			Renderer2D::End();
@@ -282,7 +346,7 @@ namespace GE
 		return { };
 	}
 
-	Entity Scene::GetEntityByTag(char* tag)
+	Entity Scene::GetEntityByTag(const std::string& tag)
 	{
 		auto view = m_Registry.view<TagComponent>();
 		for (auto entity : view)
@@ -320,6 +384,7 @@ namespace GE
 		CopyComponentIfExists<TransformComponent>(newEntity, entity);
 		CopyComponentIfExists<SpriteRendererComponent>(newEntity, entity);
 		CopyComponentIfExists<CircleRendererComponent>(newEntity, entity);
+		CopyComponentIfExists<TextRendererComponent>(newEntity, entity);
 		CopyComponentIfExists<CameraComponent>(newEntity, entity);
 		CopyComponentIfExists<NativeScriptComponent>(newEntity, entity);
 		CopyComponentIfExists<ScriptComponent>(newEntity, entity);
@@ -380,59 +445,7 @@ namespace GE
 		UpdateScripting(timestep);
 
 		// Update Camera & 2D Renderer
-		{
-			GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Camera & 2D Renderer");
-			Camera* mainCamera = nullptr;
-			glm::mat4* cameraTransform;
-
-			// Finds & Updates Primary Camera Transform
-			{
-				GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- Camera");
-
-				auto view = m_Registry.view<TransformComponent, CameraComponent>();
-				for (auto entity : view)
-				{
-					auto [transform, camera] = view.get<TransformComponent, CameraComponent>(entity);
-					if (camera.Primary)
-					{
-						mainCamera = &camera.Camera;
-						cameraTransform = &transform.GetTransform();
-						break;
-					}
-				}
-			}
-
-			if (mainCamera)
-			{
-				GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- 2D Renderer");
-
-				Renderer2D::Start(*mainCamera, *cameraTransform);
-
-				// Sprites
-				{
-					auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
-					for (auto entity : view)
-					{
-						auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
-
-						Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
-					}
-				}
-
-				// Circles
-				{
-					auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
-					for (auto entity : view)
-					{
-						auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
-
-						Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
-					}
-				}
-
-				Renderer2D::End();
-			}
-		}
+		Render();
 	}
 
 	void Scene::OnSimulationStart()
@@ -455,54 +468,7 @@ namespace GE
 		}
 		else
 		{
-			Camera* mainCamera = nullptr;
-			glm::mat4* cameraTransform;
-
-			// Finds & Updates Primary Camera Transform
-			{
-				auto view = m_Registry.view<TransformComponent, CameraComponent>();
-				for (auto entity : view)
-				{
-					auto [transform, camera] = view.get<TransformComponent, CameraComponent>(entity);
-					if (camera.Primary)
-					{
-						mainCamera = &camera.Camera;
-						cameraTransform = &transform.GetTransform();
-						break;
-					}
-				}
-			}
-
-			if (mainCamera)
-			{
-				GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- 2D Renderer");
-
-				Renderer2D::Start(*mainCamera, *cameraTransform);
-
-				// Sprites
-				{
-					auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
-					for (auto entity : view)
-					{
-						auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
-
-						Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
-					}
-				}
-
-				// Circles
-				{
-					auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
-					for (auto entity : view)
-					{
-						auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
-
-						Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
-					}
-				}
-
-				Renderer2D::End();
-			}
+			Render();
 		}
 	}
 
@@ -536,56 +502,8 @@ namespace GE
 		}
 		else
 		{
-			Camera* mainCamera = nullptr;
-			glm::mat4* cameraTransform;
-
-			// Finds & Updates Primary Camera Transform
-			{
-				auto view = m_Registry.view<TransformComponent, CameraComponent>();
-				for (auto entity : view)
-				{
-					auto [transform, camera] = view.get<TransformComponent, CameraComponent>(entity);
-					if (camera.Primary)
-					{
-						mainCamera = &camera.Camera;
-						cameraTransform = &transform.GetTransform();
-						break;
-					}
-				}
-			}
-
-			if (mainCamera)
-			{
-				GE_PROFILE_SCOPE("Scene::OnRuntimeUpdate -- 2D Renderer");
-
-				Renderer2D::Start(*mainCamera, *cameraTransform);
-
-				// Sprites
-				{
-					auto view = m_Registry.view<TransformComponent, SpriteRendererComponent>();
-					for (auto entity : view)
-					{
-						auto [transform, sprite] = view.get<TransformComponent, SpriteRendererComponent>(entity);
-
-						Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
-					}
-				}
-
-				// Circles
-				{
-					auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
-					for (auto entity : view)
-					{
-						auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
-
-						Renderer2D::FillCircle(transform.GetTransform(), circle.Color, circle.Radius, circle.Thickness, circle.Fade, (int)entity);
-					}
-				}
-
-				Renderer2D::End();
-			}
+			Render();
 		}
-
 	}
 
 	void Scene::OnStep(int steps)

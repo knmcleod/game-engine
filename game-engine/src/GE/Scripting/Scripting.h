@@ -16,6 +16,7 @@ extern "C" {
 	typedef struct _MonoAssembly MonoAssembly;
 	typedef struct _MonoImage MonoImage;
 	typedef struct _MonoClassField MonoClassField;
+	typedef struct _MonoString MonoString;
 }
 
 namespace GE
@@ -142,6 +143,9 @@ namespace GE
 		static ScriptFieldMap& GetScriptFieldMap(Entity entity);
 
 		static MonoObject* GetObjectInstance(UUID uuid);
+
+		static MonoString* StringToMonoString(const char* string);
+		static std::string MonoStringToString(MonoString* string);
 
 		// fullName includes namespace
 		static bool ScriptClassExists(const std::string& fullName);

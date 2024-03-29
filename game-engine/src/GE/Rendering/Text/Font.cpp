@@ -2,24 +2,18 @@
 
 #include "Font.h"
 
-#undef INFINITE
-#include <msdfgen.h>
-#include <msdfgen-ext.h>
-#include <msdf-atlas-gen/msdf-atlas-gen.h>
-
 namespace GE
 {
-	struct MSDFData
-	{
-		std::vector<msdf_atlas::GlyphGeometry> Glyphs;
-		msdf_atlas::FontGeometry FontGeometry;
-	};
 
 	struct AtlasConfiguration
 	{
-		uint32_t Width;
-		uint32_t Height;
-		float Scale;
+		uint32_t Width = 1;
+		uint32_t Height = 1;
+		float Scale = 1.0;
+			
+		uint64_t Seed = 0;
+		int32_t ThreadCount = 8;
+		bool ExpensiveColoring = false;
 	};
 
 	template<typename T, typename S, int N, msdf_atlas::GeneratorFunction<S, N> func>
@@ -48,10 +42,8 @@ namespace GE
 		return texture;
 	}
 
-	Font::Font(const std::filesystem::path& fontPath)
+	Font::Font(const std::filesystem::path& fontPath) : m_MSDFData(new MSDFData())
 	{
-		m_MSDFData = CreateScope<MSDFData>();
-
 		msdfgen::FreetypeHandle* ft = msdfgen::initializeFreetype();
 		if (!ft)
 		{
@@ -103,22 +95,31 @@ namespace GE
 		atlasConfig.Height = height;
 		atlasConfig.Scale = scale;
 
-		m_Texture = CreateAndCacheAtlas<uint8_t, float, 3, msdf_atlas::msdfGenerator>("Texture", atlasConfig,
-			m_MSDFData->Glyphs, m_MSDFData->FontGeometry);
+#define DEFAULT_ANGLE_THRESHOLD 3.0
+#define LCG_MULTIPLIER 6364136223846793005ull
+#define LCG_INCREMENT 1442695040888963407ull
 
-		if(false)
+		if (atlasConfig.ExpensiveColoring)
 		{
-			msdfgen::Shape shape;
-			if (msdfgen::loadGlyph(shape, font, 'A'))
+			msdf_atlas::Workload([&glyphs = m_MSDFData->Glyphs, &seed = atlasConfig.Seed](int i, int threadNum) -> bool
+				{
+					unsigned long long glyphSeed = (LCG_MULTIPLIER * (seed ^ i) + LCG_INCREMENT) * !!seed;
+					glyphs[i].edgeColoring(msdfgen::edgeColoringInkTrap, DEFAULT_ANGLE_THRESHOLD, glyphSeed);
+					return true;
+				}, m_MSDFData->Glyphs.size()).finish(atlasConfig.ThreadCount);
+		}
+		else
+		{
+			unsigned long long glyphSeed = atlasConfig.Seed;
+			for (msdf_atlas::GlyphGeometry& glyph : m_MSDFData->Glyphs)
 			{
-				shape.normalize();
-
-				msdfgen::BitmapRef<float, 3> bitmap;
-				msdfgen::generateMSDF_legacy(bitmap, shape,
-					4.0, msdfgen::Vector2(1.0), msdfgen::Vector2(4.0));
-				msdfgen::saveTiff(bitmap, "output.png");
+				glyphSeed *= LCG_MULTIPLIER;
+				glyph.edgeColoring(msdfgen::edgeColoringInkTrap, DEFAULT_ANGLE_THRESHOLD, glyphSeed);
 			}
 		}
+
+		m_Texture = CreateAndCacheAtlas<uint8_t, float, 3, msdf_atlas::msdfGenerator>("Texture", atlasConfig,
+			m_MSDFData->Glyphs, m_MSDFData->FontGeometry);
 
 		destroyFont(font);
 		deinitializeFreetype(ft);
@@ -127,5 +128,14 @@ namespace GE
 	Font::~Font()
 	{
 
+	}
+
+	Ref<Font> Font::GetDefault()
+	{
+		static Ref<Font> DefaultFont;
+		if (!DefaultFont)
+			DefaultFont = CreateRef<Font>("assets/fonts/arial.ttf");
+
+		return DefaultFont;
 	}
 }

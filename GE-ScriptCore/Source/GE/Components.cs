@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -47,4 +48,71 @@ namespace GE
             InternalCalls.Rigidbody2DComponent_ApplyLinearImpulseToCenter(Entity.ID, ref impulse, ref wake);
         }
     }
+
+    public class TextRendererComponent : Component
+    {
+        public string Text
+        {
+            get
+            {
+                return InternalCalls.TextRendererComponent_GetText(Entity.ID);
+            }
+            set
+            {
+                InternalCalls.TextRendererComponent_SetText(Entity.ID, value);
+            }
+        }
+
+        public Vector4 TextColor
+        {
+            get
+            {
+                InternalCalls.TextRendererComponent_GetTextColor(Entity.ID, out Vector4 textColor);
+                return textColor;
+            }
+            set
+            {
+                InternalCalls.TextRendererComponent_SetTextColor(Entity.ID, ref value);
+            }
+        }
+
+        public Vector4 BGColor
+        {
+            get
+            {
+                InternalCalls.TextRendererComponent_GetBGColor(Entity.ID, out Vector4 bgColor);
+                return bgColor;
+            }
+            set
+            {
+                InternalCalls.TextRendererComponent_SetBGColor(Entity.ID, ref value);
+            }
+        }
+        
+        public float LineHeight
+        {
+            get
+            {
+                return InternalCalls.TextRendererComponent_GetLineHeight(Entity.ID);
+            }
+            set
+            {
+                InternalCalls.TextRendererComponent_SetLineHeight(Entity.ID, value);
+            }
+        }
+        
+        public float LineSpacing
+        {
+            get
+            {
+                return InternalCalls.TextRendererComponent_GetLineSpacing(Entity.ID);
+            }
+            set
+            {
+                InternalCalls.TextRendererComponent_SetLineSpacing(Entity.ID, value);
+            }
+        }
+
+    }
+
 }

@@ -68,16 +68,18 @@ namespace GE
 		bool IsPaused() const { return m_SceneState == SceneState::Pause; }
 
 		static Ref<Scene> Copy(const Ref<Scene> scene);
+
+		void Render();
 		void Render(const EditorCamera& camera);
 
 		void OnEntitySelected(Entity entity);
 
 		Entity GetPrimaryCameraEntity();
 		Entity GetEntityByUUID(UUID uuid);
-		Entity GetEntityByTag(char* tag);
+		Entity GetEntityByTag(const std::string& tag);
 
-		Entity CreateEntity(const std::string& name = std::string());
-		Entity CreateEntityWithUUID(UUID uuid, const std::string& name = std::string());
+		Entity CreateEntity(const std::string& name);
+		Entity CreateEntityWithUUID(UUID uuid, const std::string& name);
 		Entity DuplicateEntity(Entity entity);
 		void DestroyEntity(Entity entity);
 

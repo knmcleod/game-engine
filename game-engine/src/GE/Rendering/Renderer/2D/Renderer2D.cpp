@@ -2,6 +2,8 @@
 
 #include "Renderer2D.h"
 
+#include "GE/MSDF/MSDF.h"
+
 #include "GE/Rendering/Camera/Camera.h"
 #include "GE/Rendering/Camera/Editor/EditorCamera.h"
 #include "GE/Rendering/RenderCommand.h"
@@ -63,7 +65,6 @@ namespace GE
 
 			// Texture Creation
 			uint32_t textureData = 0xFFFFFFFF;
-			//s_RendererData.Texture = Texture2D::Create(1, 1, 4, &textureData, sizeof(uint32_t));
 			s_RendererData.EmptyTexture = Texture2D::Create(TextureConfiguration{});
 			s_RendererData.EmptyTexture->SetData(&textureData, sizeof(uint32_t));
 
@@ -145,6 +146,37 @@ namespace GE
 			s_RendererData.LineShader = Shader::Create("assets/shaders/Renderer2D_Line.glsl");
 		}
 
+		// Text Rendering Setup
+		{
+			GE_PROFILE_SCOPE("Renderer2D - Init() : Text Rendering Setup");
+
+			//Creates Vertex Array
+			s_RendererData.TextVertexArray = VertexArray::Create();
+
+			s_RendererData.TextVertexBuffer = VertexBuffer::Create(s_RendererData.MaxVertices * sizeof(TextVertex));
+			//Sets up Layout using Vertex Buffer
+			BufferLayout layout =
+			{
+				{ GE::Shader::ShaderDataType::Float3,	"a_Position"	 },
+				{ GE::Shader::ShaderDataType::Float4,	"a_TextColor"	 },
+				{ GE::Shader::ShaderDataType::Float4,	"a_BGColor"		 },
+				{ GE::Shader::ShaderDataType::Float2,	"a_TextureCoord" },
+				{ GE::Shader::ShaderDataType::Int,		"a_EntityID"	 }
+			};
+			s_RendererData.TextVertexBuffer->SetLayout(layout);
+
+			//Add Vertex Buffer to Vertex Array
+			s_RendererData.TextVertexArray->AddVertexBuffer(s_RendererData.TextVertexBuffer);
+
+			//Add Index Buffer to Vertex Array
+			s_RendererData.TextVertexArray->AddIndexBuffer(indexBuffer);
+			s_RendererData.TextVertexBufferBase = new TextVertex[s_RendererData.MaxVertices];
+
+			// Shader Creation
+			s_RendererData.TextShader = Shader::Create("assets/shaders/Renderer2D_Text.glsl");
+			s_RendererData.TextShader->Bind();
+		}
+
 		delete[] indices;
 	}
 
@@ -157,6 +189,8 @@ namespace GE
 		delete[] s_RendererData.CircleVertexBufferBase;
 	
 		delete[] s_RendererData.LineVertexBufferBase;
+
+		delete[] s_RendererData.TextVertexBufferBase;
 	
 	}
 
@@ -168,10 +202,12 @@ namespace GE
 		s_RendererData.QuadShader->SetMat4("u_ViewProjection", viewProjection);
 		s_RendererData.CircleShader->SetMat4("u_ViewProjection", viewProjection);
 		s_RendererData.LineShader->SetMat4("u_ViewProjection", viewProjection);
+		s_RendererData.TextShader->SetMat4("u_ViewProjection", viewProjection);
 
 		ResetQuadData();
 		ResetCircleData();
 		ResetLineData();
+		ResetTextData();
 	}
 
 	void Renderer2D::Start(const Camera& camera, const glm::mat4& transform)
@@ -182,10 +218,12 @@ namespace GE
 		s_RendererData.QuadShader->SetMat4("u_ViewProjection", viewProjection);
 		s_RendererData.CircleShader->SetMat4("u_ViewProjection", viewProjection);
 		s_RendererData.LineShader->SetMat4("u_ViewProjection", viewProjection);
+		s_RendererData.TextShader->SetMat4("u_ViewProjection", viewProjection);
 
 		ResetQuadData();
 		ResetCircleData();
 		ResetLineData();
+		ResetTextData();
 	}
 
 	void Renderer2D::End()
@@ -195,67 +233,69 @@ namespace GE
 		Flush();
 	}
 
-	void Renderer2D::FlushLines()
-	{
-		if (s_RendererData.LineVertexCount == 0)
-			return;
-
-		s_RendererData.LineShader->Bind();
-		uint32_t dataSize = (uint32_t)((uint8_t*)s_RendererData.LineVertexBufferPtr - (uint8_t*)s_RendererData.LineVertexBufferBase);
-		s_RendererData.LineVertexBuffer->SetData(s_RendererData.LineVertexBufferBase, dataSize);
-
-		// Draw Line Indices
-		s_RendererData.LineVertexArray->Bind();
-		RenderCommand::SetLineWidth(s_RendererData.LineWidth);
-		RenderCommand::DrawLines(s_RendererData.LineVertexArray, s_RendererData.LineVertexCount);
-		s_RendererData.Stats.DrawCalls++;
-
-		ResetLineData();
-	}
-
-	void Renderer2D::FlushCircles()
-	{
-		if (s_RendererData.CircleIndexCount == 0)
-			return;
-
-		s_RendererData.CircleShader->Bind();
-		uint32_t dataSize = (uint32_t)((uint8_t*)s_RendererData.CircleVertexBufferPtr - (uint8_t*)s_RendererData.CircleVertexBufferBase);
-		s_RendererData.CircleVertexBuffer->SetData(s_RendererData.CircleVertexBufferBase, dataSize);
-
-		// Draw Circle Indices
-		s_RendererData.CircleVertexArray->Bind();
-		RenderCommand::DrawIndices(s_RendererData.CircleVertexArray, s_RendererData.CircleIndexCount);
-		s_RendererData.Stats.DrawCalls++;
-
-		ResetCircleData();
-	}
-
-	void Renderer2D::FlushQuads()
-	{
-		if (s_RendererData.QuadIndexCount == 0)
-			return;
-
-		s_RendererData.QuadShader->Bind();
-		uint32_t dataSize = (uint32_t)((uint8_t*)s_RendererData.QuadVertexBufferPtr - (uint8_t*)s_RendererData.QuadVertexBufferBase);
-		s_RendererData.QuadVertexBuffer->SetData(s_RendererData.QuadVertexBufferBase, dataSize);
-
-		// Bind Textures
-		for (uint32_t i = 0; i < s_RendererData.TextureSlotIndex; i++)
-			s_RendererData.TextureSlots[i]->Bind(i);
-
-		// Draw Quad Indices
-		s_RendererData.QuadVertexArray->Bind();
-		RenderCommand::DrawIndices(s_RendererData.QuadVertexArray, s_RendererData.QuadIndexCount);
-		s_RendererData.Stats.DrawCalls++;
-
-		ResetQuadData();
-	}
-	
 	void Renderer2D::Flush()
 	{
-		FlushQuads();
-		FlushCircles();
-		FlushLines();
+
+		if (s_RendererData.QuadIndexCount)
+		{
+			uint32_t dataSize = (uint32_t)((uint8_t*)s_RendererData.QuadVertexBufferPtr - (uint8_t*)s_RendererData.QuadVertexBufferBase);
+			s_RendererData.QuadVertexBuffer->SetData(s_RendererData.QuadVertexBufferBase, dataSize);
+
+			// Bind Textures
+			for (uint32_t i = 0; i < s_RendererData.TextureSlotIndex; i++)
+				s_RendererData.TextureSlots[i]->Bind(i);
+
+			// Draw Quad Indices
+			s_RendererData.QuadShader->Bind();
+			RenderCommand::DrawIndices(s_RendererData.QuadVertexArray, s_RendererData.QuadIndexCount);
+			s_RendererData.Stats.DrawCalls++;
+
+			ResetQuadData();
+		}
+
+		if (s_RendererData.CircleIndexCount)
+		{
+			uint32_t dataSize = (uint32_t)((uint8_t*)s_RendererData.CircleVertexBufferPtr - (uint8_t*)s_RendererData.CircleVertexBufferBase);
+			s_RendererData.CircleVertexBuffer->SetData(s_RendererData.CircleVertexBufferBase, dataSize);
+			
+			// Draw Circle Indices
+			s_RendererData.CircleShader->Bind();
+			RenderCommand::DrawIndices(s_RendererData.CircleVertexArray, s_RendererData.CircleIndexCount);
+			s_RendererData.Stats.DrawCalls++;
+
+			ResetCircleData();
+		}
+		
+		if(s_RendererData.LineIndexCount)
+		{
+			uint32_t dataSize = (uint32_t)((uint8_t*)s_RendererData.LineVertexBufferPtr - (uint8_t*)s_RendererData.LineVertexBufferBase);
+			s_RendererData.LineVertexBuffer->SetData(s_RendererData.LineVertexBufferBase, dataSize);
+
+			// Draw Line Indices
+			s_RendererData.LineShader->Bind();
+			RenderCommand::SetLineWidth(s_RendererData.LineWidth);
+			RenderCommand::DrawLines(s_RendererData.LineVertexArray, s_RendererData.LineIndexCount);
+			s_RendererData.Stats.DrawCalls++;
+
+			ResetLineData();
+		}
+		
+		if (s_RendererData.TextIndexCount)
+		{
+			uint32_t dataSize = (uint32_t)((uint8_t*)s_RendererData.TextVertexBufferPtr - (uint8_t*)s_RendererData.TextVertexBufferBase);
+			s_RendererData.TextVertexBuffer->SetData(s_RendererData.TextVertexBufferBase, dataSize);
+
+			// Bind Text Texture
+			s_RendererData.TextAtlasTexture->Bind(0);
+
+			// Draw Text Indices
+			s_RendererData.TextShader->Bind();
+			RenderCommand::DrawIndices(s_RendererData.TextVertexArray, s_RendererData.TextIndexCount);
+			s_RendererData.Stats.DrawCalls++;
+
+			ResetTextData();
+		}
+
 	}
 
 #pragma region Sprite/Quad
@@ -287,12 +327,12 @@ namespace GE
 		s_RendererData.TextureSlotIndex = 1;
 	}
 
-	void Renderer2D::FillQuad(const glm::mat4& transform, const glm::vec4& color, const int entityID)
+	void Renderer2D::DrawQuad(const glm::mat4& transform, const glm::vec4& color, const int entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
 		if (s_RendererData.QuadIndexCount >= s_RendererData.MaxIndices)
-			FlushQuads();
+			Flush();
 
 		const glm::vec2 textureCoords[] = { {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f} };
 		const float textureIndex = 0.0f; // White Texture
@@ -302,11 +342,11 @@ namespace GE
 
 	}
 
-	void Renderer2D::FillQuad(const glm::mat4& transform, const Ref<Texture2D>& texture,
+	void Renderer2D::DrawQuad(const glm::mat4& transform, const Ref<Texture2D>& texture,
 		const float& tilingFactor, const glm::vec4& color, const int entityID)
 	{
 		if (s_RendererData.QuadIndexCount >= s_RendererData.MaxIndices)
-			FlushQuads();
+			Flush();
 
 		const glm::vec2 textureCoords[] = { {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f} };
 		float textureIndex = 0.0f;
@@ -343,7 +383,7 @@ namespace GE
 			* glm::rotate(s_IdentityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
 			* glm::scale(s_IdentityMat4, { size.x, size.y, 1.0f });
 
-		FillQuad(transform, color, entityID);
+		DrawQuad(transform, color, entityID);
 
 	}
 
@@ -356,7 +396,7 @@ namespace GE
 			* glm::rotate(s_IdentityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
 			* glm::scale(s_IdentityMat4, { size.x, size.y, 1.0f });
 
-		FillQuad(transform, texture, tilingFactor, tintColor, entityID);
+		DrawQuad(transform, texture, tilingFactor, tintColor, entityID);
 	}
 
 	void Renderer2D::FillQuadSubTexture(const glm::vec3& position, const glm::vec2& size, const float rotation,
@@ -365,7 +405,7 @@ namespace GE
 		GE_PROFILE_FUNCTION();
 
 		if (s_RendererData.QuadIndexCount >= s_RendererData.MaxIndices)
-			FlushQuads();
+			Flush();
 
 		glm::mat4 transform = glm::translate(s_IdentityMat4, position)
 			* glm::rotate(s_IdentityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
@@ -389,7 +429,7 @@ namespace GE
 			if (s_RendererData.TextureSlotIndex >= s_RendererData.MaxTextureSlots)
 				Flush();
 
-			if (s_RendererData.TextureSlots[s_RendererData.TextureSlotIndex] != NULL)
+			if (s_RendererData.TextureSlots[s_RendererData.TextureSlotIndex] != nullptr)
 			{
 				s_RendererData.TextureSlotIndex++;
 			}
@@ -401,14 +441,14 @@ namespace GE
 		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, tintColor, entityID);
 	}
 
-	void Renderer2D::DrawSprite(const glm::mat4& transform, SpriteRendererComponent& component, int entityID)
+	void Renderer2D::DrawSprite(const glm::mat4& transform, const SpriteRendererComponent& component, int entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
 		if (component.Texture)
-			FillQuad(transform, component.Texture, component.TilingFactor, component.Color, entityID);
+			DrawQuad(transform, component.Texture, component.TilingFactor, component.Color, entityID);
 		else
-			FillQuad(transform, component.Color, entityID);
+			DrawQuad(transform, component.Color, entityID);
 	
 	}
 
@@ -442,14 +482,19 @@ namespace GE
 
 	}
 
-	void Renderer2D::FillCircle(const glm::mat4& transform, const glm::vec4& color, const float& radius, const float& thickness, const float& fade, const int entityID)
+	void Renderer2D::DrawCircle(const glm::mat4& transform, const glm::vec4& color, const float& radius, const float& thickness, const float& fade, const int entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
 		if (s_RendererData.CircleIndexCount >= s_RendererData.MaxIndices)
-			FlushCircles();
+			Flush();
 			
 		SetCircleData(transform, color, radius, thickness, fade, entityID);
+	}
+
+	void Renderer2D::DrawCircle(const glm::mat4& transform, const CircleRendererComponent& component, const int entityID)
+	{
+		DrawCircle(transform, component.Color, component.Radius, component.Thickness, component.Fade, entityID);
 	}
 
 #pragma endregion
@@ -468,13 +513,13 @@ namespace GE
 		s_RendererData.LineVertexBufferPtr->EntityID = entityID;
 		s_RendererData.LineVertexBufferPtr++;
 
-		s_RendererData.LineVertexCount += 2;
+		s_RendererData.LineIndexCount += 2;
 		s_RendererData.Stats.SpawnCount++;
 	}
 
 	void Renderer2D::ResetLineData()
 	{
-		s_RendererData.LineVertexCount = 0;
+		s_RendererData.LineIndexCount = 0;
 		s_RendererData.LineVertexBufferPtr = s_RendererData.LineVertexBufferBase;
 	}
 
@@ -492,8 +537,8 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		if (s_RendererData.LineVertexCount >= s_RendererData.MaxIndices)
-			FlushLines();
+		if (s_RendererData.LineIndexCount >= s_RendererData.MaxIndices)
+			Flush();
 
 		SetLineData(initialPosition, finalPosition, color, entityID);
 	}
@@ -526,6 +571,126 @@ namespace GE
 	}
 
 #pragma endregion
+
+#pragma region Text
+	void Renderer2D::SetTextData(const glm::mat4& transform, const glm::vec2& minTextureCoord, const glm::vec2& maxTextureCoord,
+		const glm::vec2& minQuadPlane, const glm::vec2& maxQuadPlane, Ref<Font> font,
+		const glm::vec4& textColor, const glm::vec4& bgColor, const int entityID)
+	{
+		s_RendererData.TextVertexBufferPtr->Position = transform * glm::vec4(minQuadPlane, 0.0f, 1.0f);
+		s_RendererData.TextVertexBufferPtr->TextColor = textColor;
+		s_RendererData.TextVertexBufferPtr->BGColor = bgColor;
+		s_RendererData.TextVertexBufferPtr->TextureCoord = minTextureCoord;
+		s_RendererData.TextVertexBufferPtr->EntityID = entityID;
+		s_RendererData.TextVertexBufferPtr++;
+
+		s_RendererData.TextVertexBufferPtr->Position = transform * glm::vec4(minQuadPlane.x, maxQuadPlane.y, 0.0f, 1.0f);
+		s_RendererData.TextVertexBufferPtr->TextColor = textColor;
+		s_RendererData.TextVertexBufferPtr->BGColor = bgColor;
+		s_RendererData.TextVertexBufferPtr->TextureCoord = { minTextureCoord.x, maxTextureCoord.y };
+		s_RendererData.TextVertexBufferPtr->EntityID = entityID;
+		s_RendererData.TextVertexBufferPtr++;
+
+		s_RendererData.TextVertexBufferPtr->Position = transform * glm::vec4(maxQuadPlane, 0.0f, 1.0f);
+		s_RendererData.TextVertexBufferPtr->TextColor = textColor;
+		s_RendererData.TextVertexBufferPtr->BGColor = bgColor;
+		s_RendererData.TextVertexBufferPtr->TextureCoord = maxTextureCoord;
+		s_RendererData.TextVertexBufferPtr->EntityID = entityID;
+		s_RendererData.TextVertexBufferPtr++;
+
+		s_RendererData.TextVertexBufferPtr->Position = transform * glm::vec4(maxQuadPlane.x, minQuadPlane.y, 0.0f, 1.0f);
+		s_RendererData.TextVertexBufferPtr->TextColor = textColor;
+		s_RendererData.TextVertexBufferPtr->BGColor = bgColor;
+		s_RendererData.TextVertexBufferPtr->TextureCoord = { maxTextureCoord.x, minTextureCoord.y };
+		s_RendererData.TextVertexBufferPtr->EntityID = entityID;
+		s_RendererData.TextVertexBufferPtr++;
+
+		s_RendererData.TextIndexCount += 6;
+		s_RendererData.Stats.SpawnCount++;
+	}
+
+	void Renderer2D::ResetTextData()
+	{
+		s_RendererData.TextIndexCount = 0;
+		s_RendererData.TextVertexBufferPtr = s_RendererData.TextVertexBufferBase;
+	}
+
+	void Renderer2D::DrawString(const glm::mat4& transform, const std::string& text, Ref<Font> font, const glm::vec4& textColor, const glm::vec4& bgColor, const float& kerningOffset, const float& lineHeightOffset, const int entityID)
+	{
+		const auto& fontGeometry = font->GetMSDFData()->FontGeometry;
+		const auto& metrics = fontGeometry.getMetrics();
+		Ref<Texture2D> fontAtlas = font->GetTexture();
+
+		s_RendererData.TextAtlasTexture = fontAtlas;
+
+		double x = 0.0;
+		double fsScale = 1.0 / (metrics.ascenderY - metrics.descenderY);
+		double y = 0.0;
+
+		for (size_t i = 0; i < text.size(); i++)
+		{
+			char character = text[i];
+			if (character == '\r')
+				continue;
+
+			if (character == '\n')
+			{
+				x = 0;
+				y -= fsScale * metrics.lineHeight + lineHeightOffset;
+				continue;
+			}
+			auto glyph = fontGeometry.getGlyph(character);
+			if (character == '\t')
+				glyph = fontGeometry.getGlyph(' ');
+			if (!glyph)
+				glyph = fontGeometry.getGlyph('?');
+			if (!glyph)
+			{
+				GE_CORE_ERROR("Could not get Text Glyph.");
+				return;
+			}
+
+			double al, ab, ar, at;
+			glyph->getQuadAtlasBounds(al, ab, ar, at);
+			glm::vec2 texCoordMin((float)al, (float)ab);
+			glm::vec2 texCoordMax((float)ar, (float)at);
+
+			double pl, pb, pr, pt;
+			glyph->getQuadPlaneBounds(pl, pb, pr, pt);
+			glm::vec2 quadMin((float)pl, (float)pb);
+			glm::vec2 quadMax((float)pr, (float)pt);
+
+			quadMin *= fsScale;
+			quadMax *= fsScale;
+			quadMin += glm::vec2(x, y);
+			quadMax += glm::vec2(x, y);
+
+			float texelWidth = 1.0f / fontAtlas->GetWidth();
+			float texelHeight = 1.0f / fontAtlas->GetHeight();
+			texCoordMin *= glm::vec2(texelWidth, texelHeight);
+			texCoordMax *= glm::vec2(texelWidth, texelHeight);
+
+			SetTextData(transform, texCoordMin, texCoordMax, quadMin, quadMax, font, textColor, bgColor, entityID);
+
+			if (i < text.size() - 1)
+			{
+				double advance = glyph->getAdvance();
+				char nextCharacter = text[i + 1];
+				fontGeometry.getAdvance(advance, character, nextCharacter);
+
+				x += fsScale * advance + kerningOffset;
+			}
+		}
+		
+	}
+
+	void Renderer2D::DrawString(const glm::mat4& transform, const TextRendererComponent& component, int entityID)
+	{
+		DrawString(transform, component.Text, component.Font,
+			component.TextColor, component.BGColor, component.KerningOffset, component.LineHeightOffset, entityID);
+	}
+#pragma endregion
+
 
 #pragma region Statistics
 	Renderer2D::Statistics Renderer2D::GetStats()

@@ -69,10 +69,8 @@ namespace GE
 		}
 		GE_CORE_ASSERT(data, "Failed to load image!");
 		
-		m_Width = width;
-		m_Height = height;
-		m_Config.Height = m_Height;
-		m_Config.Width = m_Width;
+		m_Config.Height = height;
+		m_Config.Width = width;
 		SetFormats(channels);
 
 		GE_CORE_ASSERT(m_Config.InternalFormat != ImageFormat::None, "No Internal Format Specified.");

@@ -187,6 +187,7 @@ namespace GE
 					{
 						DrawAddComponent<SpriteRendererComponent>("Sprite Renderer", entity);
 						DrawAddComponent<CircleRendererComponent>("Circle Renderer", entity);
+						DrawAddComponent<TextRendererComponent>("Text Renderer", entity);
 					});
 
 				DrawPopup("Scripting", entity, [](auto& entity)
@@ -278,6 +279,24 @@ namespace GE
 				ImGui::DragFloat("Thickness", &component.Thickness, 0.25f, 0.0f, 1.0f);
 				ImGui::DragFloat("Fade", &component.Fade, 0.25f, 0.0f, 1.0f);
 
+			});
+
+		DrawComponent<TextRendererComponent>("Text Renderer", entity,
+			[](auto& component)
+			{
+				ImGui::ColorEdit4("Text Color", glm::value_ptr(component.TextColor));
+				ImGui::ColorEdit4("Background Color", glm::value_ptr(component.BGColor));
+
+				ImGui::DragFloat("Kerning", &component.KerningOffset);
+				ImGui::DragFloat("Line Height Spacing", &component.LineHeightOffset);
+
+				auto& text = component.Text;
+			
+				char buffer[256];
+				memset(buffer, 0, sizeof(buffer));
+				strcpy_s(buffer, sizeof(buffer), text.c_str());
+				if (ImGui::InputTextMultiline("Text", buffer, sizeof(buffer)))
+					text = std::string(buffer);
 			});
 
 		DrawComponent<NativeScriptComponent>("Native Script", entity,

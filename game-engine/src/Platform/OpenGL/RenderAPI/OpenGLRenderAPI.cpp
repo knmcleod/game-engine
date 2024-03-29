@@ -30,18 +30,15 @@ namespace GE
 
 	void OpenGLRenderAPI::DrawIndices(const Ref<VertexArray>& vertexArray, uint32_t indexCount)
 	{
-		// count set to max count instead of current
-		//uint32_t count = indexCount ? vertexArray->GetIndexBuffer()->GetCount() : indexCount;
-		//GE_CORE_INFO("Draw Index Count {0}", indexCount);
+		vertexArray->Bind();
 		glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);
 		
 	}
 
 	void OpenGLRenderAPI::DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount)
 	{
-		//vertexArray->Bind();
+		vertexArray->Bind();
 		glDrawArrays(GL_LINES, 0, vertexCount);
-
 	}
 
 	void OpenGLRenderAPI::SetLineWidth(float thickness)

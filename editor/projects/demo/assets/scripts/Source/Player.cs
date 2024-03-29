@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,8 +11,8 @@ namespace demo
 {
     public class Player : Entity
     {
-        private TransformComponent m_TransformComponent;
         private Rigidbody2DComponent m_Rigidbody2DComponent;
+        private TextRendererComponent m_TextRendererComponent;
 
         public float Speed;
 
@@ -19,8 +20,8 @@ namespace demo
 
         void OnCreate()
         {
-            m_TransformComponent = GetComponent<TransformComponent>();
             m_Rigidbody2DComponent = GetComponent<Rigidbody2DComponent>();
+            m_TextRendererComponent = GetComponent<TextRendererComponent>();
 
             Entity cameraEntity = FindEntityByTag("Camera");
             if (cameraEntity != null)
@@ -49,6 +50,9 @@ namespace demo
             }
 
             velocity *= timestep;
+
+            if (m_TextRendererComponent != null)
+                m_TextRendererComponent.Text = "Velocity";
 
             Log.LogCoreInfo("Velocity Applied = ( " + velocity.x + ", " + velocity.y + ", " + velocity.z + ")");
             m_Rigidbody2DComponent.ApplyLinearImpulseToCenter(velocity.XY, true);

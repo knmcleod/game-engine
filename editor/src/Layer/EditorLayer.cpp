@@ -2,18 +2,15 @@
 
 #include "GE/Scripting/Scripting.h"
 
-//#include <imgui/imgui.h>
-//#include <glm/gtc/type_ptr.hpp>
-
 namespace GE
 {
-	static Font* s_font;
+	static Ref<Font> s_font;
 
 	EditorLayer::EditorLayer(const std::string& name)
 		: Layer(name), m_ViewportSize(1.0f), m_ViewportBounds{ { glm::vec2() },{ glm::vec2() } }
 	{
-		std::filesystem::path filePath("assets/fonts/arial.ttf");
-		s_font =  new Font(filePath);
+		//std::filesystem::path filePath("assets/fonts/arial.ttf");
+		s_font = Font::GetDefault();
 	}
 
 	void EditorLayer::OnAttach()
@@ -237,7 +234,7 @@ namespace GE
 
 			{
 				std::string name = "None";
-				if (m_HoveredEntity && m_HoveredEntity.HasComponent<TagComponent>())
+				if (m_HoveredEntity != Entity{} && m_HoveredEntity.HasComponent<TagComponent>())
 					name = m_HoveredEntity.GetComponent<TagComponent>().Tag;
 				ImGui::Text("Hovered Entity - %s", name.c_str());
 			}
@@ -252,8 +249,8 @@ namespace GE
 			ImGui::Separator();
 
 			{
-				if(s_font->GetTexture() != nullptr)
-					ImGui::Image((ImTextureID)s_font->GetTexture()->GetID(), { 512, 512 }, {0, 1}, {1, 0});
+				if (s_font->GetTexture() != nullptr)
+					ImGui::Image((ImTextureID)s_font->GetTexture()->GetID(), { 512, 512 }, { 0, 1 }, { 1, 0 });
 			}
 
 			ImGui::End();

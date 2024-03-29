@@ -50,10 +50,8 @@ namespace GE
 		Scene* scene = Scripting::GetScene();
 		GE_CORE_ASSERT(scene, "Scene is Undefined.");
 
-		char* cStr = mono_string_to_utf8(debugMessage);
-		GE_CORE_INFO(cStr);
-		mono_free(cStr);
-
+		std::string debug = Scripting::MonoStringToString(debugMessage);
+		GE_CORE_INFO(debug);
 	}
 
 	static void Log_Core_Trace(MonoString* debugMessage)
@@ -61,10 +59,8 @@ namespace GE
 		Scene* scene = Scripting::GetScene();
 		GE_CORE_ASSERT(scene, "Scene is Undefined.");
 
-		char* cStr = mono_string_to_utf8(debugMessage);
-		GE_CORE_TRACE(cStr);
-		mono_free(cStr);
-
+		std::string debug = Scripting::MonoStringToString(debugMessage);
+		GE_CORE_TRACE(debug);
 	}
 
 	static void Log_Core_Warn(MonoString* debugMessage)
@@ -72,9 +68,8 @@ namespace GE
 		Scene* scene = Scripting::GetScene();
 		GE_CORE_ASSERT(scene, "Scene is Undefined.");
 
-		char* cStr = mono_string_to_utf8(debugMessage);
-		GE_CORE_WARN(cStr);
-		mono_free(cStr);
+		std::string debug = Scripting::MonoStringToString(debugMessage);
+		GE_CORE_WARN(debug);
 
 	}
 
@@ -83,9 +78,8 @@ namespace GE
 		Scene* scene = Scripting::GetScene();
 		GE_CORE_ASSERT(scene, "Scene is Undefined.");
 
-		char* cStr = mono_string_to_utf8(debugMessage);
-		GE_CORE_ERROR(cStr);
-		mono_free(cStr);
+		std::string debug = Scripting::MonoStringToString(debugMessage);
+		GE_CORE_ERROR(debug);
 
 	}
 
@@ -94,14 +88,45 @@ namespace GE
 		Scene* scene = Scripting::GetScene();
 		GE_CORE_ASSERT(scene, "Scene is Undefined.");
 
-		char* cStr = mono_string_to_utf8(debugMessage);
-		GE_CORE_ASSERT(!object, cStr);
-		mono_free(cStr);
-
+		std::string debug = Scripting::MonoStringToString(debugMessage);
+		GE_CORE_ASSERT(!object, debug);
 	}
 
 #pragma endregion
 
+#pragma region Entity & Component Internal Calls
+	static bool Entity_HasComponent(UUID uuid, MonoReflectionType* componentType)
+	{
+		Scene* scene = Scripting::GetScene();
+		GE_CORE_ASSERT(scene, "Scene is Undefined.");
+		Entity entity = scene->GetEntityByUUID(uuid);
+		GE_CORE_ASSERT(entity, "Entity is Undefined.");
+
+		MonoType* type = mono_reflection_type_get_type(componentType);
+		GE_CORE_ASSERT(s_HasComponentsFuncs.find(type) != s_HasComponentsFuncs.end(), "Unable to find Component Type.");
+		return s_HasComponentsFuncs.at(type)(entity);
+	}
+
+	static uint64_t Entity_FindEntityByTag(MonoString* tagString)
+	{
+		Scene* scene = Scripting::GetScene();
+		GE_CORE_ASSERT(scene, "Scene is Undefined.");
+
+		std::string tag = Scripting::MonoStringToString(tagString);
+		Entity entity = scene->GetEntityByTag(tag);
+
+		if (!entity)
+			return 0;
+
+		return (uint64_t)entity.GetUUID();
+	}
+
+	static MonoObject* Entity_GetScriptInstance(uint64_t uuid)
+	{
+		return Scripting::GetObjectInstance(uuid);
+	}
+
+// Transform Component
 	static void TransformComponent_GetTranslation(UUID uuid, glm::vec3* translation)
 	{
 		Scene* scene = Scripting::GetScene();
@@ -126,8 +151,7 @@ namespace GE
 		}
 	}
 
-#pragma region Rigidbody Internal Calls
-
+// Rigidbody2D Component
 	// Point is World position
 	static void Rigidbody2DComponent_ApplyLinearImpulse(UUID uuid, glm::vec2* impluse, glm::vec2* point, bool wake)
 	{
@@ -193,39 +217,129 @@ namespace GE
 			body->SetType(PhysicsUtils::Rigidbody2DTypeToBox2DBody(bodyType));
 		}
 	}
+	
+// Text Renderer Component
+	static MonoString* TextRendererComponent_GetText(UUID uuid)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity && entity.HasComponent<TextRendererComponent>())
+		{
+			auto& trc = entity.GetComponent<TextRendererComponent>();
+			return Scripting::StringToMonoString(trc.Text.c_str());
+		}
+	}
+
+	static void TextRendererComponent_SetText(UUID uuid, MonoString* textString)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity.HasComponent<TextRendererComponent>())
+		{
+			auto& trc = entity.GetComponent<TextRendererComponent>();
+			trc.Text = Scripting::MonoStringToString(textString);
+		}
+	}
+
+	static void TextRendererComponent_GetTextColor(UUID uuid, glm::vec4* textColor)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity && entity.HasComponent<TextRendererComponent>())
+		{
+			auto& trc = entity.GetComponent<TextRendererComponent>();
+			*textColor = trc.TextColor;
+		}
+	}
+
+	static void TextRendererComponent_SetTextColor(UUID uuid, glm::vec4* textColor)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity.HasComponent<TextRendererComponent>())
+		{
+			auto& trc = entity.GetComponent<TextRendererComponent>();
+			trc.TextColor = *textColor;
+		}
+	}
+
+	static void TextRendererComponent_GetBGColor(UUID uuid, glm::vec4* bgColor)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity && entity.HasComponent<TextRendererComponent>())
+		{
+			auto& trc = entity.GetComponent<TextRendererComponent>();
+			*bgColor = trc.BGColor;
+		}
+	}
+
+	static void TextRendererComponent_SetBGColor(UUID uuid, glm::vec4* bgColor)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity.HasComponent<TextRendererComponent>())
+		{
+			auto& trc = entity.GetComponent<TextRendererComponent>();
+			trc.BGColor = *bgColor;
+		}
+	}
+
+	static float TextRendererComponent_GetLineHeight(UUID uuid)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity && entity.HasComponent<TextRendererComponent>())
+		{
+			auto& trc = entity.GetComponent<TextRendererComponent>();
+			return trc.LineHeightOffset;
+		}
+	}
+
+	static void TextRendererComponent_SetLineHeight(UUID uuid, float lineHeight)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity.HasComponent<TextRendererComponent>())
+		{
+			auto& trc = entity.GetComponent<TextRendererComponent>();
+			trc.LineHeightOffset = lineHeight;
+		}
+	}
+
+	static float TextRendererComponent_GetLineSpacing(UUID uuid)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity && entity.HasComponent<TextRendererComponent>())
+		{
+			auto& trc = entity.GetComponent<TextRendererComponent>();
+			return trc.KerningOffset;
+		}
+	}
+
+	static void TextRendererComponent_SetLineSpacing(UUID uuid, float lineSpacing)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity.HasComponent<TextRendererComponent>())
+		{
+			auto& trc = entity.GetComponent<TextRendererComponent>();
+			trc.KerningOffset = lineSpacing;
+		}
+	}
 
 #pragma endregion
-	static bool Entity_HasComponent(UUID uuid, MonoReflectionType* componentType)
-	{
-		Scene* scene = Scripting::GetScene();
-		GE_CORE_ASSERT(scene, "Scene is Undefined.");
-		Entity entity = scene->GetEntityByUUID(uuid);
-		GE_CORE_ASSERT(entity, "Entity is Undefined.");
-
-		MonoType* type = mono_reflection_type_get_type(componentType);
-		GE_CORE_ASSERT(s_HasComponentsFuncs.find(type) != s_HasComponentsFuncs.end(), "Unable to find Component Type.");
-		return s_HasComponentsFuncs.at(type)(entity);
-	}
-
-	static uint64_t Entity_FindEntityByTag(MonoString* tagString)
-	{
-		Scene* scene = Scripting::GetScene();
-		GE_CORE_ASSERT(scene, "Scene is Undefined.");
-
-		char* cTag = mono_string_to_utf8(tagString);
-		Entity entity = scene->GetEntityByTag(cTag);
-		mono_free(cTag);
-
-		if (!entity)
-			return 0;
-
-		return (uint64_t)entity.GetUUID();
-	}
-	
-	static MonoObject* Entity_GetScriptInstance(uint64_t uuid)
-	{
-		return Scripting::GetObjectInstance(uuid);
-	}
 
 	static bool Input_IsKeyDown(KeyCode keyCode)
 	{
@@ -431,6 +545,19 @@ namespace GE
 		}
 
 		return s_ScriptingData->ScriptInstances.at(uuid)->GetMonoObject();
+	}
+
+	MonoString* Scripting::StringToMonoString(const char* string)
+	{
+		return mono_string_new(s_ScriptingData->AppDomain, string);
+	}
+
+	std::string Scripting::MonoStringToString(MonoString* string)
+	{
+		char* cStr = mono_string_to_utf8(string);
+		std::string str(cStr);
+		mono_free(cStr);
+		return str;
 	}
 
 	bool Scripting::ScriptClassExists(const std::string& fullName)
@@ -682,6 +809,10 @@ namespace GE
 		GE_ADD_INTERNAL_CALL(Log_Core_Error);
 		GE_ADD_INTERNAL_CALL(Log_Core_Assert);
 
+		GE_ADD_INTERNAL_CALL(Entity_HasComponent);
+		GE_ADD_INTERNAL_CALL(Entity_FindEntityByTag);
+		GE_ADD_INTERNAL_CALL(Entity_GetScriptInstance);
+
 		GE_ADD_INTERNAL_CALL(TransformComponent_GetTranslation);
 		GE_ADD_INTERNAL_CALL(TransformComponent_SetTranslation);
 
@@ -691,9 +822,16 @@ namespace GE
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_GetType);
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_SetType);
 
-		GE_ADD_INTERNAL_CALL(Entity_HasComponent);
-		GE_ADD_INTERNAL_CALL(Entity_FindEntityByTag);
-		GE_ADD_INTERNAL_CALL(Entity_GetScriptInstance);
+		GE_ADD_INTERNAL_CALL(TextRendererComponent_GetText);
+		GE_ADD_INTERNAL_CALL(TextRendererComponent_SetText);
+		GE_ADD_INTERNAL_CALL(TextRendererComponent_GetTextColor);
+		GE_ADD_INTERNAL_CALL(TextRendererComponent_SetTextColor);
+		GE_ADD_INTERNAL_CALL(TextRendererComponent_GetBGColor);
+		GE_ADD_INTERNAL_CALL(TextRendererComponent_SetBGColor);
+		GE_ADD_INTERNAL_CALL(TextRendererComponent_GetLineHeight);
+		GE_ADD_INTERNAL_CALL(TextRendererComponent_SetLineHeight);
+		GE_ADD_INTERNAL_CALL(TextRendererComponent_GetLineSpacing);
+		GE_ADD_INTERNAL_CALL(TextRendererComponent_SetLineSpacing);
 
 		GE_ADD_INTERNAL_CALL(Input_IsKeyDown);
 	}
@@ -720,6 +858,7 @@ namespace GE
 		RegisterComponent<TransformComponent>();
 		//RegisterComponent<SpriteRendererComponent>();
 		//RegisterComponent<CircleRendererComponent>();
+		RegisterComponent<TextRendererComponent>();
 		//RegisterComponent<CameraComponent>();
 		RegisterComponent<Rigidbody2DComponent>();
 		//RegisterComponent<BoxCollider2DComponent>();

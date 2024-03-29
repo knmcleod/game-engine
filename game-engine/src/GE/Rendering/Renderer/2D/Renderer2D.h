@@ -2,6 +2,7 @@
 
 #include "GE/Rendering/VertexArray/VertexArray.h"
 
+#include "GE/Rendering/Text/Font.h"
 #include "GE/Rendering/Textures/Texture.h"
 #include "GE/Rendering/Textures/SubTexture.h"
 
@@ -55,6 +56,16 @@ namespace GE
 			int EntityID = -1;
 		};
 
+		struct TextVertex
+		{
+			glm::vec3 Position = glm::vec3(0.0f);
+			glm::vec4 TextColor = glm::vec4(1.0f);
+			glm::vec4 BGColor = glm::vec4(1.0f);
+			glm::vec2 TextureCoord = glm::vec2(0.0f);
+
+			int EntityID = -1;
+		};
+
 		struct Renderer2DData
 		{
 			static const uint32_t MaxSpawns = 5000;
@@ -92,10 +103,22 @@ namespace GE
 			Ref<VertexBuffer> LineVertexBuffer;
 			Ref<Shader> LineShader;
 
-			uint32_t LineVertexCount = 0;
+			uint32_t LineIndexCount = 0;
 			LineVertex* LineVertexBufferBase = nullptr;
 			LineVertex* LineVertexBufferPtr = nullptr;
 			float LineWidth = 2.0f;
+			
+			// Text
+			Ref<VertexArray> TextVertexArray;
+			Ref<VertexBuffer> TextVertexBuffer;
+			Ref<Shader> TextShader;
+
+			uint32_t TextIndexCount = 0;
+			TextVertex* TextVertexBufferBase = nullptr;
+			TextVertex* TextVertexBufferPtr = nullptr;
+
+			Ref<Texture2D> TextAtlasTexture;
+
 			//
 			Statistics Stats;
 		};
@@ -107,9 +130,6 @@ namespace GE
 		static void Start(const Camera& camera, const glm::mat4& transform);
 		static void End();
 
-		static void FlushLines();
-		static void FlushCircles();
-		static void FlushQuads();
 		static void Flush();
 
 		// Sprite/Quad
@@ -118,8 +138,8 @@ namespace GE
 			const float& tilingFactor, const glm::vec4& color, const int entityID = -1);
 		static void ResetQuadData();
 
-		static void FillQuad(const glm::mat4& transform, const glm::vec4& color, const int entityID = -1);
-		static void FillQuad(const glm::mat4& transform, const Ref<Texture2D>& texture,
+		static void DrawQuad(const glm::mat4& transform, const glm::vec4& color, const int entityID = -1);
+		static void DrawQuad(const glm::mat4& transform, const Ref<Texture2D>& texture,
 			const float& tilingFactor = 1.0f, const glm::vec4& color = glm::vec4(1.0f), const int entityID = -1);
 
 		static void FillQuadColor(const glm::vec3& position, const glm::vec2& size, const float rotation,
@@ -130,7 +150,7 @@ namespace GE
 		static void FillQuadSubTexture(const glm::vec3& position, const glm::vec2& size, const float rotation,
 			const Ref<SubTexture2D>& subTexture, const float& tilingFactor = 1.0f, const glm::vec4& tintColor = glm::vec4(1.0f),
 			const int entityID = -1);
-		static void DrawSprite(const glm::mat4& transform, SpriteRendererComponent& component, int entityID);
+		static void DrawSprite(const glm::mat4& transform, const SpriteRendererComponent& component, int entityID);
 		
 		// Circle
 
@@ -138,7 +158,8 @@ namespace GE
 			const float& thickness = 1.0f, const float& fade = 0.0f, const int entityID = -1);
 		static void ResetCircleData();
 
-		static void FillCircle(const glm::mat4& transform, const glm::vec4& color, const float& radius, const float& thickness, const float& fade, const int entityID = -1);
+		static void DrawCircle(const glm::mat4& transform, const glm::vec4& color, const float& radius, const float& thickness, const float& fade, const int entityID = -1);
+		static void DrawCircle(const glm::mat4& transform, const CircleRendererComponent& component, const int entityID);
 
 		// Line/Rectangle
 		
@@ -150,6 +171,16 @@ namespace GE
 		static void FillLine(const glm::vec3& initialPosition, const glm::vec3& finalPosition, const glm::vec4& color, const int entityID = -1);
 		static void FillRectangle(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color, const int entityID = -1);
 		static void DrawRectangle(const glm::mat4& transform, const glm::vec4& color, const int entityID = -1);
+
+		// Text
+		static void SetTextData(const glm::mat4& transform, const glm::vec2& minTextureCoord, const glm::vec2& maxTextureCoord,
+			const glm::vec2& minQuadPlane, const glm::vec2& maxQuadPlane, Ref<Font> font, const glm::vec4& texColor, const glm::vec4& bgColor, const int entityID);
+		static void ResetTextData();
+
+		static void DrawString(const glm::mat4& transform, const std::string& text,
+			Ref<Font> font, const glm::vec4& texColor, const glm::vec4& bgColor, const float& kerningOffset, const float& lineHeightOffset,
+			const int entityID = -1);
+		static void DrawString(const glm::mat4& transform, const TextRendererComponent& component, int entityID);
 
 	public:
 		static const glm::mat4 s_IdentityMat4;

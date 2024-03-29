@@ -2,7 +2,7 @@
 
 #include "GE/Core/UUID/UUID.h"
 
-#include "GE/Rendering/Textures/Texture.h"
+#include "GE/Rendering/Text/Font.h"
 
 #include "GE/Scene/Camera/SceneCamera.h"
 #include "GE/Scene/Scene.h"
@@ -74,6 +74,20 @@ namespace GE
 
 		CircleRendererComponent() = default;
 		CircleRendererComponent(const CircleRendererComponent&) = default;
+	};
+
+	struct TextRendererComponent
+	{
+		glm::vec4 TextColor = glm::vec4(0.0, 0.0, 0.0, 1.0);
+		glm::vec4 BGColor = glm::vec4(0.0);
+		float KerningOffset = 0.0f; // Adjusts the spacing between characters proportionally
+		float LineHeightOffset = 0.0f;
+		Ref<Font> Font = Font::GetDefault();
+
+		std::string Text = "Text";
+
+		TextRendererComponent() = default;
+		TextRendererComponent(const TextRendererComponent&) = default;
 	};
 
 	struct CameraComponent

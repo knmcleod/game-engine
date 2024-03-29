@@ -20,6 +20,17 @@ namespace GE
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static void Log_Core_Assert(object arg, string debugMessage);
 
+        // ENTITY
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static bool Entity_HasComponent(ulong uuid, Type componentType);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static ulong Entity_FindEntityByTag(string tag);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static object Entity_GetScriptInstance(ulong uuid);
+
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static void TransformComponent_GetTranslation(ulong uuid, out Vector3 translation);
@@ -37,16 +48,39 @@ namespace GE
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static void Rigidbody2DComponent_GetLinearVelocity(ulong uuid, out Vector2 velocity);
 
-        
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal extern static bool Entity_HasComponent(ulong uuid, Type componentType);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal extern static ulong Entity_FindEntityByTag(string tag);
+        internal extern static string TextRendererComponent_GetText(ulong uuid);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal extern static object Entity_GetScriptInstance(ulong uuid);
+        internal extern static void TextRendererComponent_SetText(ulong uuid, string text);
 
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void TextRendererComponent_GetTextColor(ulong uuid, out Vector4 textColor);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void TextRendererComponent_SetTextColor(ulong uuid, ref Vector4 textColor);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void TextRendererComponent_GetBGColor(ulong uuid, out Vector4 bgColor);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void TextRendererComponent_SetBGColor(ulong uuid, ref Vector4 bgColor);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static float TextRendererComponent_GetLineHeight(ulong uuid);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void TextRendererComponent_SetLineHeight(ulong uuid, float lineHeight);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static float TextRendererComponent_GetLineSpacing(ulong uuid);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void TextRendererComponent_SetLineSpacing(ulong uuid, float lineSpacing);
+
+
+        // INPUT
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static bool Input_IsKeyDown(KeyCode keyCode);

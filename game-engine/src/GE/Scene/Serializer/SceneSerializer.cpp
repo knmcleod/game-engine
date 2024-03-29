@@ -6,6 +6,8 @@
 
 #include "GE/Project/Project.h"
 
+#include "GE/Rendering/Text/Font.h"
+
 #include "GE/Scene/Components/Components.h"
 #include "GE/Scene/Entity/Entity.h"
 
@@ -238,6 +240,24 @@ namespace GE
 			out << YAML::Key << "Thickness" << YAML::Value << component.Thickness;
 			out << YAML::Key << "Fade" << YAML::Value << component.Fade;
 			out << YAML::EndMap; // CircleRendererComponent
+		}
+
+		if (entity.HasComponent<TextRendererComponent>())
+		{
+			out << YAML::Key << "TextRendererComponent";
+			out << YAML::BeginMap; // TextRendererComponent
+			auto& component = entity.GetComponent<TextRendererComponent>();
+			out << YAML::Key << "TextColor" << YAML::Value << component.TextColor;
+			out << YAML::Key << "BGColor" << YAML::Value << component.BGColor;
+
+			out << YAML::Key << "KerningOffset" << YAML::Value << component.KerningOffset;
+			out << YAML::Key << "LineHeightOffset" << YAML::Value << component.LineHeightOffset;
+
+			// TODO: Save Font filepath
+
+			out << YAML::Key << "Text" << YAML::Value << component.Text;
+
+			out << YAML::EndMap; // TextRendererComponent
 		}
 
 		if (entity.HasComponent<NativeScriptComponent>())
@@ -482,6 +502,22 @@ namespace GE
 					src.Radius = circleRendererComponent["Radius"].as<float>();
 					src.Thickness = circleRendererComponent["Thickness"].as<float>();
 					src.Fade = circleRendererComponent["Fade"].as<float>();
+				}
+
+				// TextRendererComponent
+				auto textRendererComponent = entity["TextRendererComponent"];
+				if (textRendererComponent)
+				{
+					auto& src = deserializedEntity.GetOrAddComponent<TextRendererComponent>();
+					src.TextColor = textRendererComponent["TextColor"].as<glm::vec4>();
+					src.BGColor = textRendererComponent["BGColor"].as<glm::vec4>();
+
+					src.KerningOffset = textRendererComponent["KerningOffset"].as<float>();
+					src.LineHeightOffset = textRendererComponent["LineHeightOffset"].as<float>();
+
+					// TODO: Load Font filepath
+
+					src.Text = textRendererComponent["Text"].as<std::string>();
 				}
 
 				// NativeScriptComponent

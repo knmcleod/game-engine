@@ -160,6 +160,8 @@ project "editor"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.mono}",
+		"%{IncludeDir.msdf_atlas_gen}",
+		"%{IncludeDir.msdf_gen}",
 		"%{IncludeDir.spdlog}"
 	}
 
