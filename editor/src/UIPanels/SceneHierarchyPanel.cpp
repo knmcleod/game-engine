@@ -1,5 +1,7 @@
 #include "SceneHierarchyPanel.h"
 
+#include "GE/Asset/AssetImporter.h"
+#include "GE/Core/Util/PlatformUtils.h"
 #include "GE/Project/Project.h"
 #include "GE/Rendering/Textures/Texture.h"
 #include "GE/Scene/Components/Components.h"
@@ -257,17 +259,37 @@ namespace GE
 			{
 				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
 				
-				ImGui::Button("Texture");
-				if (ImGui::BeginDragDropTarget())
 				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+					if (ImGui::Button("Texture"))
 					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path texturePath = Project::GetActive()->GetPathToAsset(path);
-
-						component.Texture = Texture2D::Create(texturePath.string());
+						std::string filePath = FileDialogs::LoadFile("PNG(*.png)\0*.png\0");
+						if (!filePath.empty())
+						{
+							Ref<Asset> asset = AssetImporter::ImportAsset(AssetMetadata(filePath));
+							if (asset->GetType() == AssetType::Texture2D)
+							{
+								component.AssetHandle = asset->GetHandle();
+							}
+						}
 					}
-					ImGui::EndDragDropTarget();
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetActive()->GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == AssetType::Texture2D)
+							{
+								component.AssetHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
 				}
 				ImGui::DragFloat("Tiling Factor", &component.TilingFactor);
 			});

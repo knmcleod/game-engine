@@ -4,6 +4,8 @@
 
 #include "GE/MSDF/MSDF.h"
 
+#include "GE/Project/Project.h"
+
 #include "GE/Rendering/Camera/Camera.h"
 #include "GE/Rendering/Camera/Editor/EditorCamera.h"
 #include "GE/Rendering/RenderCommand.h"
@@ -65,8 +67,7 @@ namespace GE
 
 			// Texture Creation
 			uint32_t textureData = 0xFFFFFFFF;
-			s_RendererData.EmptyTexture = Texture2D::Create(TextureConfiguration{});
-			s_RendererData.EmptyTexture->SetData(&textureData, sizeof(uint32_t));
+			s_RendererData.EmptyTexture = Texture2D::Create(TextureConfiguration{}, Buffer(&textureData, sizeof(uint32_t)));
 
 			int32_t samplers[s_RendererData.MaxTextureSlots];
 			for (uint32_t i = 0; i < s_RendererData.MaxTextureSlots; i++)
@@ -445,8 +446,11 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		if (component.Texture)
-			DrawQuad(transform, component.Texture, component.TilingFactor, component.Color, entityID);
+		if (component.AssetHandle)
+		{
+			Ref<Texture2D> texture = Project::GetAsset<Texture2D>(component.AssetHandle);
+			DrawQuad(transform, texture, component.TilingFactor, component.Color, entityID);
+		}
 		else
 			DrawQuad(transform, component.Color, entityID);
 	

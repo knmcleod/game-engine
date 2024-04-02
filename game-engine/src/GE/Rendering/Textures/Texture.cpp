@@ -8,7 +8,7 @@
 
 namespace GE
 {
-	Ref<Texture2D> Texture2D::Create(const TextureConfiguration& textureConfig)
+	Ref<Texture2D> Texture2D::Create(const TextureConfiguration& textureConfig, Buffer data /*= Buffer()*/)
 	{
 		switch (Renderer::GetAPI())
 		{
@@ -17,23 +17,7 @@ namespace GE
 			return nullptr;
 			break;
 		case RenderAPI::API::OpenGL:
-			return CreateRef<OpenGLTexture2D>(textureConfig);
-			break;
-		}
-		GE_CORE_ASSERT(false, "Unknown RendererAPI!");
-		return nullptr;
-	}
-
-	Ref<Texture2D> Texture2D::Create(const std::string& path)
-	{
-		switch (Renderer::GetAPI())
-		{
-		case RenderAPI::API::None:
-			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");
-			return nullptr;
-			break;
-		case RenderAPI::API::OpenGL:
-			return CreateRef<OpenGLTexture2D>(path);
+			return CreateRef<OpenGLTexture2D>(textureConfig, data);
 			break;
 		}
 		GE_CORE_ASSERT(false, "Unknown RendererAPI!");

@@ -17,8 +17,8 @@
 
 //	-- Core	--
 #include "GE/Core/Core.h"
-
 #include "GE/Core/Debug/Instrumentor.h"
+#include "GE/Core/Buffer.h"
 
 #ifdef GE_PLATFORM_WINDOWS
 	#include <Windows.h>

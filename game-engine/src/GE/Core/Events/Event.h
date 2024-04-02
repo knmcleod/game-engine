@@ -2,6 +2,7 @@
 
 #include <string>
 #include <sstream>
+#include <GE/Core/Core.h>
 
 namespace GE
 {

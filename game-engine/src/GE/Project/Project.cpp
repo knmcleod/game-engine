@@ -5,12 +5,6 @@
 
 namespace GE
 {
-	Ref<Project> Project::New()
-	{
-		s_ActiveProject = CreateRef<Project>();
-		return s_ActiveProject;
-	}
-
 	Ref<Project> Project::Load(const std::filesystem::path& path)
 	{
 		Ref<Project> project = CreateRef<Project>();
@@ -21,9 +15,8 @@ namespace GE
 		{
 			s_ActiveProject = project;
 			GE_CORE_INFO("Project Deserialization Complete");
-			return s_ActiveProject;
 		}
-		return nullptr;
+		return project;
 	}
 
 	bool Project::Save(const std::filesystem::path& path)

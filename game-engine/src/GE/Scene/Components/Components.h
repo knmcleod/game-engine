@@ -13,7 +13,7 @@
 	#include <glm/gtx/quaternion.hpp>
 
 namespace GE
-{
+{	
 	struct IDComponent
 	{
 		UUID ID;
@@ -56,8 +56,8 @@ namespace GE
 
 	struct SpriteRendererComponent
 	{
+		UUID AssetHandle = 0;
 		glm::vec4 Color = glm::vec4(1.0f);
-		Ref<Texture2D> Texture;
 		float TilingFactor = 1.0f;
 
 		SpriteRendererComponent() = default;
@@ -179,4 +179,33 @@ namespace GE
 
 #pragma endregion
 	
+	namespace ComponentUtils
+	{
+		static const std::string GetStringFromRigidBody2DType(Rigidbody2DComponent::BodyType type)
+		{
+			switch (type)
+			{
+			case GE::Rigidbody2DComponent::BodyType::Static:
+				return "Static";
+				break;
+			case GE::Rigidbody2DComponent::BodyType::Dynamic:
+				return "Dynamic";
+				break;
+			case GE::Rigidbody2DComponent::BodyType::Kinematic:
+				return "Kinematic";
+				break;
+			}
+			GE_CORE_WARN("Cannot convert Rigidbody2D BodyType to string.");
+			return "Static";
+		}
+
+		static Rigidbody2DComponent::BodyType GetRigidBody2DTypeFromString(const std::string& typeString)
+		{
+			if (typeString == "Static") return Rigidbody2DComponent::BodyType::Static;
+			if (typeString == "Dynamic") return Rigidbody2DComponent::BodyType::Dynamic;
+			if (typeString == "Kinematic") return Rigidbody2DComponent::BodyType::Kinematic;
+
+			return Rigidbody2DComponent::BodyType::Static;
+		}
+	}
 }

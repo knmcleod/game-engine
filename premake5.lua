@@ -162,7 +162,8 @@ project "editor"
 		"%{IncludeDir.mono}",
 		"%{IncludeDir.msdf_atlas_gen}",
 		"%{IncludeDir.msdf_gen}",
-		"%{IncludeDir.spdlog}"
+		"%{IncludeDir.spdlog}",
+		"%{IncludeDir.yaml_cpp}"
 	}
 
 	links
@@ -211,6 +212,8 @@ project "demo"
 		"%{IncludeDir.entt}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.msdf_atlas_gen}",
+		"%{IncludeDir.msdf_gen}",
 		"%{IncludeDir.spdlog}",
 		
 	}

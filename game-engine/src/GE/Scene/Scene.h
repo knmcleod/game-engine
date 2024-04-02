@@ -1,5 +1,7 @@
 #pragma once
 
+#include "GE/Asset/Asset.h"
+
 #include "GE/Core/Time/Time.h"
 #include "GE/Core/UUID/UUID.h"
 
@@ -11,7 +13,36 @@ class b2World;
 
 namespace GE
 {
-	class Scene
+	enum class SceneState
+	{
+		Run = 0,
+		Simulate = 1,
+		Stop = 2,
+		Pause = 3 // Called during Run or Simulate
+	};
+
+	namespace SceneUtils
+	{
+		static const std::string& SceneStateToString(SceneState state)
+		{
+			switch (state)
+			{
+			case SceneState::Run:
+				return "Run";
+			case SceneState::Simulate:
+				return "Simulate";
+			case SceneState::Pause:
+				return "Pause";
+			case SceneState::Stop:
+				return "Stop";
+			}
+
+			GE_CORE_ERROR("Invalid Scene Type.");
+			return "<Not Found>";
+		}
+	}
+
+	class Scene : public Asset
 	{
 		friend class SceneSerializer;
 		friend class Entity;
@@ -21,17 +52,9 @@ namespace GE
 		template<typename T>
 		void OnComponentAdded(Entity entity);
 
-		enum class SceneState
-		{
-			Run = 0,
-			Simulate = 1,
-			Stop = 2,
-			Pause = 3 // Called during Run or Simulate
-		};
 		SceneState m_SceneState = SceneState::Stop;
 
 		int m_StepFrames = 0;
-		bool m_UseEditorCamera = false;
 
 		b2World* m_PhysicsWorld = nullptr;
 
@@ -48,6 +71,9 @@ namespace GE
 		void UpdateScripting(Timestep timestep);
 		void DestroyScripting();
 	public:
+		static Ref<Scene> Copy(const Ref<Scene> scene);
+		inline static AssetType GetAssetType() { return AssetType::Scene; }
+
 		template<typename... Components>
 		auto GetAllEntitiesWith()
 		{
@@ -61,13 +87,9 @@ namespace GE
 		std::string GetName() { return m_Name; }
 		void SetName(std::string name) { m_Name = name; }
 
-		static std::string Scene::SceneStateToString(Scene::SceneState state);
-
 		// Returns true if the scenes state is Run. Does not account for Simulation
 		bool IsRunning() const { return m_SceneState == SceneState::Run; }
 		bool IsPaused() const { return m_SceneState == SceneState::Pause; }
-
-		static Ref<Scene> Copy(const Ref<Scene> scene);
 
 		void Render();
 		void Render(const EditorCamera& camera);
@@ -99,5 +121,7 @@ namespace GE
 
 		void OnEditorUpdate(Timestep timestep, EditorCamera& camera);
 
+		// Asset override
+		inline virtual AssetType GetType() const override { return GetAssetType(); }
 	};
 }

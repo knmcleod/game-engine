@@ -2,5 +2,5 @@ Project:
   Name: demo
   ProjectPath: projects/demo
   AssetPath: assets
-  ScenePath: scenes/demoExample.scene
+  SceneHandle: 8321772525370642796
   ScriptPath: scripts/Resources/Binaries/demo.dll

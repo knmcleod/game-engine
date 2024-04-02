@@ -1,0 +1,22 @@
+AssetRegistry:
+  - Handle: 255212577547459639
+    FilePath: textures/Play_Button.png
+    Type: Texture2D
+  - Handle: 5985027268343488239
+    FilePath: textures/Step_Button.png
+    Type: Texture2D
+  - Handle: 8321772525370642796
+    FilePath: scenes/demoExample.scene
+    Type: Scene
+  - Handle: 10348391463159757545
+    FilePath: textures/Pause_Button.png
+    Type: Texture2D
+  - Handle: 14668036163381183736
+    FilePath: textures/UI/Play_Button.png
+    Type: Texture2D
+  - Handle: 16203209201710611844
+    FilePath: textures/Stop_Button.png
+    Type: Texture2D
+  - Handle: 18416291719242929562
+    FilePath: textures/Simulate_Button.png
+    Type: Texture2D

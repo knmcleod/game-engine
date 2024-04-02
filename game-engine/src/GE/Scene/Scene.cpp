@@ -117,38 +117,6 @@ namespace GE
 		}
 	}
 
-	Scene::Scene()
-	{
-
-	}
-
-	Scene::Scene(const std::string& name) : m_Name(name)
-	{
-
-	}
-
-	Scene::~Scene()
-	{
-
-	}
-
-	std::string Scene::SceneStateToString(Scene::SceneState state)
-	{
-		switch (state)
-		{
-		case SceneState::Run:
-			return "Run";
-		case SceneState::Simulate:
-			return "Simulate";
-		case SceneState::Pause:
-			return "Pause";
-		case SceneState::Stop:
-			return "Stop";
-		}
-
-		return "<Not Found>";
-	}
-
 	Ref<Scene> Scene::Copy(const Ref<Scene> scene)
 	{
 		Ref<Scene> newScene = CreateRef<Scene>();
@@ -188,6 +156,21 @@ namespace GE
 		}
 
 		return newScene;
+	}
+
+	Scene::Scene()
+	{
+
+	}
+
+	Scene::Scene(const std::string& name) : m_Name(name)
+	{
+
+	}
+
+	Scene::~Scene()
+	{
+
 	}
 
 	void Scene::Render()
@@ -422,7 +405,7 @@ namespace GE
 	
 	void Scene::OnStop()
 	{
-		m_SceneState = Scene::SceneState::Stop;
+		m_SceneState = SceneState::Stop;
 
 		DestroyPhysics2D();
 		DestroyScripting();
@@ -430,7 +413,7 @@ namespace GE
 
 	void Scene::OnRuntimeStart()
 	{
-		m_SceneState = Scene::SceneState::Run;
+		m_SceneState = SceneState::Run;
 
 		InitializePhysics2D();
 		InitializeScripting();
@@ -450,7 +433,7 @@ namespace GE
 
 	void Scene::OnSimulationStart()
 	{
-		m_SceneState = Scene::SceneState::Simulate;
+		m_SceneState = SceneState::Simulate;
 		
 		InitializePhysics2D();
 		InitializeScripting();
@@ -461,7 +444,7 @@ namespace GE
 		UpdatePhysics2D(timestep);
 		UpdateScripting(timestep);
 
-		if (m_UseEditorCamera)
+		if (&camera)
 		{
 			camera.OnUpdate(timestep);
 			Render(camera);
@@ -478,7 +461,7 @@ namespace GE
 	*/
 	void Scene::OnPauseStart()
 	{
-		m_SceneState = Scene::SceneState::Pause;
+		m_SceneState = SceneState::Pause;
 
 	}
 
@@ -495,7 +478,7 @@ namespace GE
 			m_StepFrames--;
 		}
 
-		if (m_UseEditorCamera)
+		if (&camera)
 		{
 			camera.OnUpdate(timestep);
 			Render(camera);

@@ -37,8 +37,8 @@ namespace GE
 		config.Format = DataFormat::RGB;
 		config.GenerateMips = false;
 
-		Ref<Texture2D> texture = Texture2D::Create(config);
-		texture->SetData((void*)bitmap.pixels, bitmap.height * bitmap.width * (config.InternalFormat == ImageFormat::RBG8 ? 3 : 4));
+		Buffer dataBuffer((void*)bitmap.pixels, bitmap.height * bitmap.width * (config.InternalFormat == ImageFormat::RBG8 ? 3 : 4));
+		Ref<Texture2D> texture = Texture2D::Create(config, dataBuffer);
 		return texture;
 	}
 
@@ -130,6 +130,7 @@ namespace GE
 
 	}
 
+	// arial default font
 	Ref<Font> Font::GetDefault()
 	{
 		static Ref<Font> DefaultFont;

@@ -1,8 +1,13 @@
 #pragma once
 
-#include <GE/GE.h>
 #include "../UIPanels/SceneHierarchyPanel.h"
 #include "../UIPanels/AssetPanel.h"
+
+#include <GE/Core/Application/Layers/Layer.h>
+#include <GE/Core/Events/KeyEvent.h>
+
+#include <GE/Project/Project.h>
+#include <GE/Rendering/Framebuffers/Framebuffer.h>
 
 #include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -33,11 +38,9 @@ namespace GE
 		void OnSceneStop();
 
 		void LoadSceneFromFile();
-		void LoadScene(const std::filesystem::path& path);
-		void SaveSceneFromFile();
-		void SaveScene();
-		void NewScene();
-		void SerializeScene(Ref<Scene> scene, const std::filesystem::path& path);
+		void LoadScene(UUID handle);
+		bool SaveSceneFromFile();
+		bool SaveScene(UUID handle);
 
 		bool LoadProjectFromFile();
 		void LoadProject(const std::filesystem::path& path);
@@ -52,6 +55,7 @@ namespace GE
 		EditorCamera m_EditorCamera;
 		Entity m_HoveredEntity;
 
+		bool m_UseEditorCamera = true;
 		int m_StepFrameMultiplier = 1;
 
 		bool m_ViewportFocused = false;
@@ -63,9 +67,8 @@ namespace GE
 		Ref<SceneHierarchyPanel> m_ScenePanel;
 		Ref<AssetPanel> m_AssetPanel;
 
-		Ref<Project> m_ActiveProject;
 		Ref<Scene> m_EditorScene, m_ActiveScene;
-		Scene::SceneState m_LastSceneState;
+		SceneState m_LastSceneState;
 
 		Ref<Texture2D> m_PlayButtonTexture, m_SimulateButtonTexture, m_PauseButtonTexture, m_StepButtonTexture, m_StopButtonTexture;
 		

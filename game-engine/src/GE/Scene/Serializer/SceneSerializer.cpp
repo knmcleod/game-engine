@@ -131,34 +131,6 @@ namespace YAML {
 
 namespace GE
 {
-	static std::string GetStringFromRigidBody2DType(Rigidbody2DComponent::BodyType type)
-	{
-		switch (type)
-		{
-		case GE::Rigidbody2DComponent::BodyType::Static:
-			return "Static";
-			break;
-		case GE::Rigidbody2DComponent::BodyType::Dynamic:
-			return "Dynamic";
-			break;
-		case GE::Rigidbody2DComponent::BodyType::Kinematic:
-			return "Kinematic";
-			break;
-		}
-		GE_CORE_ASSERT(false, "Cannot convert Rigidbody2D BodyType to string.");
-		return "";
-	}
-
-	static Rigidbody2DComponent::BodyType GetRigidBody2DTypeFromString(std::string typeString)
-	{
-		if (typeString == "Static") return Rigidbody2DComponent::BodyType::Static;
-		if (typeString == "Dynamic") return Rigidbody2DComponent::BodyType::Dynamic;
-		if (typeString == "Kinematic") return Rigidbody2DComponent::BodyType::Kinematic;
-
-		GE_CORE_ASSERT(false, "Cannot convert string to Rigidbody2D BodyType. Set to default Static.");
-		return Rigidbody2DComponent::BodyType::Static;
-	}
-
 	static void SerializeEntity(YAML::Emitter& out, Entity entity)
 	{
 		GE_CORE_ASSERT(entity.HasComponent<IDComponent>(), "Cannot serialize Entity without ID.");
@@ -218,9 +190,9 @@ namespace GE
 			out << YAML::BeginMap; // SpriteRendererComponent
 			auto& component = entity.GetComponent<SpriteRendererComponent>();
 			out << YAML::Key << "Color" << YAML::Value << component.Color;
-			if (component.Texture)
+			if (component.AssetHandle)
 			{
-				out << YAML::Key << "Texture" << YAML::Value << component.Texture->GetProjectPath();
+				out << YAML::Key << "AssetHandle" << YAML::Value << component.AssetHandle;
 			}
 
 			if (component.TilingFactor)
@@ -253,7 +225,7 @@ namespace GE
 			out << YAML::Key << "KerningOffset" << YAML::Value << component.KerningOffset;
 			out << YAML::Key << "LineHeightOffset" << YAML::Value << component.LineHeightOffset;
 
-			// TODO: Save Font filepath
+			// TODO: Save Font Handle
 
 			out << YAML::Key << "Text" << YAML::Value << component.Text;
 
@@ -346,7 +318,8 @@ namespace GE
 			out << YAML::Key << "Rigidbody2DComponent";
 			out << YAML::BeginMap; // Rigidbody2DComponent
 			auto& component = entity.GetComponent<Rigidbody2DComponent>();
-			out << YAML::Key << "Type" << YAML::Value << GetStringFromRigidBody2DType(component.Type);
+			const std::string typeString = ComponentUtils::GetStringFromRigidBody2DType(component.Type);
+			out << YAML::Key << "Type" << YAML::Value << typeString;
 			out << YAML::Key << "FixedRotation" << YAML::Value << component.FixedRotation;
 			out << YAML::EndMap; // Rigidbody2DComponent
 		}
@@ -389,7 +362,7 @@ namespace GE
 
 	}
 
-	bool SceneSerializer::SerializeText(const std::string& filePath)
+	bool SceneSerializer::Serialize(const std::filesystem::path& filePath)
 	{
 		YAML::Emitter out;
 		out << YAML::BeginMap;
@@ -412,12 +385,7 @@ namespace GE
 		return true;
 	}
 
-	void SceneSerializer::SerializeBinary(const std::string& filePath)
-	{
-		GE_CORE_ASSERT(false, "Serialization of Binary Failed!");
-	}
-
-	bool SceneSerializer::DeserializeText(const std::string& filePath)
+	bool SceneSerializer::Deserialize(const std::filesystem::path& filePath)
 	{
 		std::ifstream stream(filePath);
 		std::stringstream strStream;
@@ -479,12 +447,9 @@ namespace GE
 				{
 					auto& src = deserializedEntity.GetOrAddComponent<SpriteRendererComponent>();
 					src.Color = spriteRendererComponent["Color"].as<glm::vec4>();
-					if (spriteRendererComponent["Texture"])
+					if (spriteRendererComponent["AssetHandle"])
 					{
-						std::string texturePath = spriteRendererComponent["Texture"].as<std::string>();
-						auto path = Project::GetActive()->GetPathToAsset(texturePath);
-						GE_CORE_INFO("Deserializing Entity Sprite Renderer Texture at Path = {}", path.string());
-						src.Texture = Texture2D::Create(path.string());
+						src.AssetHandle = spriteRendererComponent["AssetHandle"].as<UUID>();
 					}
 
 					if (spriteRendererComponent["TilingFactor"])
@@ -636,7 +601,7 @@ namespace GE
 				{
 					auto& src = deserializedEntity.GetOrAddComponent<Rigidbody2DComponent>();
 					src.FixedRotation = rigidBody2DComponent["FixedRotation"].as<bool>();
-					src.Type = GetRigidBody2DTypeFromString(rigidBody2DComponent["Type"].as<std::string>());
+					src.Type = ComponentUtils::GetRigidBody2DTypeFromString(rigidBody2DComponent["Type"].as<std::string>());
 				}
 
 				// BoxCollider2DComponent
@@ -672,12 +637,6 @@ namespace GE
 		}
 		
 		return true;
-	}
-
-	bool SceneSerializer::DeserializeBinary(const std::string& filePath)
-	{
-		GE_CORE_ASSERT(false, "Deserialization of Binary Failed!");
-		return false;
 	}
 
 }

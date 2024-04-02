@@ -1,11 +1,13 @@
 #pragma once
 
+#include <cstdint>
+
 namespace GE
 {
 	class UUID
 	{
 	private:
-		uint64_t m_UUID;
+		uint64_t m_UUID = 0;
 	public:
 		UUID();
 		UUID(uint64_t uuid);
@@ -21,7 +23,7 @@ namespace std
 	template<>
 	struct hash<GE::UUID>
 	{
-		std::size_t operator()(const GE::UUID& uuid) const
+		size_t operator()(const GE::UUID& uuid) const
 		{
 			return (uint64_t)uuid;
 		}

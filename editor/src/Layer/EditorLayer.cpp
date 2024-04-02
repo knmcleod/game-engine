@@ -1,6 +1,8 @@
 #include "EditorLayer.h"
 
-#include "GE/Scripting/Scripting.h"
+#include "../AssetManager/EditorAssetManager.h"
+
+#include <GE/GE.h>
 
 namespace GE
 {
@@ -9,7 +11,6 @@ namespace GE
 	EditorLayer::EditorLayer(const std::string& name)
 		: Layer(name), m_ViewportSize(1.0f), m_ViewportBounds{ { glm::vec2() },{ glm::vec2() } }
 	{
-		//std::filesystem::path filePath("assets/fonts/arial.ttf");
 		s_font = Font::GetDefault();
 	}
 
@@ -26,12 +27,6 @@ namespace GE
 
 		m_EditorCamera = EditorCamera(45.0f, 1.778f, 0.1f, 100.0f);
 
-		m_PlayButtonTexture = Texture2D::Create("assets/textures/UI/Play_Button.png");
-		m_SimulateButtonTexture = Texture2D::Create("assets/textures/UI/Simulate_Button.png");
-		m_PauseButtonTexture = Texture2D::Create("assets/textures/UI/Pause_Button.png");
-		m_StepButtonTexture = Texture2D::Create("assets/textures/UI/Step_Button.png");
-		m_StopButtonTexture = Texture2D::Create("assets/textures/UI/Stop_Button.png");
-
 		auto commandLineArgs = Application::GetApplication().GetSpecification().CommandLineArgs;
 		if (commandLineArgs.Count > 1)
 		{
@@ -44,6 +39,21 @@ namespace GE
 			if (!LoadProjectFromFile())
 				Application::GetApplication().Close();
 		}
+
+		Ref<Asset> playButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(AssetMetadata("textures/Play_Button.png"));
+		m_PlayButtonTexture = Project::GetAsset<Texture2D>(playButtonTexture->GetHandle());
+
+		Ref<Asset> simulateButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(AssetMetadata("textures/Simulate_Button.png"));
+		m_SimulateButtonTexture = Project::GetAsset<Texture2D>(simulateButtonTexture->GetHandle()); 
+
+		Ref<Asset> pauseButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(AssetMetadata("textures/Pause_Button.png"));
+		m_PauseButtonTexture = Project::GetAsset<Texture2D>(pauseButtonTexture->GetHandle());
+
+		Ref<Asset> stepButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(AssetMetadata("textures/Step_Button.png"));
+		m_StepButtonTexture = Project::GetAsset<Texture2D>(stepButtonTexture->GetHandle());
+
+		Ref<Asset> stopButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(AssetMetadata("textures/Stop_Button.png"));
+		m_StopButtonTexture = Project::GetAsset<Texture2D>(stopButtonTexture->GetHandle());
 
 		GE_INFO("Editor Layer OnAttach Complete.");
 	}
@@ -58,8 +68,6 @@ namespace GE
 	void EditorLayer::OnUpdate(Timestep timestep)
 	{
 		// Resize
-		m_ActiveScene->OnResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-
 		if (FramebufferSpecification spec = m_Framebuffer->GetSpecification();
 			m_ViewportSize.x > 0.0f && m_ViewportSize.y > 0.0f && // zero sized framebuffer is invalid
 			(spec.Width != m_ViewportSize.x || spec.Height != m_ViewportSize.y))
@@ -76,52 +84,57 @@ namespace GE
 		// Clear attachmentIndex = 1 - RED_INTEGER / entityID
 		m_Framebuffer->ClearAttachment(1, -1);
 
-		switch (m_ActiveScene->m_SceneState)
+		if (m_ActiveScene)
 		{
-		case Scene::SceneState::Stop:
-		{
-			if (m_ViewportFocused)
-				m_EditorCamera.OnUpdate(timestep);
-			m_ActiveScene->OnEditorUpdate(timestep, m_EditorCamera);
-			break;
-		}
-		case Scene::SceneState::Run:
-		{
-			m_ActiveScene->OnRuntimeUpdate(timestep);
-			break;
-		}
-		case Scene::SceneState::Simulate:
-		{
-			m_ActiveScene->OnSimulationUpdate(timestep, m_EditorCamera);
-			break;
-		}
-		case Scene::SceneState::Pause:
-		{
-			m_ActiveScene->OnPauseUpdate(timestep, m_EditorCamera);
-			break;
-		}
-		default:
-		{
-			GE_ASSERT(false, "Unsupported Scene State. Active Scene will not Update.");
-			break;
-		}
-		}
+			m_ActiveScene->OnResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 
-		// Handles Hovered Entity
-		{
-			auto [mx, my] = ImGui::GetMousePos();
-			mx -= m_ViewportBounds[0].x;
-			my -= m_ViewportBounds[0].y;
-			glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
-			my = viewportSize.y - my;
-
-			int mouseX = (int)mx;
-			int mouseY = (int)my;
-
-			if (mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
+			switch (m_ActiveScene->m_SceneState)
 			{
-				int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY); // attachmentIndex = 1 - RED_INTEGER
-				m_HoveredEntity = (pixelData == -1) ? Entity() : Entity{ (entt::entity)pixelData, m_ActiveScene.get() };
+			case SceneState::Stop:
+			{
+				if (m_ViewportFocused)
+					m_EditorCamera.OnUpdate(timestep);
+				m_ActiveScene->OnEditorUpdate(timestep, m_EditorCamera);
+				break;
+			}
+			case SceneState::Run:
+			{
+				m_ActiveScene->OnRuntimeUpdate(timestep);
+				break;
+			}
+			case SceneState::Simulate:
+			{
+				m_ActiveScene->OnSimulationUpdate(timestep, m_EditorCamera);
+				break;
+			}
+			case SceneState::Pause:
+			{
+				m_ActiveScene->OnPauseUpdate(timestep, m_EditorCamera);
+				break;
+			}
+			default:
+			{
+				GE_ASSERT(false, "Unsupported Scene State. Active Scene will not Update.");
+				break;
+			}
+			}
+
+			// Handles Hovered Entity
+			{
+				auto [mx, my] = ImGui::GetMousePos();
+				mx -= m_ViewportBounds[0].x;
+				my -= m_ViewportBounds[0].y;
+				glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
+				my = viewportSize.y - my;
+
+				int mouseX = (int)mx;
+				int mouseY = (int)my;
+
+				if (mouseX >= 0 && mouseY >= 0 && mouseX < (int)viewportSize.x && mouseY < (int)viewportSize.y)
+				{
+					int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY); // attachmentIndex = 1 - RED_INTEGER
+					m_HoveredEntity = (pixelData == -1) ? Entity() : Entity{ (entt::entity)pixelData, m_ActiveScene.get() };
+				}
 			}
 		}
 
@@ -189,9 +202,7 @@ namespace GE
 			{
 				if (ImGui::BeginMenu("Project"))
 				{
-					if (ImGui::MenuItem("New Project", "Ctrl+Shift+N")) NewProject();
-					if (ImGui::MenuItem("Save Project", "Ctrl+S")) SaveProject();
-					if (ImGui::MenuItem("Save Project As...", "Ctrl+Shift+S")) SaveProjectFromFile();
+					if (ImGui::MenuItem("Save Project", "Ctrl+Shift+S")) SaveProject();
 					if (ImGui::MenuItem("Load Project", "Ctrl+Shift+O")) LoadProjectFromFile();
 
 					ImGui::EndMenu();
@@ -199,7 +210,7 @@ namespace GE
 
 				if (ImGui::BeginMenu("Scene"))
 				{
-					if (ImGui::MenuItem("New Scene", "Ctrl+N")) NewScene();
+					if (ImGui::MenuItem("Save Scene", "Ctrl+S")) SaveScene(Project::GetActive()->GetSpec().SceneHandle);
 					if (ImGui::MenuItem("Load Scene", "Ctrl+O")) LoadSceneFromFile();
 
 					ImGui::EndMenu();
@@ -243,7 +254,7 @@ namespace GE
 
 			{
 				ImGui::DragInt("Step Rate", &m_StepFrameMultiplier);
-				ImGui::Checkbox("Camera Toggle", &m_ActiveScene->m_UseEditorCamera);
+				ImGui::Checkbox("Camera Toggle", &m_UseEditorCamera);
 			}
 
 			ImGui::Separator();
@@ -290,9 +301,16 @@ namespace GE
 			{
 				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
 				{
-					const wchar_t* path = (const wchar_t*)payload->Data;
+					const UUID handle = *(UUID*)payload->Data;
 
-					LoadScene(Project::GetPathToAsset(path));
+					if (Project::GetAssetManager<EditorAssetManager>()->HandleExists(handle))
+					{
+						LoadScene(handle);
+					}
+					else
+					{
+						GE_WARN("Asset Type is not Scene.");
+					}
 				}
 				ImGui::EndDragDropTarget();
 			}
@@ -335,8 +353,6 @@ namespace GE
 			{
 				if (shift)
 					NewProject();
-				else
-					NewScene();
 
 			}
 			break;
@@ -413,7 +429,7 @@ namespace GE
 	void EditorLayer::OnDuplicateEntity()
 	{
 		Entity selectedEntity = m_ScenePanel->GetSelectedEntity();
-		if (m_ActiveScene->m_SceneState == Scene::SceneState::Stop && selectedEntity)
+		if (m_ActiveScene->m_SceneState == SceneState::Stop && selectedEntity)
 		{
 			m_ActiveScene->DuplicateEntity(selectedEntity);
 		}
@@ -424,7 +440,7 @@ namespace GE
 	void EditorLayer::OnSceneRuntime()
 	{
 		m_LastSceneState = m_ActiveScene->m_SceneState;
-		if (m_LastSceneState != Scene::SceneState::Pause)
+		if (m_LastSceneState != SceneState::Pause)
 			m_EditorScene = Scene::Copy(m_ActiveScene); // Copy ActiveScene to revert after Run
 		
 		m_ActiveScene->OnRuntimeStart();
@@ -435,7 +451,7 @@ namespace GE
 	void EditorLayer::OnSceneSimulate()
 	{
 		m_LastSceneState = m_ActiveScene->m_SceneState;
-		if (m_LastSceneState != Scene::SceneState::Pause)
+		if (m_LastSceneState != SceneState::Pause)
 			m_EditorScene = Scene::Copy(m_ActiveScene); // Copy ActiveScene to revert after Simulate
 
 		m_ActiveScene->OnSimulationStart();
@@ -453,12 +469,8 @@ namespace GE
 
 	void EditorLayer::OnSceneStop()
 	{
-		std::string str1 = Scene::SceneStateToString(m_ActiveScene->m_SceneState);
-		GE_INFO("Scene Before Stop. Assigned State = " + str1);
 		m_ActiveScene->OnStop();
 		m_ActiveScene = Scene::Copy(m_EditorScene); // Revert to copy of ActiveScene from Editor
-		std::string str2 = Scene::SceneStateToString(m_ActiveScene->m_SceneState);
-		GE_INFO("Scene After Stop. Assigned State = " + str2);
 		m_ScenePanel->SetScene(m_ActiveScene);
 	}
 
@@ -466,74 +478,40 @@ namespace GE
 	{
 		std::string filePath = FileDialogs::LoadFile("GAME Scene(*.scene)\0*.scene\0");
 		if (!filePath.empty())
-			LoadScene(filePath);
+		{	
+			Ref<Asset> asset = AssetImporter::ImportAsset(AssetMetadata(filePath));
+			LoadScene(asset->GetHandle());
+		}
 	}
 
-	void EditorLayer::LoadScene(const std::filesystem::path& path)
+	void EditorLayer::LoadScene(UUID handle)
 	{
-		if (path.extension().string() != ".scene")
-		{
-			GE_WARN("Could not load {0} : File extension is not .scene", path.filename().string());
-			return;
-		}
-
-		if (m_ActiveScene && m_ActiveScene->m_SceneState != Scene::SceneState::Stop)
+		if (m_ActiveScene && m_ActiveScene->m_SceneState != SceneState::Stop)
 			OnSceneStop();
 
-		GE_TRACE("Loading Scene from Path = {}", path.string());
-
-		m_ActiveScene = CreateRef<Scene>();
-		SceneSerializer serializer(m_ActiveScene);
-		if (serializer.DeserializeText(path.string()))
-		{
-			m_ActiveScene->OnResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-			m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_ActiveScene);
-
-			GE_INFO("Scene Load Complete");
-		}
+		Project::GetActive()->GetSpec().SceneHandle = handle;
+		GE_TRACE("Setting Active Scene from Asset Manager.");
+		m_ActiveScene = Project::GetAsset<Scene>(handle);
+		m_ActiveScene->OnResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+		m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_ActiveScene);
 	}
 
-	void EditorLayer::SaveSceneFromFile()
+	bool EditorLayer::SaveSceneFromFile()
 	{
 		std::string filePath = FileDialogs::SaveFile("GAME Scene(*.scene)\0 * .scene\0");
 		if (!filePath.empty())
-			SerializeScene(m_ActiveScene, filePath);
-	}
-
-	void EditorLayer::SaveScene()
-	{
-		auto& spec = Project::GetActive()->GetSpec();
-		std::filesystem::path scenePath = Project::GetPathToAsset(spec.ScenePath);
-		if (!scenePath.empty() && m_ActiveScene)
-			SerializeScene(m_ActiveScene, scenePath);
-		else
-			SaveSceneFromFile();
-	}
-
-	void EditorLayer::NewScene()
-	{
-		if (m_ActiveScene && m_ActiveScene->m_SceneState != Scene::SceneState::Stop)
-			OnSceneStop();
-
-		m_ActiveScene = CreateRef<Scene>();
-		m_ActiveScene->OnResizeViewport((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-		m_ScenePanel->SetScene(m_ActiveScene);
-	}
-
-	void EditorLayer::SerializeScene(Ref<Scene> scene, const std::filesystem::path& path)
-	{
-		if (path.filename().extension().string() != ".scene")
 		{
-			GE_WARN("Could not save {0}	: File extension is not .scene", path.filename().string());
-			return;
+			return AssetImporter::ExportAsset(m_ActiveScene->GetHandle(), AssetMetadata(filePath));
 		}
+		return false;
+	}
 
-		GE_TRACE("Serializing Scene at Path = {}", path.string());
-		SceneSerializer serializer(scene);
-		if (serializer.SerializeText(path.string()))
-		{
-			GE_INFO("Scene Serialization Complete");
-		}
+	bool EditorLayer::SaveScene(UUID handle)
+	{
+		if(handle == 0)
+			return SaveSceneFromFile();
+
+		return Project::GetActive()->GetAssetManager()->SaveAsset(handle);
 	}
 
 #pragma endregion
@@ -560,10 +538,15 @@ namespace GE
 		GE_TRACE("Loading Project");
 		if (Project::Load(path))
 		{
+			Project::NewAssetManager<EditorAssetManager>();
+			Project::GetAssetManager<EditorAssetManager>()->DeserializeAssets();
+
 			Scripting::Init();
 
-			auto fullPath = Project::GetPathToAsset(Project::GetActive()->GetSpec().ScenePath);
-			LoadScene(fullPath);
+			UUID handle = Project::GetActive()->GetSpec().SceneHandle;
+			if (handle)
+				LoadScene(handle);
+
 			m_AssetPanel = CreateRef<AssetPanel>();
 
 			GE_INFO("Project Load Complete");
@@ -576,7 +559,12 @@ namespace GE
 		if (!filePath.empty())
 		{
 			if (Project::Save(filePath))
-				SaveScene();
+			{
+				UUID handle = Project::GetActive()->GetSpec().SceneHandle;
+				if (handle)
+					SaveScene(handle);
+
+			}
 		}
 	}
 
@@ -586,7 +574,11 @@ namespace GE
 		{
 			std::filesystem::path projectPath = Project::GetProjectPath() / std::filesystem::path(Project::GetActive()->GetSpec().Name + ".gproj");
 			if (Project::Save(projectPath))
-				SaveScene();
+			{
+				UUID handle = Project::GetActive()->GetSpec().SceneHandle;
+				if (handle)
+					SaveScene(handle);
+			}
 		}
 		else
 			SaveProjectFromFile();
@@ -594,9 +586,8 @@ namespace GE
 
 	Ref<Project> EditorLayer::NewProject()
 	{
-		Ref<Project> newProject = Project::New();
-
-		return newProject;
+		GE_WARN("Cannot make New Project.");
+		return nullptr;
 	}
 
 #pragma endregion
@@ -606,46 +597,49 @@ namespace GE
 	void EditorLayer::UI_Toolbar()
 	{
 		ImGui::Begin("##UItoolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
-		{ // Scene State Control Buttons
+
+		// Scene State Control Buttons
+		if(m_ActiveScene)
+		{
 
 			if (!m_ActiveScene->IsPaused())
 			{
-				if (m_ActiveScene->m_SceneState != Scene::SceneState::Simulate)
+				if (m_ActiveScene->m_SceneState != SceneState::Simulate)
 				{
 					// Scene Runtime Start & Stop
-					Ref<Texture2D> playStopButtonTexture = m_ActiveScene->m_SceneState == Scene::SceneState::Run ? m_StopButtonTexture : m_PlayButtonTexture;
+					Ref<Texture2D> playStopButtonTexture = m_ActiveScene->m_SceneState == SceneState::Run ? m_StopButtonTexture : m_PlayButtonTexture;
 
 					ImGui::SameLine();
 					if (ImGui::ImageButton(ImTextureID(playStopButtonTexture->GetID()), ImVec2(20.0f, 20.0f)))
 					{
-						(m_ActiveScene->m_SceneState == Scene::SceneState::Run) ? OnSceneStop() : OnSceneRuntime();
+						(m_ActiveScene->m_SceneState == SceneState::Run) ? OnSceneStop() : OnSceneRuntime();
 					}
 				}
 
 				// Scene Simulate Start & Stop
 				if (!m_ActiveScene->IsRunning())
 				{
-					Ref<Texture2D> simulateStopButtonTexture = m_ActiveScene->m_SceneState == Scene::SceneState::Simulate ? m_StopButtonTexture : m_SimulateButtonTexture;
+					Ref<Texture2D> simulateStopButtonTexture = m_ActiveScene->m_SceneState == SceneState::Simulate ? m_StopButtonTexture : m_SimulateButtonTexture;
 					
 					ImGui::SameLine();
 					if (ImGui::ImageButton(ImTextureID(simulateStopButtonTexture->GetID()), ImVec2(20.0f, 20.0f)))
 					{
-						(m_ActiveScene->m_SceneState == Scene::SceneState::Simulate) ? OnSceneStop() : OnSceneSimulate();
+						(m_ActiveScene->m_SceneState == SceneState::Simulate) ? OnSceneStop() : OnSceneSimulate();
 					}
 				}
 			}
 			
 			// Scene Pause during Runtime || Simulate
-			if (m_ActiveScene->m_SceneState != Scene::SceneState::Stop)
+			if (m_ActiveScene->m_SceneState != SceneState::Stop)
 			{
-				Ref<Texture2D> playSimulatePauseButtonTexture = (m_ActiveScene->m_SceneState == Scene::SceneState::Run || m_ActiveScene->m_SceneState == Scene::SceneState::Simulate) ? m_PauseButtonTexture 
-					: ( m_LastSceneState == Scene::SceneState::Simulate ? m_SimulateButtonTexture : (m_LastSceneState == Scene::SceneState::Run ? m_PlayButtonTexture : m_PauseButtonTexture) );
+				Ref<Texture2D> playSimulatePauseButtonTexture = (m_ActiveScene->m_SceneState == SceneState::Run || m_ActiveScene->m_SceneState == SceneState::Simulate) ? m_PauseButtonTexture 
+					: ( m_LastSceneState == SceneState::Simulate ? m_SimulateButtonTexture : (m_LastSceneState == SceneState::Run ? m_PlayButtonTexture : m_PauseButtonTexture) );
 				ImGui::SameLine();
 				if (ImGui::ImageButton(ImTextureID(playSimulatePauseButtonTexture->GetID()), ImVec2(20.0f, 20.0f)))
 				{
-					(m_ActiveScene->m_SceneState == Scene::SceneState::Run || m_ActiveScene->m_SceneState == Scene::SceneState::Simulate) ? OnScenePause() : (
-						(m_ActiveScene->m_SceneState == Scene::SceneState::Pause && m_LastSceneState == Scene::SceneState::Simulate) ? OnSceneSimulate() : (
-							(m_ActiveScene->m_SceneState == Scene::SceneState::Pause && m_LastSceneState == Scene::SceneState::Run) ? OnSceneRuntime() : GE_INFO("Could not execute Pause/Run/Simulate.")));
+					(m_ActiveScene->m_SceneState == SceneState::Run || m_ActiveScene->m_SceneState == SceneState::Simulate) ? OnScenePause() : (
+						(m_ActiveScene->m_SceneState == SceneState::Pause && m_LastSceneState == SceneState::Simulate) ? OnSceneSimulate() : (
+							(m_ActiveScene->m_SceneState == SceneState::Pause && m_LastSceneState == SceneState::Run) ? OnSceneRuntime() : GE_INFO("Could not execute Pause/Run/Simulate.")));
 				}
 
 				if (m_ActiveScene->IsPaused())

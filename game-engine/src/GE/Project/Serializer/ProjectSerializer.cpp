@@ -31,7 +31,7 @@ namespace GE
 			out << YAML::Key << "Name" << YAML::Value << spec.Name;
 			out << YAML::Key << "ProjectPath" << YAML::Value << spec.ProjectPath.string();
 			out << YAML::Key << "AssetPath" << YAML::Value << spec.AssetPath.string();
-			out << YAML::Key << "ScenePath" << YAML::Value << spec.ScenePath.string();
+			out << YAML::Key << "SceneHandle" << YAML::Value << spec.SceneHandle;
 			out << YAML::Key << "ScriptPath" << YAML::Value << spec.ScriptPath.string();
 
 			out << YAML::EndMap;
@@ -74,8 +74,8 @@ namespace GE
 		spec.ProjectPath = projectData["ProjectPath"].as<std::string>(); // equivalent to filePath.parent_path()
 		//assets
 		spec.AssetPath = projectData["AssetPath"].as<std::string>();
-		//scenes/demoExample.scene
-		spec.ScenePath = projectData["ScenePath"].as<std::string>();
+		//
+		spec.SceneHandle = projectData["SceneHandle"].as<uint64_t>();
 		//scripts/Resources/Binaries/demo.dll
 		spec.ScriptPath = projectData["ScriptPath"].as<std::string>();
 

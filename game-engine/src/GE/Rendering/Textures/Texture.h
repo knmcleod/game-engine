@@ -1,5 +1,10 @@
 #pragma once
 
+#include "GE/Asset/Asset.h"
+
+#include "GE/Core/Buffer.h"
+#include "GE/Core/Core.h"
+
 #include <string>
 
 namespace GE
@@ -29,7 +34,7 @@ namespace GE
 		bool GenerateMips = true;
 	};
 
-	class Texture
+	class Texture : public Asset
 	{
 	public:
 		virtual bool operator==(const Texture& other) const = 0;
@@ -41,10 +46,7 @@ namespace GE
 		virtual uint32_t GetHeight() const = 0;
 		virtual uint32_t GetID() const = 0;
 
-		virtual const std::string& GetProjectPath() const = 0;
-
-		virtual void SetData(void* data, uint32_t size) = 0;
-		virtual void SetFormats(int channels) = 0;
+		virtual void SetData(Buffer data) = 0;
 
 		virtual void Bind(uint32_t slot = 0) const = 0;
 		virtual void Unbind() const = 0;
@@ -53,8 +55,12 @@ namespace GE
 	class Texture2D : public Texture
 	{
 	public:
-		static Ref<Texture2D> Create(const TextureConfiguration& textureConfig);
-		static Ref<Texture2D> Create(const std::string& path);
+		static Ref<Texture2D> Create(const TextureConfiguration& textureConfig, Buffer data = Buffer());
+
+		static AssetType GetAssetType() { return AssetType::Texture2D; }
+
+		// Asset override
+		virtual AssetType GetType() const override { return GetAssetType(); }
 	};
 
 }

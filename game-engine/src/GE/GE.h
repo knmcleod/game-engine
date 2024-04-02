@@ -1,5 +1,10 @@
 #pragma once
 
+#pragma region Asset
+#include "GE/Asset/AssetImporter.h"
+#pragma endregion
+
+
 #pragma region Core
 //	-- Core	--
 #include "GE/Core/Core.h"
@@ -71,6 +76,8 @@
 //	--	Camera	--
 #include "GE/Scene/Camera/SceneCamera.h"
 
-//	--	Serializer	--
-#include "GE/Scene/Serializer/SceneSerializer.h"
+#pragma endregion
+
+#pragma region Scripting
+#include "GE/Scripting/Scripting.h"
 #pragma endregion

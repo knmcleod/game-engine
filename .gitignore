@@ -23,3 +23,4 @@ bin-int
 game-engine/vender/mono/bin
 game-engine/vender/mono/etc
 game-engine/vender/mono/share
+/editor/projects/demo/assets/scripts/Resources/Intermediates/Debug

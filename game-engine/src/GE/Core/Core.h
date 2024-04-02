@@ -53,6 +53,10 @@
 	#define GE_ENABLE_ASSERTS
 #endif // GE_DEBUG
 
+#ifndef GE_DIST
+	#define GE_ENABLE_VERIFY
+#endif // GE_DEBUG
+
 // Core Log Macros
 #define GE_CORE_TRACE(...)	::GE::Log::GetCoreLogger()->trace(__VA_ARGS__)
 #define GE_CORE_INFO(...)	::GE::Log::GetCoreLogger()->info(__VA_ARGS__)
@@ -71,6 +75,14 @@
 #else
 	#define GE_ASSERT(x, ...)
 	#define GE_CORE_ASSERT(x, ...)
+#endif // GE_ENABLE_ASSERTS
+
+#ifdef GE_ENABLE_VERIFY
+#define GE_VERIFY(x, ...) { if(!(x)) { GE_ERROR("Verification Failed. {0}", __VA_ARGS__); __debugbreak(); } }
+#define GE_CORE_VERIFY(x, ...) { if(!(x)) { GE_CORE_ERROR("Verification Failed. {0}", __VA_ARGS__); __debugbreak(); } }
+#else
+#define GE_VERIFY(x, ...)
+#define GE_CORE_VERIFY(x, ...)
 #endif // GE_ENABLE_ASSERTS
 
 #define BIT(x) (1 << x)
