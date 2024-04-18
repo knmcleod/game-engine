@@ -2,7 +2,7 @@
 
 #include "../AssetManager/EditorAssetManager.h"
 
-#include "GE/Asset/AssetImporter.h"
+#include "GE/Asset/Serializer/AssetSerializer.h"
 
 #include "GE/Core/Core.h"
 
@@ -67,7 +67,7 @@ namespace GE
 				{
 					if (ImGui::MenuItem("Import as Asset"))
 					{
-						Ref<Asset> asset = AssetImporter::ImportAsset(AssetMetadata(relativePath));
+						Ref<Asset> asset = Project::GetAssetManager<EditorAssetManager>()->GetAsset(relativePath);
 						if(asset)
 							RefreshAssets();
 					}
@@ -132,7 +132,7 @@ namespace GE
 
 	void AssetPanel::RefreshAssets()
 	{
-		const auto& assetRegistry = Project::GetAssetManager<EditorAssetManager>()->GetAssetRegistry();
+		const auto& assetRegistry = Project::GetAssetManager<EditorAssetManager>()->GetAssetRegistry()->GetRegistry();
 
 		for (const auto& [handle, metadata] : assetRegistry)
 		{

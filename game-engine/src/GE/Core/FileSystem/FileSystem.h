@@ -10,7 +10,8 @@ namespace GE
 	class FileSystem
 	{
 	public:
-		static Buffer ReadBinaryFile(const std::filesystem::path& filePath);
+		static Buffer ReadScriptingBinaryFile(const std::filesystem::path& filePath);
+
 	};
 
 }

@@ -1,16 +1,28 @@
 #include <GE/GE.h>
 #include "EditorAssetManager.h"
 
-#include "GE/Asset/AssetImporter.h"
-
-#include <yaml-cpp/include/yaml-cpp/yaml.h>
+#include <GE/Asset/Serializer/AssetSerializer.h>
 
 namespace GE
 {
+
+	EditorAssetManager::EditorAssetManager()
+	{
+		m_AssetRegistry = CreateRef<AssetRegistry>();
+		DeserializeAssets("assetRegistry.gar");
+	}
+
 	EditorAssetManager::~EditorAssetManager()
 	{
-		m_LoadedAssets.clear();
-		m_AssetRegistry.clear();
+		SerializeAssets("assetRegistry.gar");
+	}
+
+	AssetMetadata& EditorAssetManager::GetMetadata(UUID handle)
+	{
+		static AssetMetadata s_NullMetadata;
+		if (!HandleExists(handle))
+			return s_NullMetadata;
+		return m_AssetRegistry->GetAssetMetadata(handle);
 	}
 
 	/*
@@ -19,57 +31,42 @@ namespace GE
 	*/
 	Ref<Asset> EditorAssetManager::GetAsset(UUID handle)
 	{
-		if (!HandleExists(handle))
+		if (HandleExists(handle))
 		{
-			GE_CORE_WARN("Asset Handle does not exist.");
-			return nullptr;
-		}
-
-		Ref<Asset> asset;
-		if (!AssetLoaded(handle))
-		{
-			const AssetMetadata& metadata = GetMetadata(handle);
-			asset = AssetImporter::ImportAsset(metadata);
-			if (asset)
+			if (AssetLoaded(handle))
 			{
-				asset->SetHandle(handle);
-				m_LoadedAssets[handle] = asset;
+				return m_LoadedAssets.at(handle);
+			}
+			else
+			{
+				AssetMetadata& metadata = GetMetadata(handle);
+				Ref<Asset> asset = AssetSerializer::ImportAsset(metadata);
+				if (asset)
+				{
+					m_LoadedAssets[handle] = asset;
+					return asset;
+				}
 			}
 		}
-		else
-			asset = m_LoadedAssets.at(handle);
-
-		return asset;
+		return nullptr;
 	}
 
-	Ref<Asset> EditorAssetManager::GetAsset(const AssetMetadata& metadata)
+	Ref<Asset> EditorAssetManager::GetAsset(const std::filesystem::path& filePath)
 	{
-		UUID handle = GetHandle(metadata);
+		UUID assetHandle = 0;
+		const auto& registry = m_AssetRegistry->GetRegistry();
+		for (const auto& [handle, metadata] : registry)
+		{
+			if (metadata.FilePath == filePath)
+				assetHandle = handle;
+		}
 
-		return GetAsset(handle);
+		return GetAsset(assetHandle);
 	}
 
 	bool EditorAssetManager::HandleExists(UUID handle)
 	{
-		return m_AssetRegistry.find(handle) != m_AssetRegistry.end();
-	}
-
-	bool EditorAssetManager::HandleExists(const AssetMetadata& metadata)
-	{
-		UUID handle = GetHandle(metadata);
-		if (handle == 0)
-			return false;
-		return m_AssetRegistry.find(handle) != m_AssetRegistry.end();
-	}
-
-	const UUID EditorAssetManager::GetHandle(const AssetMetadata& metadata) const
-	{
-		for (auto& asset : m_AssetRegistry)
-		{
-			if (asset.second.FilePath == metadata.FilePath && asset.second.Type == metadata.Type)
-				return asset.first;
-		}
-		return 0;
+		return m_AssetRegistry->AssetExists(handle);
 	}
 
 	bool EditorAssetManager::AssetLoaded(UUID handle)
@@ -77,20 +74,12 @@ namespace GE
 		return m_LoadedAssets.find(handle) != m_LoadedAssets.end();
 	}
 
-	const AssetMetadata& EditorAssetManager::GetMetadata(UUID handle)
-	{
-		static AssetMetadata s_NullMetadata;
-		if (!HandleExists(handle))
-			return s_NullMetadata;
-		return m_AssetRegistry.find(handle)->second;
-	}
-
 	bool EditorAssetManager::SaveAsset(UUID handle)
 	{
-		if (!HandleExists(handle))
+		if (HandleExists(handle))
 			return false;
-		SerializeAssets();
-		return AssetImporter::ExportAsset(handle, GetMetadata(handle));
+
+		return m_AssetRegistry->AddAsset(GetMetadata(handle));
 	}
 
 	bool EditorAssetManager::RemoveAsset(UUID handle)
@@ -100,74 +89,22 @@ namespace GE
 			if (AssetLoaded(handle))
 				m_LoadedAssets.erase(handle);
 
-			m_AssetRegistry.erase(handle);
+			m_AssetRegistry->RemoveAsset(handle);
 			return true;
 		}
 		return false;
 	}
 
-	bool EditorAssetManager::SerializeAssets()
+	bool EditorAssetManager::SerializeAssets(const std::filesystem::path& filePath)
 	{
-		std::filesystem::path path(Project::GetAssetPath() / "assets.txt");
-
-		YAML::Emitter out;
-		{
-			out << YAML::BeginMap; // Root
-			out << YAML::Key << "AssetRegistry" << YAML::Value;
-
-			out << YAML::BeginSeq;
-			for (const auto& [handle, metadata] : m_AssetRegistry)
-			{
-				out << YAML::BeginMap;
-				out << YAML::Key << "Handle" << YAML::Value << handle;
-				std::string filepathStr = metadata.FilePath.generic_string();
-				out << YAML::Key << "FilePath" << YAML::Value << filepathStr;
-				const std::string typeString = AssetUtils::AssetTypeToString(metadata.Type);
-				out << YAML::Key << "Type" << YAML::Value << typeString.c_str();
-				out << YAML::EndMap;
-			}
-			out << YAML::EndSeq;
-			out << YAML::EndMap; // Root
-		}
-
-		std::ofstream fout(path);
-		fout << out.c_str();
-		return true;
+		std::filesystem::path path = Project::GetPathToAsset(filePath);
+		return m_AssetRegistry->Serialize(path);
 	}
 
-	bool EditorAssetManager::DeserializeAssets()
+	bool EditorAssetManager::DeserializeAssets(const std::filesystem::path& filePath)
 	{
-		std::filesystem::path filePath = Project::GetPathToAsset("assets.txt");
-		std::filesystem::path path(filePath);
-
-		YAML::Node data;
-		try
-		{
-			data = YAML::LoadFile(path.string());
-		}
-		catch (YAML::ParserException e)
-		{
-			GE_CORE_ERROR("Failed to load asset registry file '{0}'\n     {1}", path, e.what());
-		}
-
-		YAML::Node assetRegistryData = data["AssetRegistry"];
-		if (!assetRegistryData)
-		{
-			GE_WARN("Cannot deserialize asset registry.");
-			return false;
-		}
-
-		for (const auto& node : assetRegistryData)
-		{
-			UUID handle = node["Handle"].as<uint64_t>();
-			AssetMetadata assetMetadata;
-			assetMetadata.FilePath = node["FilePath"].as<std::string>();
-			assetMetadata.Type = AssetUtils::AssetTypeFromString(node["Type"].as<std::string>());
-			
-			m_AssetRegistry[handle] = assetMetadata;
-		}
-
-		return true;
+		std::filesystem::path path = Project::GetPathToAsset(filePath);
+		return m_AssetRegistry->Deserialize(path);
 	}
 
 }

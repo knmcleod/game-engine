@@ -60,7 +60,7 @@ namespace GE
 		static AssetType GetAssetType() { return AssetType::Texture2D; }
 
 		// Asset override
-		virtual AssetType GetType() const override { return GetAssetType(); }
+		virtual AssetType GetType() override { return GetAssetType(); }
 	};
 
 }

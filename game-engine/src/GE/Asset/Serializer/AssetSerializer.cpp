@@ -1,18 +1,13 @@
 #include "GE/GEpch.h"
 
-#include "SceneSerializer.h"
-
-#include "GE/Core/UUID/UUID.h"
+#include "AssetSerializer.h"
+#include "../AssetUtils.h"
 
 #include "GE/Project/Project.h"
-
-#include "GE/Rendering/Text/Font.h"
-
-#include "GE/Scene/Components/Components.h"
 #include "GE/Scene/Entity/Entity.h"
-
 #include "GE/Scripting/Scripting.h"
 
+#include <stb_image.h>
 #include <yaml-cpp/yaml.h>
 
 namespace YAML {
@@ -131,6 +126,23 @@ namespace YAML {
 
 namespace GE
 {
+	std::map<AssetType, AssetImportFunction> AssetSerializer::s_AssetImportFuncs =
+	{
+		{ AssetType::Scene, AssetSerializer::ImportScene },
+		{ AssetType::Texture2D, AssetSerializer::ImportTexture2D }
+	};
+
+	std::map<AssetType, AssetPackImportFunction> AssetSerializer::s_AssetPackImportFuncs =
+	{
+		{ AssetType::Scene, AssetSerializer::ImportSceneFromPack },
+		{ AssetType::Texture2D, AssetSerializer::ImportTexture2DFromPack }
+	};
+
+	std::map<AssetType, AssetExportFunction> AssetSerializer::s_AssetExportFuncs =
+	{
+		{ AssetType::Scene, AssetSerializer::ExportScene }
+	};
+
 	static void SerializeEntity(YAML::Emitter& out, Entity entity)
 	{
 		GE_CORE_ASSERT(entity.HasComponent<IDComponent>(), "Cannot serialize Entity without ID.");
@@ -357,37 +369,45 @@ namespace GE
 		out << YAML::EndMap; // Entity
 	}
 
-	SceneSerializer::SceneSerializer(const Ref<Scene>& scene) : m_Scene(scene)
+	Ref<Asset> AssetSerializer::ImportAsset(const AssetMetadata& metadata)
 	{
-
+		if (s_AssetImportFuncs.find(metadata.Type) == s_AssetImportFuncs.end())
+		{
+			GE_CORE_ERROR("Importer function not found for Type: " + AssetUtils::AssetTypeToString(metadata.Type));
+			return nullptr;
+		}
+		return s_AssetImportFuncs.at(metadata.Type)(metadata);
 	}
 
-	bool SceneSerializer::Serialize(const std::filesystem::path& filePath)
+	Ref<Asset> AssetSerializer::ImportAsset(const AssetPackFile::AssetInfo& assetInfo)
 	{
-		YAML::Emitter out;
-		out << YAML::BeginMap;
-		out << YAML::Key << "Scene" << YAML::Value << m_Scene->GetName();
-		out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
-
-		m_Scene->m_Registry.each([&](auto entityID)
-			{
-				Entity entity = { entityID, m_Scene.get() };
-				if (!entity)
-					return false;
-				SerializeEntity(out, entity);
-			});
-
-		out << YAML::EndSeq;
-		out << YAML::EndMap;
-
-		std::ofstream fout(filePath);
-		fout << out.c_str();
-		return true;
+		AssetType assetType = (AssetType)assetInfo.Type;
+		if (s_AssetPackImportFuncs.find(assetType) == s_AssetPackImportFuncs.end())
+		{
+			GE_CORE_ERROR("Importer function not found for Type: " + AssetUtils::AssetTypeToString(assetType));
+			return nullptr;
+		}
+		return s_AssetPackImportFuncs.at(assetType)(assetInfo);
 	}
 
-	bool SceneSerializer::Deserialize(const std::filesystem::path& filePath)
+	bool AssetSerializer::ExportAsset(UUID handle, const AssetMetadata& metadata)
 	{
-		std::ifstream stream(filePath);
+		if (s_AssetExportFuncs.find(metadata.Type) == s_AssetExportFuncs.end())
+		{
+			GE_CORE_ERROR("Exporter function not found for Type: " + AssetUtils::AssetTypeToString(metadata.Type));
+			return false;
+		}
+		return s_AssetExportFuncs.at(metadata.Type)(handle, metadata.FilePath);
+	}
+
+	Ref<Asset> AssetSerializer::ImportScene(const AssetMetadata& metadata)
+	{
+		std::filesystem::path path = Project::GetPathToAsset(metadata.FilePath);
+		GE_CORE_TRACE("Deserializing Scene at Path = {}", path.string());
+		Ref<Scene> scene = CreateRef<Scene>();
+		scene->SetHandle(metadata.Handle);
+
+		std::ifstream stream(path);
 		std::stringstream strStream;
 		strStream << stream.rdbuf();
 
@@ -413,7 +433,7 @@ namespace GE
 
 				GE_CORE_TRACE("Deserializing entity with\n\tID = {0},\n\tName = {1}", uuID, name);
 
-				Entity deserializedEntity = m_Scene->CreateEntityWithUUID(uuID, name);
+				Entity deserializedEntity = scene->CreateEntityWithUUID(uuID, name);
 
 				// TransformComponent
 				auto transformComponent = entity["TransformComponent"];
@@ -511,7 +531,7 @@ namespace GE
 						for (auto field : fields)
 						{
 							std::string scriptFieldName = field["Name"].as<std::string>();
-				
+
 							if (scriptClassFields.find(scriptFieldName) == scriptClassFields.end())
 							{
 								GE_CORE_WARN("Cannot deserialize Entity Script Field. Script Field Name({0}) not found.", scriptFieldName);
@@ -520,79 +540,79 @@ namespace GE
 
 							std::string scriptFieldTypeString = field["Type"].as<std::string>();
 							ScriptFieldType scriptFieldType = StringToScriptFieldType(scriptFieldTypeString);
-							
+
 							ScriptFieldInstance& scriptFieldInstance = scriptFieldMap[scriptFieldName];
 							scriptFieldInstance.Field = scriptClassFields.at(scriptFieldName);
-							
+
 							switch (scriptFieldType)
 							{
-								case GE::ScriptFieldType::None:
-									break;
-								case GE::ScriptFieldType::Char:
-								{
-									char data = field["Data"].as<char>();
-									scriptFieldInstance.SetValue<char>(data);
-									break;
-								}
-								case GE::ScriptFieldType::Int:
-								{
-									int32_t data = field["Data"].as<int32_t>();
-									scriptFieldInstance.SetValue<int32_t>(data);
-									break;
-								}
-								case GE::ScriptFieldType::UInt:
-								{
-									uint32_t data = field["Data"].as<uint32_t>();
-									scriptFieldInstance.SetValue<uint32_t>(data);
-									break;
-								}
-								case GE::ScriptFieldType::Float:
-								{
-									float data = field["Data"].as<float>();
-									scriptFieldInstance.SetValue<float>(data);
-									break;
-								}
-								case GE::ScriptFieldType::Byte:
-								{
-									int8_t data = field["Data"].as<int8_t>();
-									scriptFieldInstance.SetValue<int8_t>(data);
-									break;
-								}
-								case GE::ScriptFieldType::Bool:
-								{
-									bool data = field["Data"].as<bool>();
-									scriptFieldInstance.SetValue<bool>(data);
-									break;
-								}
-								case GE::ScriptFieldType::Vector2:
-								{
-									glm::vec2 data = field["Data"].as<glm::vec2>();
-									scriptFieldInstance.SetValue<glm::vec2>(data);
-									break;
-								}
-								case GE::ScriptFieldType::Vector3:
-								{
-									glm::vec3 data = field["Data"].as<glm::vec3>();
-									scriptFieldInstance.SetValue<glm::vec3>(data);
-									break;
-								}
-								case GE::ScriptFieldType::Vector4:
-								{
-									glm::vec4 data = field["Data"].as<glm::vec4>();
-									scriptFieldInstance.SetValue<glm::vec4>(data);
-									break;
-								}
-								case GE::ScriptFieldType::Entity:
-								{
-									UUID data = field["Data"].as<UUID>();
-									scriptFieldInstance.SetValue<UUID>(data);
-									break;
-								}
+							case GE::ScriptFieldType::None:
+								break;
+							case GE::ScriptFieldType::Char:
+							{
+								char data = field["Data"].as<char>();
+								scriptFieldInstance.SetValue<char>(data);
+								break;
 							}
-							
+							case GE::ScriptFieldType::Int:
+							{
+								int32_t data = field["Data"].as<int32_t>();
+								scriptFieldInstance.SetValue<int32_t>(data);
+								break;
+							}
+							case GE::ScriptFieldType::UInt:
+							{
+								uint32_t data = field["Data"].as<uint32_t>();
+								scriptFieldInstance.SetValue<uint32_t>(data);
+								break;
+							}
+							case GE::ScriptFieldType::Float:
+							{
+								float data = field["Data"].as<float>();
+								scriptFieldInstance.SetValue<float>(data);
+								break;
+							}
+							case GE::ScriptFieldType::Byte:
+							{
+								int8_t data = field["Data"].as<int8_t>();
+								scriptFieldInstance.SetValue<int8_t>(data);
+								break;
+							}
+							case GE::ScriptFieldType::Bool:
+							{
+								bool data = field["Data"].as<bool>();
+								scriptFieldInstance.SetValue<bool>(data);
+								break;
+							}
+							case GE::ScriptFieldType::Vector2:
+							{
+								glm::vec2 data = field["Data"].as<glm::vec2>();
+								scriptFieldInstance.SetValue<glm::vec2>(data);
+								break;
+							}
+							case GE::ScriptFieldType::Vector3:
+							{
+								glm::vec3 data = field["Data"].as<glm::vec3>();
+								scriptFieldInstance.SetValue<glm::vec3>(data);
+								break;
+							}
+							case GE::ScriptFieldType::Vector4:
+							{
+								glm::vec4 data = field["Data"].as<glm::vec4>();
+								scriptFieldInstance.SetValue<glm::vec4>(data);
+								break;
+							}
+							case GE::ScriptFieldType::Entity:
+							{
+								UUID data = field["Data"].as<UUID>();
+								scriptFieldInstance.SetValue<UUID>(data);
+								break;
+							}
+							}
+
 						}
 					}
-					
+
 				}
 
 				// RigidBody2DComponent
@@ -636,6 +656,98 @@ namespace GE
 			}
 		}
 		
+		return scene;
+	}
+
+	Ref<Asset> AssetSerializer::ImportSceneFromPack(const AssetPackFile::AssetInfo& assetInfo)
+	{
+		GE_CORE_ERROR("Cannot import Scene from AssetPack");
+		return false;
+		/*
+		GE_CORE_TRACE("Deserializing Scene from Pack");
+		Ref<Scene> scene = CreateRef<Scene>();
+
+		asset = scene;
+		return true;
+		*/
+	}
+
+	Ref<Asset> AssetSerializer::ImportTexture2D(const AssetMetadata& metadata)
+	{
+		int width = 0, height = 0, channels = 4;
+		stbi_set_flip_vertically_on_load(1);
+		Buffer data;
+		{
+			GE_PROFILE_SCOPE("stbi_load - AssetSerializer::ImportTexture2D");
+			std::string path = Project::GetPathToAsset(metadata.FilePath).string();
+			data.Data = stbi_load(path.c_str(), &width, &height, &channels, 0);
+		}
+		GE_CORE_ASSERT(data, "Failed to load stb image!");
+		data.Size = width * height * channels;  // Assumed 1 byte per channel
+
+		TextureConfiguration config;
+		config.Height = height;
+		config.Width = width;
+		if (channels == 3)
+		{
+			config.InternalFormat = ImageFormat::RBG8;
+			config.Format = DataFormat::RGB;
+		}
+		else if (channels == 4)
+		{
+			config.InternalFormat = ImageFormat::RBGA8;
+			config.Format = DataFormat::RGBA;
+		}
+		else
+			GE_CORE_WARN("Unsupported Texture2D Channels.");
+
+		Ref<Texture2D> texture = Texture2D::Create(config, data);
+		texture->SetHandle(metadata.Handle);
+
+		data.Release();
+		return texture;
+
+	}
+
+	Ref<Asset> AssetSerializer::ImportTexture2DFromPack(const AssetPackFile::AssetInfo& assetInfo)
+	{
+		GE_CORE_ERROR("Cannot import Texture2D from AssetPack");
+		return false;
+		/*
+		Buffer data;
+		TextureConfiguration config;
+		Ref<Texture2D> texture = Texture2D::Create(config, data);
+		data.Release();
+
+		asset = texture;
+		return true;
+		*/
+	}
+	
+	bool AssetSerializer::ExportScene(UUID uuid, const std::filesystem::path& filePath)
+	{
+		std::filesystem::path path = Project::GetPathToAsset(filePath);
+		GE_CORE_TRACE("Serializing Scene at Path = {}", path.string());
+		Ref<Scene> scene = Project::GetAsset<Scene>(uuid);
+		
+		YAML::Emitter out;
+		out << YAML::BeginMap;
+		out << YAML::Key << "Scene" << YAML::Value << scene->GetName();
+		out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
+
+		scene->m_Registry.each([&](auto entityID)
+			{
+				Entity entity = { entityID, scene.get() };
+				if (!entity)
+					return false;
+				SerializeEntity(out, entity);
+			});
+
+		out << YAML::EndSeq;
+		out << YAML::EndMap;
+
+		std::ofstream fout(filePath);
+		fout << out.c_str();
 		return true;
 	}
 

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Asset.h"
-
 #include <string>
 #include <filesystem>
 #include <map>

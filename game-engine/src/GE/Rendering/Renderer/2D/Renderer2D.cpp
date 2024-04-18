@@ -299,6 +299,11 @@ namespace GE
 
 	}
 
+	Ref<Texture2D> Renderer2D::GetWhiteTexture()
+	{	
+		return s_RendererData.EmptyTexture;
+	}
+
 #pragma region Sprite/Quad
 	void Renderer2D::SetQuadData(const glm::mat4& transform, const float& textureIndex,
 		const glm::vec2 textureCoords[4], const float& tilingFactor, const glm::vec4& color, const int entityID)

@@ -1,39 +1,36 @@
 #pragma once
 
-#include "GE/Asset/AssetMetadata.h"
-#include "GE/Asset/Managers/AssetManager.h"
+#include "GE/Asset/AssetManager.h"
+#include "GE/Asset/Registry/AssetRegistry.h"
 
 #include <map>
 
 namespace GE
 {
-	using AssetMap = std::map<UUID, Ref<Asset>>;
-	using AssetRegistry = std::map<UUID, AssetMetadata>;
-
 	class EditorAssetManager : public AssetManager
 	{
 	public:
-		virtual ~EditorAssetManager();
+		EditorAssetManager();
+		~EditorAssetManager();
+
+		inline Ref<AssetRegistry> GetAssetRegistry() { return m_AssetRegistry; }
+		AssetMetadata& GetMetadata(UUID handle);
 
 		virtual Ref<Asset> GetAsset(UUID handle) override;
+		Ref<Asset> GetAsset(const std::filesystem::path& filePath);
+
 		virtual bool HandleExists(UUID handle) override;
 		virtual bool AssetLoaded(UUID handle) override;
 
 		virtual bool SaveAsset(UUID handle) override;
 		virtual bool RemoveAsset(UUID handle) override;
 
-		virtual bool SerializeAssets() override;
-		virtual bool DeserializeAssets() override;
-
-		inline const AssetRegistry GetAssetRegistry() const { return m_AssetRegistry; }
-		const AssetMetadata& GetMetadata(UUID handle);
-		const UUID GetHandle(const AssetMetadata& metadata) const;
-		Ref<Asset> GetAsset(const AssetMetadata& metadata);
-		bool HandleExists(const AssetMetadata& metadata);
+		virtual bool SerializeAssets(const std::filesystem::path& filePath) override;
+		virtual bool DeserializeAssets(const std::filesystem::path& filePath) override;
 
 	private:
+		Ref<AssetRegistry> m_AssetRegistry;
 		AssetMap m_LoadedAssets;
-		AssetRegistry m_AssetRegistry;
 	};
 }
 

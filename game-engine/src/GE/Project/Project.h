@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GE/Asset/Managers/AssetManager.h"
+#include "GE/Asset/AssetManager.h"
 
 #include "GE/Core/Core.h"
 

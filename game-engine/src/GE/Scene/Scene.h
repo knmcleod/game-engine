@@ -44,7 +44,7 @@ namespace GE
 
 	class Scene : public Asset
 	{
-		friend class SceneSerializer;
+		friend class AssetSerializer;
 		friend class Entity;
 		friend class SceneHierarchyPanel;
 		friend class EditorLayer;
@@ -52,16 +52,14 @@ namespace GE
 		template<typename T>
 		void OnComponentAdded(Entity entity);
 
+		std::string m_Name = "Scene";
 		SceneState m_SceneState = SceneState::Stop;
-
 		int m_StepFrames = 0;
-
-		b2World* m_PhysicsWorld = nullptr;
-
 		entt::registry m_Registry;
+
 		uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
 
-		std::string m_Name = "Scene";
+		b2World* m_PhysicsWorld = nullptr;
 
 		void InitializePhysics2D();
 		void UpdatePhysics2D(Timestep timestep);
@@ -72,7 +70,7 @@ namespace GE
 		void DestroyScripting();
 	public:
 		static Ref<Scene> Copy(const Ref<Scene> scene);
-		inline static AssetType GetAssetType() { return AssetType::Scene; }
+		static AssetType GetAssetType() { return AssetType::Scene; }
 
 		template<typename... Components>
 		auto GetAllEntitiesWith()
@@ -84,7 +82,7 @@ namespace GE
 		Scene(const std::string& name);
 		~Scene();
 		
-		std::string GetName() { return m_Name; }
+		std::string& GetName() { return m_Name; }
 		void SetName(std::string name) { m_Name = name; }
 
 		// Returns true if the scenes state is Run. Does not account for Simulation
@@ -122,6 +120,6 @@ namespace GE
 		void OnEditorUpdate(Timestep timestep, EditorCamera& camera);
 
 		// Asset override
-		inline virtual AssetType GetType() const override { return GetAssetType(); }
+		virtual AssetType GetType() override { return GetAssetType(); }
 	};
 }

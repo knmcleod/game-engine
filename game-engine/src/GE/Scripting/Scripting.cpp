@@ -670,7 +670,7 @@ namespace GE
 
 	MonoAssembly* Scripting::LoadMonoAssembly(const std::filesystem::path& assemblyPath)
 	{
-		Buffer fileData = FileSystem::ReadBinaryFile(assemblyPath);
+		Buffer fileData = FileSystem::ReadScriptingBinaryFile(assemblyPath);
 
 		MonoImageOpenStatus monoStatus;
 		MonoImage* image = mono_image_open_from_data_full(fileData.As<char>(), fileData.Size, 1, &monoStatus, 0);

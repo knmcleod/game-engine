@@ -132,6 +132,8 @@ namespace GE
 
 		static void Flush();
 
+		static Ref<Texture2D> GetWhiteTexture();
+
 		// Sprite/Quad
 
 		static void SetQuadData(const glm::mat4& transform, const float& textureIndex, const glm::vec2 textureCoords[4],
@@ -184,6 +186,5 @@ namespace GE
 
 	public:
 		static const glm::mat4 s_IdentityMat4;
-
 	};
 }

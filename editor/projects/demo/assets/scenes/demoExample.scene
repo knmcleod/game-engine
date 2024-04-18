@@ -34,12 +34,6 @@ Entities:
     SpriteRendererComponent:
       Color: [1, 0, 1, 1]
       TilingFactor: 1
-    TextRendererComponent:
-      TextColor: [0, 0, 0, 1]
-      BGColor: [0, 0, 0, 0]
-      KerningOffset: 0
-      LineHeightOffset: 0
-      Text: "\n\nTest"
     ScriptComponent:
       ClassName: demo.Player
       ScriptFields:

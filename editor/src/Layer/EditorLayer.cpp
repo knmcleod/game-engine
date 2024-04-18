@@ -40,19 +40,19 @@ namespace GE
 				Application::GetApplication().Close();
 		}
 
-		Ref<Asset> playButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(AssetMetadata("textures/Play_Button.png"));
+		Ref<Asset> playButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Play_Button.png");
 		m_PlayButtonTexture = Project::GetAsset<Texture2D>(playButtonTexture->GetHandle());
 
-		Ref<Asset> simulateButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(AssetMetadata("textures/Simulate_Button.png"));
+		Ref<Asset> simulateButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Simulate_Button.png");
 		m_SimulateButtonTexture = Project::GetAsset<Texture2D>(simulateButtonTexture->GetHandle()); 
 
-		Ref<Asset> pauseButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(AssetMetadata("textures/Pause_Button.png"));
+		Ref<Asset> pauseButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Pause_Button.png");
 		m_PauseButtonTexture = Project::GetAsset<Texture2D>(pauseButtonTexture->GetHandle());
 
-		Ref<Asset> stepButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(AssetMetadata("textures/Step_Button.png"));
+		Ref<Asset> stepButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Step_Button.png");
 		m_StepButtonTexture = Project::GetAsset<Texture2D>(stepButtonTexture->GetHandle());
 
-		Ref<Asset> stopButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(AssetMetadata("textures/Stop_Button.png"));
+		Ref<Asset> stopButtonTexture = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Stop_Button.png");
 		m_StopButtonTexture = Project::GetAsset<Texture2D>(stopButtonTexture->GetHandle());
 
 		GE_INFO("Editor Layer OnAttach Complete.");
@@ -478,8 +478,8 @@ namespace GE
 	{
 		std::string filePath = FileDialogs::LoadFile("GAME Scene(*.scene)\0*.scene\0");
 		if (!filePath.empty())
-		{	
-			Ref<Asset> asset = AssetImporter::ImportAsset(AssetMetadata(filePath));
+		{
+			Ref<Asset> asset = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
 			LoadScene(asset->GetHandle());
 		}
 	}
@@ -501,7 +501,7 @@ namespace GE
 		std::string filePath = FileDialogs::SaveFile("GAME Scene(*.scene)\0 * .scene\0");
 		if (!filePath.empty())
 		{
-			return AssetImporter::ExportAsset(m_ActiveScene->GetHandle(), AssetMetadata(filePath));
+			return Project::GetAssetManager<EditorAssetManager>()->SaveAsset(m_ActiveScene->GetHandle());
 		}
 		return false;
 	}
@@ -511,7 +511,7 @@ namespace GE
 		if(handle == 0)
 			return SaveSceneFromFile();
 
-		return Project::GetActive()->GetAssetManager()->SaveAsset(handle);
+		return Project::GetAssetManager<EditorAssetManager>()->SaveAsset(handle);
 	}
 
 #pragma endregion
@@ -539,7 +539,6 @@ namespace GE
 		if (Project::Load(path))
 		{
 			Project::NewAssetManager<EditorAssetManager>();
-			Project::GetAssetManager<EditorAssetManager>()->DeserializeAssets();
 
 			Scripting::Init();
 

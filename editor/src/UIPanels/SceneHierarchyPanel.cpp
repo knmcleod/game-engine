@@ -1,11 +1,12 @@
 #include "SceneHierarchyPanel.h"
 
-#include "GE/Asset/AssetImporter.h"
 #include "GE/Core/Util/PlatformUtils.h"
 #include "GE/Project/Project.h"
 #include "GE/Rendering/Textures/Texture.h"
 #include "GE/Scene/Components/Components.h"
 #include "GE/Scripting/Scripting.h"
+
+#include "../AssetManager/EditorAssetManager.h"
 
 #include <filesystem>
 #include <imgui/imgui.h>
@@ -265,7 +266,7 @@ namespace GE
 						std::string filePath = FileDialogs::LoadFile("PNG(*.png)\0*.png\0");
 						if (!filePath.empty())
 						{
-							Ref<Asset> asset = AssetImporter::ImportAsset(AssetMetadata(filePath));
+							Ref<Asset> asset = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
 							if (asset->GetType() == AssetType::Texture2D)
 							{
 								component.AssetHandle = asset->GetHandle();

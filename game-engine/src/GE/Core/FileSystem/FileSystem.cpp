@@ -4,7 +4,7 @@
 
 namespace GE
 {
-	Buffer FileSystem::ReadBinaryFile(const std::filesystem::path& filePath)
+	Buffer FileSystem::ReadScriptingBinaryFile(const std::filesystem::path& filePath)
 	{
 		std::ifstream stream(filePath, std::ios::binary | std::ios::ate);
 		if (!stream)
@@ -28,4 +28,5 @@ namespace GE
 
 		return buffer;
 	}
+	
 }
