@@ -24,8 +24,9 @@ namespace GE
 	{
 	public:
 		inline ProjectSpecification& GetSpec() { return m_Spec; }
+		inline Ref<AssetManager> GetAssetManager() { return m_AssetManager; }
 
-		inline std::shared_ptr<AssetManager> GetAssetManager() { return m_AssetManager; }
+		inline static Ref<Project> GetActive() { return s_ActiveProject; }
 
 		inline static std::filesystem::path GetProjectPath()
 		{
@@ -56,11 +57,6 @@ namespace GE
 			return s_ActiveProject->GetSpec().ProjectPath / s_ActiveProject->GetSpec().AssetPath / path;
 		}
 
-		inline static Ref<Project> GetActive()
-		{
-			return s_ActiveProject;
-		}
-
 		template<typename T>
 		inline static Ref<T> NewAssetManager()
 		{	
@@ -72,7 +68,7 @@ namespace GE
 		template<typename T>
 		inline static Ref<T> GetAssetManager()
 		{
-			std::shared_ptr<AssetManager> assetManager = GetActive()->GetAssetManager();
+			std::shared_ptr<AssetManager> assetManager = s_ActiveProject->GetAssetManager();
 			return std::static_pointer_cast<T>(assetManager);
 		}
 

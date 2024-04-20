@@ -160,12 +160,16 @@ namespace GE
 
 	Scene::Scene()
 	{
+		m_AudioManager = CreateRef<AudioManager>();
 
+		InitializeAudio();
 	}
 
 	Scene::Scene(const std::string& name) : m_Name(name)
 	{
+		m_AudioManager = CreateRef<AudioManager>();
 
+		InitializeAudio();
 	}
 
 	Scene::~Scene()
@@ -406,7 +410,8 @@ namespace GE
 	void Scene::OnStop()
 	{
 		m_SceneState = SceneState::Stop;
-
+		
+		DestroyAudio();
 		DestroyPhysics2D();
 		DestroyScripting();
 	}
@@ -415,12 +420,16 @@ namespace GE
 	{
 		m_SceneState = SceneState::Run;
 
+		InitializeAudio();
 		InitializePhysics2D();
 		InitializeScripting();
 	}
 	
 	void Scene::OnRuntimeUpdate(Timestep timestep)
 	{
+		// Update AudioManager sources & listeners
+		UpdateAudio(timestep);
+
 		// Update Physics
 		UpdatePhysics2D(timestep);
 
@@ -435,12 +444,14 @@ namespace GE
 	{
 		m_SceneState = SceneState::Simulate;
 		
+		InitializeAudio();
 		InitializePhysics2D();
 		InitializeScripting();
 	}
 
 	void Scene::OnSimulationUpdate(Timestep timestep, EditorCamera& camera)
 	{
+		UpdateAudio(timestep);
 		UpdatePhysics2D(timestep);
 		UpdateScripting(timestep);
 
@@ -496,8 +507,35 @@ namespace GE
 
 	void Scene::OnEditorUpdate(Timestep timestep, EditorCamera& camera)
 	{
+		UpdateAudio(timestep);
 		Render(camera);
 	}
+
+#pragma region AudioManager
+	void Scene::InitializeAudio()
+	{
+		m_AudioManager->AddSound("projects/demo/assets/audio/vgmenuselect.wav");
+	}
+
+	void Scene::UpdateAudio(Timestep timestep)
+	{
+		// TODO: Implement with Component System
+		/*auto view = m_Registry.view<TransformComponent, AudioSourceComponent>();
+		for (auto entity : view)
+		{
+			auto [transform, as] = view.get<TransformComponent, AudioSourceComponent>(entity);
+			
+		}*/
+
+		// Will play sound each frame
+		//m_AudioManager->PlaySounds();
+	}
+
+	void Scene::DestroyAudio()
+	{
+
+	}
+#pragma endregion
 
 #pragma region Physics
 

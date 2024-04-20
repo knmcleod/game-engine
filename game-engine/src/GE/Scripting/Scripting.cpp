@@ -126,6 +126,8 @@ namespace GE
 		return Scripting::GetObjectInstance(uuid);
 	}
 
+// TODO: Implement Audio Sources & Listeners in Scripting System
+
 // Transform Component
 	static void TransformComponent_GetTranslation(UUID uuid, glm::vec3* translation)
 	{

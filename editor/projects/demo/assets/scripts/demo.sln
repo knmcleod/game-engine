@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demo", "demo.csproj", "{8AA1957C-76D8-960D-1FC5-7C100BDB120F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GE", "GE", "{D8390FDD-C406-6AE8-ED1F-5890D94B9F76}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GE-ScriptCore", "..\..\..\..\..\GE-ScriptCore\GE-ScriptCore.csproj", "{7CFD5644-E8BD-D27A-B1F8-1BF81D781757}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Dist|x64 = Dist|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8AA1957C-76D8-960D-1FC5-7C100BDB120F}.Debug|x64.ActiveCfg = Debug|x64
+		{8AA1957C-76D8-960D-1FC5-7C100BDB120F}.Debug|x64.Build.0 = Debug|x64
+		{8AA1957C-76D8-960D-1FC5-7C100BDB120F}.Dist|x64.ActiveCfg = Dist|x64
+		{8AA1957C-76D8-960D-1FC5-7C100BDB120F}.Dist|x64.Build.0 = Dist|x64
+		{8AA1957C-76D8-960D-1FC5-7C100BDB120F}.Release|x64.ActiveCfg = Release|x64
+		{8AA1957C-76D8-960D-1FC5-7C100BDB120F}.Release|x64.Build.0 = Release|x64
+		{7CFD5644-E8BD-D27A-B1F8-1BF81D781757}.Debug|x64.ActiveCfg = Debug|x64
+		{7CFD5644-E8BD-D27A-B1F8-1BF81D781757}.Debug|x64.Build.0 = Debug|x64
+		{7CFD5644-E8BD-D27A-B1F8-1BF81D781757}.Dist|x64.ActiveCfg = Dist|x64
+		{7CFD5644-E8BD-D27A-B1F8-1BF81D781757}.Dist|x64.Build.0 = Dist|x64
+		{7CFD5644-E8BD-D27A-B1F8-1BF81D781757}.Release|x64.ActiveCfg = Release|x64
+		{7CFD5644-E8BD-D27A-B1F8-1BF81D781757}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7CFD5644-E8BD-D27A-B1F8-1BF81D781757} = {D8390FDD-C406-6AE8-ED1F-5890D94B9F76}
+	EndGlobalSection
+EndGlobal

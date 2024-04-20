@@ -24,3 +24,5 @@ game-engine/vender/mono/bin
 game-engine/vender/mono/etc
 game-engine/vender/mono/share
 /editor/projects/demo/assets/scripts/Resources/Intermediates/Debug
+/game-engine/vender/OpenAL/OpenAL1.1/samples
+/game-engine/vender/OpenAL/OpenAL1.1/docs

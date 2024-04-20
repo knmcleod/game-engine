@@ -101,32 +101,18 @@ namespace GE
 		CameraComponent(const SceneCamera camera) : Camera(camera) {}
 	};
 
-#pragma region Scripting
-
-	class ScriptableEntity;
-	struct NativeScriptComponent
+#pragma region AudioManager
+	struct AudioSourceComponent
 	{
-		ScriptableEntity* Instance = nullptr;
+		UUID AssetHandle = 0;
 
-		ScriptableEntity* (*InstantiateScript)();
-		void (*DestroyScript)(NativeScriptComponent*);
+		bool m_Loop = false;
+		float m_Pitch = 1.0f;
+		float m_Gain = 1.0f;
 
-		template<typename T>
-		void Bind()
-		{
-			InstantiateScript = []() { return static_cast<ScriptableEntity*>(new T()); };
-			DestroyScript = [](NativeScriptComponent* nsc) { delete nsc->Instance; nsc->Instance = nullptr; };
-		}
+		AudioSourceComponent() = default;
+		AudioSourceComponent(const AudioSourceComponent&) = default;
 	};
-
-	struct ScriptComponent
-	{
-		std::string ClassName;
-
-		ScriptComponent() = default;
-		ScriptComponent(const ScriptComponent&) = default;
-	};
-
 #pragma endregion
 
 #pragma region Physics
@@ -178,7 +164,35 @@ namespace GE
 	};
 
 #pragma endregion
-	
+
+#pragma region Scripting
+
+	class ScriptableEntity;
+	struct NativeScriptComponent
+	{
+		ScriptableEntity* Instance = nullptr;
+
+		ScriptableEntity* (*InstantiateScript)();
+		void (*DestroyScript)(NativeScriptComponent*);
+
+		template<typename T>
+		void Bind()
+		{
+			InstantiateScript = []() { return static_cast<ScriptableEntity*>(new T()); };
+			DestroyScript = [](NativeScriptComponent* nsc) { delete nsc->Instance; nsc->Instance = nullptr; };
+		}
+	};
+
+	struct ScriptComponent
+	{
+		std::string ClassName;
+
+		ScriptComponent() = default;
+		ScriptComponent(const ScriptComponent&) = default;
+	};
+
+#pragma endregion
+
 	namespace ComponentUtils
 	{
 		static const std::string GetStringFromRigidBody2DType(Rigidbody2DComponent::BodyType type)

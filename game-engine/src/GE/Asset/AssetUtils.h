@@ -10,7 +10,9 @@ namespace GE
 	{
 		None = 0,
 		Scene,
-		Texture2D
+		Texture2D,
+		AudioSource,
+		AudioListener
 	};
 
 	namespace AssetUtils
@@ -24,6 +26,12 @@ namespace GE
 				break;
 			case AssetType::Texture2D:
 				return "Texture2D";
+				break;
+			case AssetType::AudioSource:
+				return "AudioSource";
+				break;
+			case AssetType::AudioListener:
+				return "AudioListener";
 				break;
 			}
 			return "None";
@@ -40,6 +48,14 @@ namespace GE
 			{
 				return AssetType::Texture2D;
 			}
+			if (typeString == "AudioSource")
+			{
+				return AssetType::AudioSource;
+			}
+			if (typeString == "AudioListener")
+			{
+				return AssetType::AudioListener;
+			}
 
 			return AssetType::None;
 		}
@@ -49,7 +65,8 @@ namespace GE
 			{ ".scene",	AssetType::Scene		},
 			{ ".png",	AssetType::Texture2D	},
 			{ ".jpg",	AssetType::Texture2D	},
-			{ ".jpeg",	AssetType::Texture2D	}
+			{ ".jpeg",	AssetType::Texture2D	},
+			{ ".wav",	AssetType::AudioSource	}
 		};
 
 		static AssetType AssetTypeFromFileExtension(const std::filesystem::path& extension)

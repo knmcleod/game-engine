@@ -22,12 +22,14 @@ IncludeDir["ImGui"] = "game-engine/vender/imgui"
 IncludeDir["mono"] = "game-engine/vender/mono/mono/msvc/include"
 IncludeDir["msdf_atlas_gen"] = "game-engine/vender/msdf-atlas-gen"
 IncludeDir["msdf_gen"] = "game-engine/vender/msdf-atlas-gen/msdfgen"
+IncludeDir["OpenAL"] = "game-engine/vender/OpenAL/OpenAL1.1/include"
 IncludeDir["spdlog"] = "game-engine/vender/spdlog/include"
 IncludeDir["stb"] = "game-engine/vender/stb_image"
 IncludeDir["yaml_cpp"] = "game-engine/vender/yaml-cpp/include"
 
 Library = {}
 Library["mono"] = "game-engine/vender/mono/mono/msvc/build/sgen/x64/lib/%{cfg.buildcfg}/libmono-static-sgen.lib"
+Library["OpenAL"] = "game-engine/vender/OpenAL/OpenAL1.1/libs/Win64/OpenAL32.lib"
 
 -- Windows
 Library["WinSock"] = "Ws2_32.lib"
@@ -91,6 +93,7 @@ project "game-engine"
 		"%{IncludeDir.mono}",
 		"%{IncludeDir.msdf_atlas_gen}",
 		"%{IncludeDir.msdf_gen}",
+		"%{IncludeDir.OpenAL}",
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.stb}",
 		"%{IncludeDir.yaml_cpp}"
@@ -106,6 +109,7 @@ project "game-engine"
 		"msdfgen",
 		"yaml-cpp",
 		"opengl32.lib",
+		"game-engine/vender/OpenAL/OpenAL1.1/libs/Win64/OpenAL32.lib",
 		"game-engine/vender/mono/mono/msvc/build/sgen/x64/lib/%{cfg.buildcfg}/libmono-static-sgen.lib"
 	}
 
@@ -162,6 +166,7 @@ project "editor"
 		"%{IncludeDir.mono}",
 		"%{IncludeDir.msdf_atlas_gen}",
 		"%{IncludeDir.msdf_gen}",
+		"%{IncludeDir.OpenAL}",
 		"%{IncludeDir.spdlog}",
 		"%{IncludeDir.yaml_cpp}"
 	}
@@ -210,10 +215,12 @@ project "demo"
 		"game-engine/src",
 		"game-engine/vender",
 		"%{IncludeDir.entt}",
+		"%{IncludeDir.filewatch}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.msdf_atlas_gen}",
 		"%{IncludeDir.msdf_gen}",
+		"%{IncludeDir.OpenAL}",
 		"%{IncludeDir.spdlog}",
 		
 	}
