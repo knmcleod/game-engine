@@ -186,6 +186,12 @@ namespace GE
 				DrawAddComponent<TransformComponent>("Transform", entity);
 				DrawAddComponent<CameraComponent>("Camera", entity);
 				
+				DrawPopup("Audio", entity, [](auto& entity)
+					{
+						DrawAddComponent<AudioSourceComponent>("Audio Source", entity);
+						DrawAddComponent<AudioListenerComponent>("Audio Listener", entity);
+					});
+
 				DrawPopup("Rendering", entity, [](auto& entity)
 					{
 						DrawAddComponent<SpriteRendererComponent>("Sprite Renderer", entity);
@@ -254,6 +260,20 @@ namespace GE
 				if (ImGui::DragFloat("Far Clip", &farClip))
 					camera.SetFarClip(farClip);
 			});
+
+		/*DrawComponent<AudioSourceComponent>("Audio Source", entity,
+			[](auto& component)
+			{
+				ImGui::Checkbox("Loop", &component.Loop);
+				ImGui::DragFloat("Gain", &component.Gain);
+				ImGui::DragFloat("Pitch", &component.Pitch);
+			});
+
+		DrawComponent<AudioListenerComponent>("Audio Listener", entity,
+			[](auto& component)
+			{
+
+			});*/
 
 		DrawComponent<SpriteRendererComponent>("Sprite Renderer", entity,
 			[](auto& component)

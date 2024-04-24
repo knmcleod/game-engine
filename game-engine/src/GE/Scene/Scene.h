@@ -1,7 +1,7 @@
 #pragma once
 
 #include "GE/Asset/Asset.h"
-#include "GE/Audio/Audio.h"
+#include "GE/Audio/AudioManager.h"
 
 #include "GE/Core/Time/Time.h"
 #include "GE/Core/UUID/UUID.h"

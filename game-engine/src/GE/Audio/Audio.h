@@ -1,75 +1,51 @@
 #pragma once
 
-#include <al.h>
-#include <alc.h>
+#include "AudioUtils.h"
+
+#include "GE/Asset/Asset.h"
 
 #include <glm/glm.hpp>
 
 namespace GE
 {
-	struct AudioBuffer
-	{
-		friend class AudioManager;
-		friend class AudioSource;
-
-		ALuint m_AudioBuffer = 0;
-
-		uint8_t Channels;
-		int32_t SampleRate;
-		// Bits per Sample
-		uint8_t BPS;
-		ALsizei Size;
-
-		char* Data;
-		ALenum Format;
-	};
-
-	class AudioDevice
-	{
-	public:
-		AudioDevice();
-		~AudioDevice();
-	private:
-		ALCdevice* m_Device = nullptr;
-		ALCcontext* m_Context = nullptr;
-	};
-
 	class AudioSource : public Asset
 	{
 	public:
 		AudioSource();
 		~AudioSource();
 
-		void Play(AudioBuffer audioBuffer);
+		const uint32_t& GetSource() { return m_Source; }
+
+		bool AddSound(AudioBuffer& buffer);
+		bool RemoveSound(const AudioBuffer& buffer);
+
+		bool AddMusic(LongAudioBuffer& buffer);
+		bool RemoveMusic(const LongAudioBuffer& buffer);
+
+		void Play(const AudioBuffer& audioBuffer);
+		void Play(const LongAudioBuffer& audioBuffer);
+
+		void UpdateBuffers();
 
 		virtual AssetType GetType() override { return AssetType::AudioSource; }
 	private:
+		ALuint m_Source = 0;
+
 		bool m_Loop = false;
 		float m_Pitch = 1.0f;
 		float m_Gain = 1.0f;
 		glm::vec3 m_Position = glm::vec3();
-		glm::vec3 m_Vecloity = glm::vec3();
+		glm::vec3 m_Velocity = glm::vec3();
 
-		ALuint m_AudioSource = 0;
+		std::vector<AudioBuffer> m_AudioBuffers;
+		std::vector<LongAudioBuffer> m_LongAudioBuffers;
 	};
 
-	class AudioManager
+	class AudioListener : public Asset
 	{
 	public:
-		AudioManager();
-		~AudioManager();
-
-		bool AddSound(const std::filesystem::path& filePath);
-		bool RemoveSound(AudioBuffer audioBuffer);
-
-		// Plays all current Audio Sounds
-		void PlaySounds();
-
+		virtual AssetType GetType() override { return AssetType::AudioListener; }
 	private:
-		bool LoadWavFile(std::ifstream& file, AudioBuffer& audioBuffer);
-
-		Ref<AudioDevice> m_AudioDevice = nullptr;
-		Ref<AudioSource> m_AudioSource = nullptr;
-		std::vector<AudioBuffer> m_AudioBuffers;
 	};
+
 }

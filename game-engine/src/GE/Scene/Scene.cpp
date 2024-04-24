@@ -49,6 +49,18 @@ namespace GE
 	}
 
 	template<>
+	void Scene::OnComponentAdded<AudioSourceComponent>(Entity entity)
+	{
+		
+	}
+
+	template<>
+	void Scene::OnComponentAdded<AudioListenerComponent>(Entity entity)
+	{
+
+	}
+
+	template<>
 	void Scene::OnComponentAdded<SpriteRendererComponent>(Entity entity)
 	{
 
@@ -514,26 +526,40 @@ namespace GE
 #pragma region AudioManager
 	void Scene::InitializeAudio()
 	{
-		m_AudioManager->AddSound("projects/demo/assets/audio/vgmenuselect.wav");
+		GE_PROFILE_SCOPE("Scene - InitializeAudio");
+		//m_AudioManager->AddSound("projects/demo/assets/audio/vgmenuselect.wav");
+		m_AudioManager->AddMusic("projects/demo/assets/audio/b423b42.wav");
 	}
 
 	void Scene::UpdateAudio(Timestep timestep)
 	{
-		// TODO: Implement with Component System
-		/*auto view = m_Registry.view<TransformComponent, AudioSourceComponent>();
-		for (auto entity : view)
-		{
-			auto [transform, as] = view.get<TransformComponent, AudioSourceComponent>(entity);
-			
-		}*/
+		GE_PROFILE_SCOPE("Scene - UpdateAudio");
 
-		// Will play sound each frame
+		// TODO: Implement with Component System
+		/*if (m_AudioManager)
+		{
+			auto view = m_Registry.view<TransformComponent, AudioSourceComponent>();
+			for (auto entity : view)
+			{
+				auto [tc, asc] = view.get<TransformComponent, AudioSourceComponent>(entity);
+				m_AudioManager->UpdateSource(tc.GetTransform(), asc);
+			}
+
+			auto view = m_Registry.view<TransformComponent, AudioListenerComponent>();
+			for (auto entity : view)
+			{
+				auto [tc, alc] = view.get<TransformComponent, AudioListenerComponent>(entity);
+				m_AudioManager->UpdateListener(tc.GetTransform(), alc);
+			}
+		}*/
+		// Will play sound & music each frame. Play at own risk
 		//m_AudioManager->PlaySounds();
+		//m_AudioManager->PlayMusic();
 	}
 
 	void Scene::DestroyAudio()
 	{
-
+		GE_PROFILE_SCOPE("Scene - DestroyAudio");
 	}
 #pragma endregion
 

@@ -4,297 +4,172 @@
  
 namespace GE
 {
-    AudioDevice::AudioDevice()
-    {
-        m_Device = alcOpenDevice(nullptr); // Returns default device
-        if (!m_Device)
-        {
-            GE_CORE_ERROR("Could not open audio device!");
-            return;
-        }
-
-        m_Context = alcCreateContext(m_Device, nullptr); // Returns default context
-        if (!m_Device)
-        {
-            GE_CORE_ERROR("Could not create audio device context!");
-            return;
-        }
-
-        if (!alcMakeContextCurrent(m_Context))
-        {
-            GE_CORE_ERROR("Could not make audio device context current!");
-            return;
-        }
-
-        const ALCchar* name = nullptr;
-        if (alcIsExtensionPresent(m_Device, "ALC_ENUMERATE_ALL_EXT"))
-            name = alcGetString(m_Device, ALC_ALL_DEVICES_SPECIFIER);
-
-        if (!name || alcGetError(m_Device) != ALC_NO_ERROR)
-            name = alcGetString(m_Device, ALC_DEVICE_SPECIFIER);
-
-        GE_CORE_INFO("Opened AudioManager Device: {0}", name);
-    }
-
-    AudioDevice::~AudioDevice()
-    {
-    
-    }
-
-    AudioManager::AudioManager()
+    AudioSource::AudioSource()
     {
         m_AudioBuffers = std::vector<AudioBuffer>();
+        m_LongAudioBuffers = std::vector<LongAudioBuffer>();
 
-        m_AudioDevice = CreateRef<AudioDevice>();
-        m_AudioSource = CreateRef<AudioSource>();
+        alGenSources(1, &m_Source);
+        alSourcef(m_Source, AL_PITCH, m_Pitch);
+        alSourcef(m_Source, AL_GAIN, m_Gain);
+        alSource3f(m_Source, AL_POSITION, m_Position.x, m_Position.y, m_Position.z);
+        alSource3f(m_Source, AL_VELOCITY, m_Velocity.x, m_Velocity.y, m_Velocity.z);
+        alSourcei(m_Source, AL_LOOPING, m_Loop);
+        alSourcei(m_Source, AL_BUFFER, 0);
     }
 
-    AudioManager::~AudioManager()
+    AudioSource::~AudioSource()
     {
-        alDeleteBuffers(m_AudioBuffers.size(), &m_AudioBuffers.data()->m_AudioBuffer);
+        alDeleteBuffers(m_AudioBuffers.size(), &m_AudioBuffers.data()->Buffer);
         m_AudioBuffers.clear();
+
+        alDeleteBuffers(m_LongAudioBuffers.data()->NUM_BUFFERS, m_LongAudioBuffers.data()->Buffers);
+        m_LongAudioBuffers.clear();
     }
 
-    static std::int32_t convert_to_int(char* buffer, std::size_t len)
+    bool AudioSource::AddSound(AudioBuffer& buffer)
     {
-        std::int32_t a = 0;
-        std::memcpy(&a, buffer, len);
-        return a;
-    }
-
-    void AudioManager::PlaySounds()
-    {
-        auto it = m_AudioBuffers.begin();
-        while (it != m_AudioBuffers.end())
-        {
-            m_AudioSource->Play(*it);
-            ++it;
-        }
-    }
-
-    bool AudioManager::LoadWavFile(std::ifstream& file, AudioBuffer& audioBuffer)
-    {
-        char buffer[4];
-        if (!file.is_open())
-            return false;
-
-        // the RIFF
-        if (!file.read(buffer, 4))
-        {
-            GE_CORE_ERROR("Could not read RIFF while loading Wav file.");
-            return false;
-        }
-        if (std::strncmp(buffer, "RIFF", 4) != 0)
-        {
-            GE_CORE_ERROR("File is not a valid WAVE file (header doesn't begin with RIFF)");
-            return false;
-        }
-
-        // the size of the file
-        if (!file.read(buffer, 4))
-        {
-            GE_CORE_ERROR("Could not read size of Wav file.");
-            return false;
-        }
-
-        // the WAVE
-        if (!file.read(buffer, 4))
-        {
-            GE_CORE_ERROR("Could not read WAVE");
-            return false;
-        }
-        if (std::strncmp(buffer, "WAVE", 4) != 0)
-        {
-            GE_CORE_ERROR("File is not a valid WAVE file (header doesn't contain WAVE)");
-            return false;
-        }
-
-        // "fmt/0"
-        if (!file.read(buffer, 4))
-        {
-            GE_CORE_ERROR("Could not read fmt of Wav file.");
-            return false;
-        }
-
-        // this is always 16, the size of the fmt data chunk
-        if (!file.read(buffer, 4))
-        {
-            GE_CORE_ERROR("Could not read the size of the fmt data chunk. Should be 16.");
-            return false;
-        }
-
-        // PCM should be 1?
-        if (!file.read(buffer, 2))
-        {
-            GE_CORE_ERROR("Could not read PCM. Should be 1.");
-            return false;
-        }
-
-        // the number of Channels
-        if (!file.read(buffer, 2))
-        {
-            GE_CORE_ERROR("Could not read number of Channels.");
-            return false;
-        }
-        audioBuffer.Channels = convert_to_int(buffer, 2);
-
-        // sample rate
-        if (!file.read(buffer, 4))
-        {
-            GE_CORE_ERROR("Could not read sample rate.");
-            return false;
-        }
-        audioBuffer.SampleRate = convert_to_int(buffer, 4);
-
-        // (SampleRate * BPS * Channels) / 8
-        if (!file.read(buffer, 4))
-        {
-            GE_CORE_ERROR("Could not read (SampleRate * BPS * Channels) / 8");
-            return false;
-        }
-
-        // ?? dafaq
-        if (!file.read(buffer, 2))
-        {
-            GE_CORE_ERROR("Could not read dafaq?");
-            return false;
-        }
-
-        // BPS
-        if (!file.read(buffer, 2))
-        {
-            GE_CORE_ERROR("Could not read bits per sample.");
-            return false;
-        }
-        audioBuffer.BPS = convert_to_int(buffer, 2);
-
-        // data chunk header "data"
-        if (!file.read(buffer, 4))
-        {
-            GE_CORE_ERROR("Could not read data chunk header.");
-            return false;
-        }
-        if (std::strncmp(buffer, "data", 4) != 0)
-        {
-            GE_CORE_ERROR("File is not a valid WAVE file (doesn't have 'data' tag).");
-            return false;
-        }
-
-        // size of data
-        if (!file.read(buffer, 4))
-        {
-            GE_CORE_ERROR("Could not read data size.");
-            return false;
-        }
-        audioBuffer.Size = convert_to_int(buffer, 4);
-
-        /* cannot be at the end of file */
-        if (file.eof())
-        {
-            GE_CORE_ERROR("Reached EOF on the file.");
-            return false;
-        }
-        if (file.fail())
-        {
-            GE_CORE_ERROR("Fail state set on the file.");
-            return false;
-        }
-
-        return true;
-    }
-
-    // Move to AudioBuffer?
-    bool AudioManager::AddSound(const std::filesystem::path& filePath)
-    {
-        AudioBuffer buffer;
-
-        std::ifstream stream(filePath, std::ios::binary);
-        if (!stream.is_open())
-        {
-            GE_CORE_ERROR("Could not open {0}", filePath.string().c_str());
-            return 0;
-        }
-        if (!LoadWavFile(stream, buffer))
-        {
-            GE_CORE_ERROR("Could not load wav file {0}", filePath.filename().string().c_str());
-            return 0;
-        }
-
-       buffer.Data = new char[buffer.Size];
-        stream.read(buffer.Data, buffer.Size);
-        stream.close();
-
-        if (buffer.Channels == 1 && buffer.BPS == 8)
-            buffer.Format = AL_FORMAT_MONO8;
-        else if (buffer.Channels == 1 && buffer.BPS == 16)
-            buffer.Format = AL_FORMAT_MONO16;
-        else if (buffer.Channels == 2 && buffer.BPS == 8)
-            buffer.Format = AL_FORMAT_STEREO8;
-        else if (buffer.Channels == 2 && buffer.BPS == 16)
-            buffer.Format = AL_FORMAT_STEREO16;
-        else
-        {
-            GE_CORE_ERROR("Unrecognised wave format.\nChannels {0}\nBPS {1}\n", buffer.Channels, buffer.BPS);
-            return 0;
-        }
-
         // Create AL Buffer
-        alGenBuffers(1, &buffer.m_AudioBuffer);
-        alBufferData(buffer.m_AudioBuffer, buffer.Format, buffer.Data, buffer.Size, buffer.SampleRate);
+        alGenBuffers(1, (ALuint*)&buffer.Buffer);
+        alBufferData(buffer.Buffer, buffer.Format, buffer.Data, buffer.Size, buffer.SampleRate);
 
         ALenum error = alGetError();
         if (error != AL_NO_ERROR)
         {
             GE_CORE_ERROR("OpenAL Error: {0}", (char*)alGetString(error));
-            if (buffer.m_AudioBuffer && alIsBuffer(buffer.m_AudioBuffer))
-                alDeleteBuffers(1, &buffer.m_AudioBuffer);
-            return 0;
+            if (buffer.Buffer && alIsBuffer(buffer.Buffer))
+                alDeleteBuffers(1, &buffer.Buffer);
+            return false;
         }
 
         m_AudioBuffers.push_back(buffer);
         return true;
-
     }
 
-    bool AudioManager::RemoveSound(AudioBuffer audioBuffer)
+    bool AudioSource::RemoveSound(const AudioBuffer& buffer)
     {
         auto it = m_AudioBuffers.begin();
         while (it != m_AudioBuffers.end())
         {
-            if (it->m_AudioBuffer == audioBuffer.m_AudioBuffer)
+            if (it->Buffer == buffer.Buffer)
             {
-                alDeleteBuffers(1, &it->m_AudioBuffer);
+                alDeleteBuffers(1, &it->Buffer);
                 it = m_AudioBuffers.erase(it);
                 return true;
             }
             else
             {
-                ++it; // Next sound
+                ++it; // Next Audio Buffer
             }
         }
 
         return false;
     }
 
-    AudioSource::AudioSource()
+    bool AudioSource::AddMusic(LongAudioBuffer& buffer)
     {
-        alGenSources(1, &m_AudioSource);
-        alSourcef(m_AudioSource, AL_PITCH, m_Pitch);
-        alSourcef(m_AudioSource, AL_GAIN, m_Gain);
-        alSource3f(m_AudioSource, AL_POSITION, m_Position.x, m_Position.y, m_Position.z);
-        alSource3f(m_AudioSource, AL_VELOCITY, m_Vecloity.x, m_Vecloity.y, m_Vecloity.z);
-        alSourcei(m_AudioSource, AL_LOOPING, m_Loop);
-        alSourcei(m_AudioSource, AL_BUFFER, 0);
+        alGenBuffers(buffer.NUM_BUFFERS, &buffer.Buffers[0]);
+
+        for (std::size_t i = 0; i < buffer.NUM_BUFFERS; ++i)
+        {
+            alBufferData(buffer.Buffers[i], buffer.Format, &buffer.Data[i], buffer.BUFFER_SIZE, buffer.SampleRate);
+
+            ALenum error = alGetError();
+            if (error != AL_NO_ERROR)
+            {
+                GE_CORE_ERROR("OpenAL Error: {0}", (char*)alGetString(error));
+                if (buffer.Buffers[i] && alIsBuffer(buffer.Buffers[i]))
+                    alDeleteBuffers(1, &buffer.Buffers[i]);
+                return false;
+            }
+        }
+
+        m_LongAudioBuffers.push_back(buffer);
+        return true;
     }
 
-    AudioSource::~AudioSource()
+    bool AudioSource::RemoveMusic(const LongAudioBuffer& buffer)
     {
-        alDeleteSources(1, &m_AudioSource);
+        auto it = m_LongAudioBuffers.begin();
+        while (it != m_LongAudioBuffers.end())
+        {
+            if (it->Buffers == buffer.Buffers)
+            {
+                alDeleteBuffers(1, it->Buffers);
+                it = m_LongAudioBuffers.erase(it);
+                return true;
+            }
+            else
+            {
+                ++it; // Next Long Audio Buffer
+            }
+        }
+
+        return false;
     }
 
-    void AudioSource::Play(AudioBuffer audioBuffer)
+    void AudioSource::Play(const AudioBuffer& buffer)
     {
-        alSourcei(m_AudioSource, AL_BUFFER, audioBuffer.m_AudioBuffer);
-        alSourcePlay(m_AudioSource);
+        alSourcei(m_Source, AL_BUFFER, buffer.Buffer);
+        alSourcePlay(m_Source);
+    }
+
+    void AudioSource::Play(const LongAudioBuffer& buffer)
+    {
+        alSourceRewind(m_Source);
+        alSourcei(m_Source, AL_BUFFER, 0);
+
+        alSourceQueueBuffers(m_Source, buffer.NUM_BUFFERS, &buffer.Buffers[0]);
+        alSourcePlay(m_Source);
+
+        UpdateBuffers();
+    }
+   
+    void AudioSource::UpdateBuffers()
+    {
+        ALint state = AL_PLAYING;
+        alGetSourcei(m_Source, AL_SOURCE_STATE, &state);
+
+        while (state == AL_PLAYING)
+        {
+            ALint buffersProcessed = 0;
+            alGetSourcei(m_Source, AL_BUFFERS_PROCESSED,  &buffersProcessed);
+            if (buffersProcessed <= 0)
+                return;
+
+            while (buffersProcessed--)
+            {
+                LongAudioBuffer buffer; // Holds unqueued audio buffer
+                alSourceUnqueueBuffers(m_Source, 1, buffer.Buffers);
+
+                ALsizei dataSize = buffer.BUFFER_SIZE;
+
+                char* data = new char[dataSize];
+                std::memset(data, 0, dataSize);
+
+                std::size_t dataSizeToCopy = buffer.BUFFER_SIZE;
+                if (buffer.Cursor + buffer.BUFFER_SIZE > buffer.Data.size())
+                    dataSizeToCopy = buffer.Data.size() - buffer.Cursor;
+
+                std::memcpy(&data[0], &buffer.Data[buffer.Cursor], dataSizeToCopy);
+                buffer.Cursor += dataSizeToCopy;
+
+                if (dataSizeToCopy < buffer.BUFFER_SIZE)
+                {
+                    buffer.Cursor = 0;
+                    std::memcpy(&data[dataSizeToCopy], &buffer.Data[buffer.Cursor], buffer.BUFFER_SIZE - dataSizeToCopy);
+                    buffer.Cursor = buffer.BUFFER_SIZE - dataSizeToCopy;
+                }
+
+                alBufferData(*buffer.Buffers, buffer.Format, data, buffer.BUFFER_SIZE, buffer.SampleRate);
+                alSourceQueueBuffers(m_Source, 1, buffer.Buffers);
+
+                delete[] data;
+            }
+
+            alGetSourcei(m_Source, AL_SOURCE_STATE, &state);
+            GE_CORE_TRACE("AudioSource::UpdateBuffers State: {0}", (char*)alGetString(state));
+        }
+
     }
 }

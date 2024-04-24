@@ -54,6 +54,26 @@ namespace GE
 		}
 	};
 
+	struct AudioSourceComponent
+	{
+		UUID AssetHandle = 0;
+
+		bool m_Loop = false;
+		float m_Pitch = 1.0f;
+		float m_Gain = 1.0f;
+
+		AudioSourceComponent() = default;
+		AudioSourceComponent(const AudioSourceComponent&) = default;
+	};
+
+	struct AudioListenerComponent
+	{
+		UUID AssetHandle = 0;
+
+		AudioListenerComponent() = default;
+		AudioListenerComponent(const AudioListenerComponent&) = default;
+	};
+
 	struct SpriteRendererComponent
 	{
 		UUID AssetHandle = 0;
@@ -100,20 +120,6 @@ namespace GE
 		CameraComponent(const CameraComponent&) = default;
 		CameraComponent(const SceneCamera camera) : Camera(camera) {}
 	};
-
-#pragma region AudioManager
-	struct AudioSourceComponent
-	{
-		UUID AssetHandle = 0;
-
-		bool m_Loop = false;
-		float m_Pitch = 1.0f;
-		float m_Gain = 1.0f;
-
-		AudioSourceComponent() = default;
-		AudioSourceComponent(const AudioSourceComponent&) = default;
-	};
-#pragma endregion
 
 #pragma region Physics
 	struct Rigidbody2DComponent
