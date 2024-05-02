@@ -1,12 +1,35 @@
 #pragma once
 
 #include "GE/Asset/Asset.h"
-#include "GE/Asset/AssetUtils.h"
 
 #include <filesystem>
+#include <map>
 
 namespace GE
 {
+	namespace AssetUtils
+	{
+		const static std::map<std::filesystem::path, Asset::Type> s_AssetExtensions =
+		{
+			{ ".scene",	Asset::Type::Scene			},
+			{ ".jpeg",	Asset::Type::Texture2D		},
+			{ ".png",	Asset::Type::Texture2D		},
+			{ ".jpg",	Asset::Type::Texture2D		},
+			{ ".ttf",	Asset::Type::Font			},
+			{ ".wav",	Asset::Type::AudioSource	}
+		};
+
+		static Asset::Type AssetTypeFromFileExtension(const std::filesystem::path& extension)
+		{
+			if (s_AssetExtensions.find(extension) == s_AssetExtensions.end())
+			{
+				GE_CORE_WARN("Could not determine Asset Type from file extension.\n\tPath:{0}", extension.string());
+				return Asset::Type::None;
+			}
+			return s_AssetExtensions.at(extension);
+		}
+	}
+
 	enum class AssetStatus
 	{
 		None = 0,
@@ -18,8 +41,8 @@ namespace GE
 	struct AssetMetadata
 	{
 		UUID Handle = 0;
-		AssetType Type = AssetType::None;
-		std::filesystem::path FilePath;
+		Asset::Type Type = Asset::Type::None;
+		std::filesystem::path FilePath = std::filesystem::path();
 		
 		AssetStatus Status = AssetStatus::None;
 
@@ -28,10 +51,11 @@ namespace GE
 
 		}
 
-		AssetMetadata(const std::filesystem::path& filePath)
-			: FilePath(filePath)
+		AssetMetadata(UUID handle, const std::filesystem::path& filePath = std::filesystem::path())
+			: FilePath(filePath), Handle(handle)
 		{
-			Type = AssetUtils::AssetTypeFromFileExtension(filePath.extension());
+			if(!FilePath.empty())
+				Type = AssetUtils::AssetTypeFromFileExtension(FilePath.extension());
 		}
 	};
 }

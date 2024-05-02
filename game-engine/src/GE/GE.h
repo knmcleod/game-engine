@@ -1,9 +1,20 @@
 #pragma once
 
 #pragma region Asset
-#include "GE/Asset/Serializer/AssetSerializer.h"
-#pragma endregion
+#include "GE/Asset/Asset.h"
+#include "GE/Asset/Assets/Audio/Audio.h"
+#include "GE/Asset/Assets/Font/Font.h"
+#include "GE/Asset/Assets/Scene/Scene.h"
+#include "GE/Asset/Assets/Scene/Components/Components.h"
+#include "GE/Asset/Assets/Textures/Texture.h"
 
+#include "GE/Asset/Pack/AssetPack.h"
+#include "GE/Asset/Registry/AssetRegistry.h"
+
+#include "GE/Asset/Serializer/AssetSerializer.h"
+#include "GE/Asset/AssetManager.h"
+
+#pragma endregion
 
 #pragma region Core
 //	-- Core	--
@@ -56,26 +67,9 @@
 #include "GE/Rendering/VertexArray/VertexArray.h"
 #include "GE/Rendering/VertexArray/Buffer.h"
 
-#include "GE/Rendering/Text/Font.h"
-
-//	--	Texture	--
-#include "GE/Rendering/Textures/Texture.h"
-#include "GE/Rendering/Textures/SubTexture.h"
-
 //	--	Camera	--
 #include "GE/Rendering/Camera/Camera.h"
 #include "GE/Rendering/Camera/Controller/CameraController.h"
-#pragma endregion
-
-#pragma region Scene
-#include "GE/Scene/Scene.h"
-#include "GE/Scene/Entity/Entity.h"
-#include "GE/Scene/Entity/ScriptableEntity.h"
-#include "GE/Scene/Components/Components.h"
-
-//	--	Camera	--
-#include "GE/Scene/Camera/SceneCamera.h"
-
 #pragma endregion
 
 #pragma region Scripting

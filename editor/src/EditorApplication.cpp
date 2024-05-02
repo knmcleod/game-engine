@@ -1,6 +1,6 @@
-#include <GE/GE.h>
-
 #include "Layer/EditorLayer.h"
+
+#include <GE/Core/Application/Application.h>
 
 namespace GE
 {

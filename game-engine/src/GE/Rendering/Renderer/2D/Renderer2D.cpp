@@ -2,20 +2,16 @@
 
 #include "Renderer2D.h"
 
-#include "GE/MSDF/MSDF.h"
-
 #include "GE/Project/Project.h"
 
 #include "GE/Rendering/Camera/Camera.h"
-#include "GE/Rendering/Camera/Editor/EditorCamera.h"
+#include "GE/Rendering/Camera/EditorCamera.h"
 #include "GE/Rendering/RenderCommand.h"
 #include "GE/Rendering/Shader/Shader.h"
 
 namespace GE
 {
-	const glm::mat4 Renderer2D::s_IdentityMat4 = glm::mat4(1.0f);
-
-	static Renderer2D::Renderer2DData s_RendererData;
+	Renderer2D::Renderer2DData Renderer2D::s_RendererData = Renderer2D::Renderer2DData();
 
 	void Renderer2D::Init()
 	{
@@ -195,7 +191,7 @@ namespace GE
 	
 	}
 
-	void Renderer2D::Start(const EditorCamera& camera)
+	void Renderer2D::Start(const Camera& camera)
 	{
 		GE_PROFILE_FUNCTION();
 
@@ -385,9 +381,9 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		glm::mat4 transform = glm::translate(s_IdentityMat4, position)
-			* glm::rotate(s_IdentityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
-			* glm::scale(s_IdentityMat4, { size.x, size.y, 1.0f });
+		glm::mat4 transform = glm::translate(s_RendererData.IdentityMat4, position)
+			* glm::rotate(s_RendererData.IdentityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
+			* glm::scale(s_RendererData.IdentityMat4, { size.x, size.y, 1.0f });
 
 		DrawQuad(transform, color, entityID);
 
@@ -398,9 +394,9 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		glm::mat4 transform = glm::translate(s_IdentityMat4, position)
-			* glm::rotate(s_IdentityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
-			* glm::scale(s_IdentityMat4, { size.x, size.y, 1.0f });
+		glm::mat4 transform = glm::translate(s_RendererData.IdentityMat4, position)
+			* glm::rotate(s_RendererData.IdentityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
+			* glm::scale(s_RendererData.IdentityMat4, { size.x, size.y, 1.0f });
 
 		DrawQuad(transform, texture, tilingFactor, tintColor, entityID);
 	}
@@ -413,9 +409,9 @@ namespace GE
 		if (s_RendererData.QuadIndexCount >= s_RendererData.MaxIndices)
 			Flush();
 
-		glm::mat4 transform = glm::translate(s_IdentityMat4, position)
-			* glm::rotate(s_IdentityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
-			* glm::scale(s_IdentityMat4, { size.x, size.y, 1.0f });
+		glm::mat4 transform = glm::translate(s_RendererData.IdentityMat4, position)
+			* glm::rotate(s_RendererData.IdentityMat4, glm::radians(rotation), { 0.0f, 0.0f, 1.0f })
+			* glm::scale(s_RendererData.IdentityMat4, { size.x, size.y, 1.0f });
 
 		const glm::vec2* textureCoords = subTexture->GetTextureCoords();
 
@@ -628,9 +624,8 @@ namespace GE
 	{
 		const auto& fontGeometry = font->GetMSDFData()->FontGeometry;
 		const auto& metrics = fontGeometry.getMetrics();
-		Ref<Texture2D> fontAtlas = font->GetTexture();
 
-		s_RendererData.TextAtlasTexture = fontAtlas;
+		s_RendererData.TextAtlasTexture = font->GetAtlasTexture();
 
 		double x = 0.0;
 		double fsScale = 1.0 / (metrics.ascenderY - metrics.descenderY);
@@ -674,8 +669,8 @@ namespace GE
 			quadMin += glm::vec2(x, y);
 			quadMax += glm::vec2(x, y);
 
-			float texelWidth = 1.0f / fontAtlas->GetWidth();
-			float texelHeight = 1.0f / fontAtlas->GetHeight();
+			float texelWidth = 1.0f / s_RendererData.TextAtlasTexture->GetWidth();
+			float texelHeight = 1.0f / s_RendererData.TextAtlasTexture->GetHeight();
 			texCoordMin *= glm::vec2(texelWidth, texelHeight);
 			texCoordMax *= glm::vec2(texelWidth, texelHeight);
 
@@ -695,8 +690,11 @@ namespace GE
 
 	void Renderer2D::DrawString(const glm::mat4& transform, const TextRendererComponent& component, int entityID)
 	{
-		DrawString(transform, component.Text, component.Font,
-			component.TextColor, component.BGColor, component.KerningOffset, component.LineHeightOffset, entityID);
+		Ref<Font> font = Project::GetAsset<Font>(component.AssetHandle);
+		DrawString(transform, component.Text, font,
+			component.TextColor, component.BGColor, 
+			component.KerningOffset, component.LineHeightOffset, 
+			entityID);
 	}
 #pragma endregion
 

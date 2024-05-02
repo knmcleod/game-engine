@@ -28,6 +28,52 @@ namespace GE
         }
     }
 
+    public class AudioSourceComponent : Component
+    {
+        public bool Loop
+        {
+            get
+            {
+                InternalCalls.AudioSourceComponent_GetLoop(Entity.ID, out bool loop);
+                return loop;
+            }
+            set
+            {
+                InternalCalls.AudioSourceComponent_SetLoop(Entity.ID, ref value);
+            }
+        }
+        public float Pitch
+        {
+            get
+            {
+                InternalCalls.AudioSourceComponent_GetPitch(Entity.ID, out float pitch);
+                return pitch;
+            }
+            set
+            {
+                InternalCalls.AudioSourceComponent_SetPitch(Entity.ID, ref value);
+            }
+        }
+
+        public float Gain
+        {
+            get
+            {
+                InternalCalls.AudioSourceComponent_GetGain(Entity.ID, out float gain);
+                return gain;
+            }
+            set
+            {
+                InternalCalls.AudioSourceComponent_SetGain(Entity.ID, ref value);
+            }
+        }
+        
+        public void Play()
+        {
+            InternalCalls.AudioSourceComponent_Play(Entity.ID);
+        }
+    }
+
     public class Rigidbody2DComponent : Component
     {
         public Vector2 LinearVelocity

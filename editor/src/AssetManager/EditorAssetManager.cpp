@@ -1,21 +1,9 @@
-#include <GE/GE.h>
 #include "EditorAssetManager.h"
 
 #include <GE/Asset/Serializer/AssetSerializer.h>
 
 namespace GE
 {
-
-	EditorAssetManager::EditorAssetManager()
-	{
-		m_AssetRegistry = CreateRef<AssetRegistry>();
-		DeserializeAssets("assetRegistry.gar");
-	}
-
-	EditorAssetManager::~EditorAssetManager()
-	{
-		SerializeAssets("assetRegistry.gar");
-	}
 
 	AssetMetadata& EditorAssetManager::GetMetadata(UUID handle)
 	{
@@ -31,6 +19,7 @@ namespace GE
 	*/
 	Ref<Asset> EditorAssetManager::GetAsset(UUID handle)
 	{
+		Ref<Asset> asset = nullptr;
 		if (HandleExists(handle))
 		{
 			if (AssetLoaded(handle))
@@ -40,15 +29,21 @@ namespace GE
 			else
 			{
 				AssetMetadata& metadata = GetMetadata(handle);
-				Ref<Asset> asset = AssetSerializer::ImportAsset(metadata);
+				metadata.Status = AssetStatus::Loading;
+				asset = AssetSerializer::DeserializeAsset(metadata);
 				if (asset)
 				{
-					m_LoadedAssets[handle] = asset;
+					metadata.Status = AssetStatus::Ready;
+					m_LoadedAssets[metadata.Handle] = asset;
 					return asset;
+				}
+				else
+				{
+					metadata.Status = AssetStatus::Invalid;
 				}
 			}
 		}
-		return nullptr;
+		return asset;
 	}
 
 	Ref<Asset> EditorAssetManager::GetAsset(const std::filesystem::path& filePath)
@@ -74,12 +69,18 @@ namespace GE
 		return m_LoadedAssets.find(handle) != m_LoadedAssets.end();
 	}
 
-	bool EditorAssetManager::SaveAsset(UUID handle)
+	bool EditorAssetManager::AddAsset(UUID handle)
 	{
-		if (HandleExists(handle))
+		AssetMetadata metadata(handle);
+		return AddAsset(metadata);
+	}
+
+	bool EditorAssetManager::AddAsset(const AssetMetadata& metadata)
+	{
+		if(HandleExists(metadata.Handle))
 			return false;
 
-		return m_AssetRegistry->AddAsset(GetMetadata(handle));
+		return m_AssetRegistry->AddAsset(metadata);
 	}
 
 	bool EditorAssetManager::RemoveAsset(UUID handle)
@@ -95,16 +96,50 @@ namespace GE
 		return false;
 	}
 
+	bool EditorAssetManager::SerializeAssets()
+	{
+		std::filesystem::path path = "assetRegistry.gar";
+		if (m_AssetRegistry && m_AssetRegistry->m_FilePath != path)
+			path = m_AssetRegistry->m_FilePath;
+		return SerializeAssets(path);
+	}
+
+	bool EditorAssetManager::DeserializeAssets()
+	{
+		std::filesystem::path path = "assetRegistry.gar";
+		if (m_AssetRegistry && m_AssetRegistry->m_FilePath != path)
+			path = m_AssetRegistry->m_FilePath;
+		return DeserializeAssets(path);
+	}
+
 	bool EditorAssetManager::SerializeAssets(const std::filesystem::path& filePath)
 	{
-		std::filesystem::path path = Project::GetPathToAsset(filePath);
-		return m_AssetRegistry->Serialize(path);
+		if (m_AssetRegistry->m_FilePath != filePath)
+			m_AssetRegistry->m_FilePath = filePath;
+
+		for (const auto& [handle, metadata] : m_AssetRegistry->GetRegistry())
+		{
+			if (AssetLoaded(handle))
+				AssetSerializer::SerializeAsset(metadata);
+		}
+
+		return AssetSerializer::SerializeRegistry(m_AssetRegistry);
 	}
 
 	bool EditorAssetManager::DeserializeAssets(const std::filesystem::path& filePath)
 	{
-		std::filesystem::path path = Project::GetPathToAsset(filePath);
-		return m_AssetRegistry->Deserialize(path);
+		m_AssetRegistry = CreateRef<AssetRegistry>();
+		if (!AssetSerializer::DeserializeRegistry(filePath, m_AssetRegistry))
+			return false;
+
+		for (const auto& [handle, metadata] : m_AssetRegistry->GetRegistry())
+		{
+			if (Ref<Asset> asset = AssetSerializer::DeserializeAsset(metadata))
+			{
+				m_LoadedAssets.emplace(handle, asset);
+			}
+		}
+		return true;
 	}
 
 }

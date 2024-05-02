@@ -2,12 +2,13 @@
 
 #include "Scripting.h"
 
+#include "GE/Asset/Assets/Audio/Audio.h"
+
 #include "GE/Core/Application/Application.h"
 #include "GE/Core/FileSystem/FileSystem.h"
 #include "GE/Core/Input/Input.h"
-#include "GE/Core/Input/KeyCodes.h"
 
-#include "GE/Physics/PhysicsUtils.h"
+#include "GE/Physics/Physics.h"
 
 #include "GE/Project/Project.h"
 
@@ -17,13 +18,11 @@
 #include <mono/metadata/mono-debug.h>
 #include <mono/metadata/threads.h>
 
-#include <box2d/b2_body.h>
 #include <glm/glm.hpp>
-
 
 namespace GE
 {
-	static std::unordered_map<MonoType*, std::function<bool(Entity)>>  s_HasComponentsFuncs;
+	static std::unordered_map<MonoType*, std::function<bool(Entity)>> s_HasComponentsFuncs;
 
 	static std::unordered_map<std::string, ScriptFieldType>  s_ScriptFieldTypeNames
 	{
@@ -118,15 +117,13 @@ namespace GE
 		if (!entity)
 			return 0;
 
-		return (uint64_t)entity.GetUUID();
+		return (uint64_t)entity.GetComponent<IDComponent>().ID;
 	}
 
 	static MonoObject* Entity_GetScriptInstance(uint64_t uuid)
 	{
 		return Scripting::GetObjectInstance(uuid);
 	}
-
-// TODO: Implement Audio Sources & Listeners in Scripting System
 
 // Transform Component
 	static void TransformComponent_GetTranslation(UUID uuid, glm::vec3* translation)
@@ -150,6 +147,93 @@ namespace GE
 		{
 			auto& tc = entity.GetComponent<TransformComponent>();
 			tc.Translation = *translation;
+		}
+	}
+	
+// Audio Component
+	static void AudioSourceComponent_GetLoop(UUID uuid, bool* loop)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity && entity.HasComponent<AudioSourceComponent>())
+		{
+			auto& asc = entity.GetComponent<AudioSourceComponent>();
+			*loop = asc.Loop;
+		}
+	}
+
+	static void AudioSourceComponent_SetLoop(UUID uuid, bool* loop)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity.HasComponent<AudioSourceComponent>())
+		{
+			auto& asc = entity.GetComponent<AudioSourceComponent>();
+			asc.Loop = *loop;
+		}
+	}
+
+	static void AudioSourceComponent_GetPitch(UUID uuid, float* pitch)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity && entity.HasComponent<AudioSourceComponent>())
+		{
+			auto& asc = entity.GetComponent<AudioSourceComponent>();
+			*pitch = asc.Pitch;
+		}
+	}
+
+	static void AudioSourceComponent_SetPitch(UUID uuid, float* pitch)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity.HasComponent<AudioSourceComponent>())
+		{
+			auto& asc = entity.GetComponent<AudioSourceComponent>();
+			asc.Pitch = *pitch;
+		}
+	}
+
+	static void AudioSourceComponent_GetGain(UUID uuid, float* gain)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity && entity.HasComponent<AudioSourceComponent>())
+		{
+			auto& asc = entity.GetComponent<AudioSourceComponent>();
+			*gain = asc.Gain;
+		}
+	}
+
+	static void AudioSourceComponent_SetGain(UUID uuid, float* gain)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity.HasComponent<AudioSourceComponent>())
+		{
+			auto& asc = entity.GetComponent<AudioSourceComponent>();
+			asc.Gain = *gain;
+		}
+	}
+
+	static void AudioSourceComponent_Play(UUID uuid)
+	{
+		Scene* scene = Scripting::GetScene();
+
+		Entity entity = scene->GetEntityByUUID(uuid);
+		if (entity.HasComponent<AudioSourceComponent>())
+		{
+			auto& asc = entity.GetComponent<AudioSourceComponent>();
+			Ref<AudioSource> audioClip = Project::GetAsset<AudioSource>(asc.AssetHandle);
+			if (audioClip)
+				audioClip->Play();
 		}
 	}
 
@@ -203,8 +287,10 @@ namespace GE
 		{
 			auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
 			b2Body* body = (b2Body*)rb2d.RuntimeBody;
-			return PhysicsUtils::Rigidbody2DTypeFromBox2DBody(body->GetType());
+			return Physics::Rigidbody2DTypeFromBox2DBody(body->GetType());
 		}
+
+		return Rigidbody2DComponent::BodyType::Static;
 	}
 
 	static void Rigidbody2DComponent_SetType(UUID entityID, Rigidbody2DComponent::BodyType bodyType)
@@ -216,7 +302,7 @@ namespace GE
 		{
 			auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
 			b2Body* body = (b2Body*)rb2d.RuntimeBody;
-			body->SetType(PhysicsUtils::Rigidbody2DTypeToBox2DBody(bodyType));
+			body->SetType(Physics::Rigidbody2DTypeToBox2DBody(bodyType));
 		}
 	}
 	
@@ -231,6 +317,7 @@ namespace GE
 			auto& trc = entity.GetComponent<TextRendererComponent>();
 			return Scripting::StringToMonoString(trc.Text.c_str());
 		}
+		return nullptr;
 	}
 
 	static void TextRendererComponent_SetText(UUID uuid, MonoString* textString)
@@ -303,6 +390,7 @@ namespace GE
 			auto& trc = entity.GetComponent<TextRendererComponent>();
 			return trc.LineHeightOffset;
 		}
+		return 0.0f;
 	}
 
 	static void TextRendererComponent_SetLineHeight(UUID uuid, float lineHeight)
@@ -327,6 +415,7 @@ namespace GE
 			auto& trc = entity.GetComponent<TextRendererComponent>();
 			return trc.KerningOffset;
 		}
+		return 0.0f;
 	}
 
 	static void TextRendererComponent_SetLineSpacing(UUID uuid, float lineSpacing)
@@ -472,7 +561,7 @@ namespace GE
 		auto instance = fields.find(name);
 		if (instance == fields.end())
 		{
-			GE_CORE_WARN("Cannot get Script Instance Field Value. Name = " + name);
+			GE_CORE_WARN("Cannot get Script Instance Field Value. \n\t{0}", name);
 			return;
 		}
 
@@ -486,7 +575,7 @@ namespace GE
 		auto instance = fields.find(name);
 		if (instance == fields.end())
 		{
-			GE_CORE_WARN("Cannot set Script Instance Field Value. Name = " + name);
+			GE_CORE_WARN("Cannot set Script Instance Field Value. {0}", name);
 			return;
 		}
 
@@ -533,7 +622,7 @@ namespace GE
 	{
 		GE_CORE_ASSERT(entity, "Cannot get Entity ScriptFields. Entity does not exist.");
 
-		UUID uuid = entity.GetUUID();
+		UUID uuid = entity.GetComponent<IDComponent>().ID;
 
 		return s_ScriptingData->ScriptFields[uuid];
 	}
@@ -575,7 +664,7 @@ namespace GE
 		ScriptGlue::RegisterFunctions();
 
 		LoadAssembly(Project::GetPathToAsset("scripts/Resources/Binaries/GE-ScriptCore.dll"));
-		LoadApplicationAssembly(Project::GetPathToAsset(Project::GetActive()->GetSpec().ScriptPath));
+		LoadApplicationAssembly(Project::GetPathToAsset(Project::GetActive()->GetConfig().ScriptPath));
 
 		LoadAssemblyClasses();
 
@@ -629,7 +718,7 @@ namespace GE
 		const auto& sc = entity.GetComponent<ScriptComponent>();
 		if (ScriptClassExists(sc.ClassName))
 		{
-			UUID uuid = entity.GetUUID();
+			UUID uuid = entity.GetComponent<IDComponent>().ID;
 			Ref<ScriptInstance> instance = CreateRef<ScriptInstance>(s_ScriptingData->ScriptClasses[sc.ClassName], uuid);
 			s_ScriptingData->ScriptInstances[uuid] = instance;
 
@@ -653,7 +742,7 @@ namespace GE
 
 	void Scripting::OnUpdateScript(Entity entity, float timestep)
 	{
-		UUID uuid = entity.GetUUID();
+		UUID uuid = entity.GetComponent<IDComponent>().ID;
 		if (!uuid || s_ScriptingData->ScriptInstances.find(uuid) == s_ScriptingData->ScriptInstances.end())
 		{
 			GE_CORE_WARN("Tried to Update Entity/Script Instance that does not exist");
@@ -818,6 +907,14 @@ namespace GE
 		GE_ADD_INTERNAL_CALL(TransformComponent_GetTranslation);
 		GE_ADD_INTERNAL_CALL(TransformComponent_SetTranslation);
 
+		GE_ADD_INTERNAL_CALL(AudioSourceComponent_GetLoop);
+		GE_ADD_INTERNAL_CALL(AudioSourceComponent_SetLoop);
+		GE_ADD_INTERNAL_CALL(AudioSourceComponent_GetPitch);
+		GE_ADD_INTERNAL_CALL(AudioSourceComponent_SetPitch);
+		GE_ADD_INTERNAL_CALL(AudioSourceComponent_GetGain);
+		GE_ADD_INTERNAL_CALL(AudioSourceComponent_SetGain);
+		GE_ADD_INTERNAL_CALL(AudioSourceComponent_Play);
+
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_ApplyLinearImpulse);
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_ApplyLinearImpulseToCenter);
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_GetLinearVelocity);
@@ -858,6 +955,8 @@ namespace GE
 		//RegisterComponent<IDComponent>();
 		//RegisterComponent<TagComponent>();
 		RegisterComponent<TransformComponent>();
+		RegisterComponent<AudioSourceComponent>();
+		//RegisterComponent<AudioListenerComponent>();
 		//RegisterComponent<SpriteRendererComponent>();
 		//RegisterComponent<CircleRendererComponent>();
 		RegisterComponent<TextRendererComponent>();

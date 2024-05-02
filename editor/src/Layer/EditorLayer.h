@@ -6,7 +6,6 @@
 #include <GE/Core/Application/Layers/Layer.h>
 #include <GE/Core/Events/KeyEvent.h>
 
-#include <GE/Project/Project.h>
 #include <GE/Rendering/Framebuffers/Framebuffer.h>
 
 #include <imgui/imgui.h>
@@ -22,39 +21,41 @@ namespace GE
 
 		virtual void OnAttach() override;
 		virtual void OnDetach() override;
-		virtual void OnUpdate(Timestep timestep) override;
+		virtual void OnUpdate(Timestep ts) override;
 		virtual void OnEvent(Event& e) override;
 		virtual void OnImGuiRender() override;
 		virtual void OnWindowResize(WindowResizeEvent& e) override;
+
+		const Scene::State& GetSceneState() { return m_ActiveScene->GetState(); }
 	private:
 		bool OnKeyPressed(KeyPressedEvent& e);
 		bool OnMousePressed(MouseButtonPressedEvent& e);
 
 		void OnDuplicateEntity();
 
-		void OnSceneRuntime();
-		void OnSceneSimulate();
-		void OnScenePause();
-		void OnSceneStop();
+		void StartScene(const Scene::State& state = Scene::State::Stop);
+		void UpdateScene(Timestep ts, Camera* camera = nullptr);
+		void StopScene();
 
 		void LoadSceneFromFile();
 		void LoadScene(UUID handle);
-		bool SaveSceneFromFile();
-		bool SaveScene(UUID handle);
 
 		bool LoadProjectFromFile();
-		void LoadProject(const std::filesystem::path& path);
+		bool LoadProject(const std::filesystem::path& path);
 		void SaveProjectFromFile();
+		/*
+		* Full Project path is assumed. See demo
+		* Project Extension is handled.
+		* Example path: projects/projectName
+		*/
+		void SaveProject(const std::filesystem::path& path);
 		void SaveProject();
-		Ref<Project> NewProject();
 
 		// UI 
 		void UI_Toolbar();
 
 	private:
 		EditorCamera m_EditorCamera;
-		Entity m_HoveredEntity;
-
 		bool m_UseEditorCamera = true;
 		int m_StepFrameMultiplier = 1;
 
@@ -67,10 +68,10 @@ namespace GE
 		Ref<SceneHierarchyPanel> m_ScenePanel;
 		Ref<AssetPanel> m_AssetPanel;
 
-		Ref<Scene> m_EditorScene, m_ActiveScene;
-		SceneState m_LastSceneState;
+		Ref<Scene> m_ActiveScene;
 
-		Ref<Texture2D> m_PlayButtonTexture, m_SimulateButtonTexture, m_PauseButtonTexture, m_StepButtonTexture, m_StopButtonTexture;
+		UUID m_PlayButtonHandle, m_SimulateButtonHandle, m_PauseButtonHandle, m_StepButtonHandle, m_StopButtonHandle;
 		
+		Entity m_HoveredEntity;
 	};
 }

@@ -1,8 +1,8 @@
 #pragma once
 
+#include "GE/Asset/Assets/Scene/Scene.h"
+
 #include "GE/Core/Buffer.h"
-#include "GE/Scene/Scene.h"
-#include "GE/Scene/Entity/Entity.h"
 
 #include <filesystem>
 #include <string>

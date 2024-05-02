@@ -11,6 +11,7 @@ namespace demo
 {
     public class Player : Entity
     {
+        private AudioSourceComponent m_AudioSourceComponent;
         private Rigidbody2DComponent m_Rigidbody2DComponent;
         private TextRendererComponent m_TextRendererComponent;
 
@@ -20,6 +21,7 @@ namespace demo
 
         void OnCreate()
         {
+            m_AudioSourceComponent = GetComponent<AudioSourceComponent>();
             m_Rigidbody2DComponent = GetComponent<Rigidbody2DComponent>();
             m_TextRendererComponent = GetComponent<TextRendererComponent>();
 
@@ -50,11 +52,15 @@ namespace demo
             }
 
             velocity *= timestep;
+            if (m_AudioSourceComponent != null && Input.IsKeyDown(KeyCode.KEY_SPACE))
+                m_AudioSourceComponent.Play();
 
             if (m_TextRendererComponent != null)
-                m_TextRendererComponent.Text = "Velocity";
-
-            Log.LogCoreInfo("Velocity Applied = ( " + velocity.x + ", " + velocity.y + ", " + velocity.z + ")");
+            {
+                m_TextRendererComponent.Text = string.Format("Velocity: {0}, {1}, {2}", velocity.x, velocity.y, velocity.z);
+                Log.LogCoreInfo("Velocity Applied = ( " + velocity.x + ", " + velocity.y + ", " + velocity.z + ")");
+            }
+            
             m_Rigidbody2DComponent.ApplyLinearImpulseToCenter(velocity.XY, true);
 
             if(camera != null)

@@ -39,6 +39,29 @@ namespace GE
         internal extern static void TransformComponent_SetTranslation(ulong uuid, ref Vector3 translation);
 
 
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void AudioSourceComponent_GetLoop(ulong uuid, out bool loop);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void AudioSourceComponent_SetLoop(ulong uuid, ref bool loop);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void AudioSourceComponent_GetPitch(ulong uuid, out float pitch);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void AudioSourceComponent_SetPitch(ulong uuid, ref float pitch);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void AudioSourceComponent_GetGain(ulong uuid, out float gain);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void AudioSourceComponent_SetGain(ulong uuid, ref float gain);
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static void AudioSourceComponent_Play(ulong uuid);
+
+
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static void Rigidbody2DComponent_ApplyLinearImpulse(ulong uuid, ref Vector2 impulse, ref Vector2 point, ref bool wake);
 

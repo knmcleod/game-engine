@@ -1,12 +1,13 @@
 #pragma once
 
+#include "GE/Asset/Assets/Font/Font.h"
+#include "GE/Asset/Assets/Textures/Texture.h"
+#include "GE/Asset/Assets/Textures/SubTexture.h"
+
+#include "GE/Asset/Assets/Scene/Components/Components.h"
+
+#include "GE/Rendering/Camera/EditorCamera.h"
 #include "GE/Rendering/VertexArray/VertexArray.h"
-
-#include "GE/Rendering/Text/Font.h"
-#include "GE/Rendering/Textures/Texture.h"
-#include "GE/Rendering/Textures/SubTexture.h"
-
-#include "GE/Scene/Components/Components.h"
 
 namespace GE
 {
@@ -71,10 +72,11 @@ namespace GE
 			static const uint32_t MaxSpawns = 5000;
 			static const uint32_t MaxVertices = MaxSpawns * 4;
 			static const uint32_t MaxIndices = MaxSpawns * 6;
-
-			// Sprite/Quad
 			static const uint32_t MaxTextureSlots = 32;
 
+			const glm::mat4 IdentityMat4 = glm::mat4(0);
+
+			// Sprite/Quad
 			glm::vec4 QuadVertices[4];
 			uint32_t QuadIndexCount = 0;
 			QuadVertex* QuadVertexBufferBase = nullptr;
@@ -126,7 +128,7 @@ namespace GE
 		static void Init();
 		static void ShutDown();
 
-		static void Start(const EditorCamera& camera);
+		static void Start(const Camera& camera);
 		static void Start(const Camera& camera, const glm::mat4& transform);
 		static void End();
 
@@ -183,8 +185,7 @@ namespace GE
 			Ref<Font> font, const glm::vec4& texColor, const glm::vec4& bgColor, const float& kerningOffset, const float& lineHeightOffset,
 			const int entityID = -1);
 		static void DrawString(const glm::mat4& transform, const TextRendererComponent& component, int entityID);
-
 	public:
-		static const glm::mat4 s_IdentityMat4;
+		static Renderer2DData s_RendererData;
 	};
 }

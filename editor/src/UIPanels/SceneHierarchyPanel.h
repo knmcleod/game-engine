@@ -1,7 +1,8 @@
 #pragma once
 
 #include "GE/Core/Core.h"
-#include "GE/Scene/Entity/Entity.h"
+
+#include "GE/Asset/Assets/Scene/Scene.h"
 
 namespace GE
 {
@@ -14,9 +15,9 @@ namespace GE
 		void DrawEntity(Entity entity);
 		void DrawComponents(Entity entity);
 	public:
-		SceneHierarchyPanel(const Ref<Scene>& scene);
+		SceneHierarchyPanel(Ref<Scene> scene);
 
-		void SetScene(const Ref<Scene>& scene);
+		void SetScene(Ref<Scene> scene);
 
 		void SetSelectedEntity(Entity entity) { m_SelectedEntity = entity; }
 		Entity GetSelectedEntity() const { return m_SelectedEntity; }

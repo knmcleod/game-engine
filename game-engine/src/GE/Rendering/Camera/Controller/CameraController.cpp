@@ -2,14 +2,23 @@
 
 #include "CameraController.h"
 
+#include "GE/Asset/Assets/Scene/Components/Components.h"
+
 #include "GE/Core/Input/Input.h"
-#include "GE/Scene/Components/Components.h"
 
 namespace GE
 {
+	void CameraController::OnCreate()
+	{
+	}
+
+	void CameraController::OnDestroy()
+	{
+	}
+
 	void CameraController::OnUpdate(Timestep timestep)
 	{
-		auto& translation = GetEntityComponent<TransformComponent>().Translation;
+		auto& translation = GetComponent<TransformComponent>().Translation;
 		float speed = 10.0f;
 		//	Camera Movement
 		if (Input::IsKeyPressed(KEY_A))

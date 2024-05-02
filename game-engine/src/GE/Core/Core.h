@@ -58,16 +58,16 @@
 #endif // GE_DEBUG
 
 // Core Log Macros
-#define GE_CORE_TRACE(...)	::GE::Log::GetCoreLogger()->trace(__VA_ARGS__)
-#define GE_CORE_INFO(...)	::GE::Log::GetCoreLogger()->info(__VA_ARGS__)
-#define GE_CORE_WARN(...)	::GE::Log::GetCoreLogger()->warn(__VA_ARGS__)
-#define GE_CORE_ERROR(...)	::GE::Log::GetCoreLogger()->error(__VA_ARGS__)
+#define GE_CORE_TRACE(...)	::GE::Log::GetCoreLogger()->trace<>(__VA_ARGS__)
+#define GE_CORE_INFO(...)	::GE::Log::GetCoreLogger()->info<>(__VA_ARGS__)
+#define GE_CORE_WARN(...)	::GE::Log::GetCoreLogger()->warn<>(__VA_ARGS__)
+#define GE_CORE_ERROR(...)	::GE::Log::GetCoreLogger()->error<>(__VA_ARGS__)
 
 // Client Log Macros
-#define GE_TRACE(...)	::GE::Log::GetClientLogger()->trace(__VA_ARGS__)
-#define GE_INFO(...)	::GE::Log::GetClientLogger()->info(__VA_ARGS__)
-#define GE_WARN(...)	::GE::Log::GetClientLogger()->warn(__VA_ARGS__)
-#define GE_ERROR(...)	::GE::Log::GetClientLogger()->error(__VA_ARGS__)
+#define GE_TRACE(...)	::GE::Log::GetClientLogger()->trace<>(__VA_ARGS__)
+#define GE_INFO(...)	::GE::Log::GetClientLogger()->info<>(__VA_ARGS__)
+#define GE_WARN(...)	::GE::Log::GetClientLogger()->warn<>(__VA_ARGS__)
+#define GE_ERROR(...)	::GE::Log::GetClientLogger()->error<>(__VA_ARGS__)
 
 #ifdef GE_ENABLE_ASSERTS
 	#define GE_ASSERT(x, ...) { if(!(x)) { GE_ERROR("Assertion Failed. {0}", __VA_ARGS__); __debugbreak(); } }
@@ -106,4 +106,21 @@ namespace GE
 	{
 		return std::make_shared<T>(std::forward<Args>(args)...);
 	}
+
+	template<class T, class U>
+	Ref<T> static_ref_cast(const Ref<U>& r) noexcept
+	{
+		auto p = static_cast<typename std::shared_ptr<T>::element_type*>(r.get());
+		return Ref<T>{r, p};
+	}
+
+	template<class T, class U>
+	constexpr Ref<T> dynamic_ref_cast(const Ref<U>& r) noexcept
+	{
+		if (auto p = dynamic_cast<typename std::shared_ptr<T>::element_type*>(r.get()))
+			return Ref<T>{r, p};
+		else
+			return Ref<T>{};
+	}
+
 }

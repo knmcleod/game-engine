@@ -8,12 +8,12 @@ namespace GE
 {
 	RuntimeAssetManager::RuntimeAssetManager()
 	{
-		DeserializeAssets("assetPack.gap");
+		DeserializeAssets();
 	}
 
 	RuntimeAssetManager::~RuntimeAssetManager()
 	{
-		SerializeAssets("assetPack.gap");
+		SerializeAssets();
 	}
 
 	Ref<Asset> RuntimeAssetManager::GetAsset(UUID handle)
@@ -46,15 +46,14 @@ namespace GE
 	{
 		return m_LoadedAssets.find(handle) != m_LoadedAssets.end();
 	}
-
-	bool RuntimeAssetManager::SaveAsset(UUID handle)
+	
+	bool RuntimeAssetManager::AddAsset(UUID handle)
 	{
 		if (HandleExists(handle) || !AssetLoaded(handle))
 			return false;
-
 		return m_AssetPack->AddAsset(m_LoadedAssets.at(handle));
 	}
-	
+
 	bool RuntimeAssetManager::RemoveAsset(UUID handle)
 	{
 		if (!HandleExists(handle) || !AssetLoaded(handle))
@@ -63,15 +62,22 @@ namespace GE
 		return m_AssetPack->RemoveAsset(m_LoadedAssets.at(handle));
 	}
 
-	bool RuntimeAssetManager::SerializeAssets(const std::filesystem::path& filePath)
+	bool RuntimeAssetManager::SerializeAssets()
 	{
-		return m_AssetPack->Serialize(filePath);
+		std::filesystem::path path = "assetPack.gap";
+		if (m_AssetPack && m_AssetPack->m_File.Path.empty())
+			m_AssetPack->m_File.Path = path;
 
+		return AssetSerializer::SerializePack(m_AssetPack);
 	}
 
-	bool RuntimeAssetManager::DeserializeAssets(const std::filesystem::path& filePath)
+	bool RuntimeAssetManager::DeserializeAssets()
 	{
-		return m_AssetPack->Deserialize(filePath);
+		std::filesystem::path path = "assetPack.gap";
+		if (m_AssetPack && m_AssetPack->m_File.Path.empty())
+			m_AssetPack->m_File.Path = path;
+
+		return AssetSerializer::DeserializePack(m_AssetPack);
 	}
 
 }

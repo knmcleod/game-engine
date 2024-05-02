@@ -2,8 +2,6 @@
 
 #include "AssetRegistry.h"
 
-#include <yaml-cpp/yaml.h>
-
 namespace GE
 {
 	AssetRegistry::AssetRegistry()
@@ -26,6 +24,12 @@ namespace GE
 
 	bool AssetRegistry::AddAsset(const AssetMetadata& metadata)
 	{
+		if (metadata.Handle == 0)
+		{
+			GE_CORE_TRACE("Asset Metadata does not exist.");
+			return false;
+		}
+
 		if (m_AssetRegistry.find(metadata.Handle) != m_AssetRegistry.end())
 		{
 			GE_CORE_TRACE("Asset already exists in Registry.");
@@ -45,63 +49,4 @@ namespace GE
 		return true;
 	}
 
-	bool AssetRegistry::Serialize(const std::filesystem::path& filePath)
-	{
-		YAML::Emitter out;
-		{
-			out << YAML::BeginMap; // Root
-			out << YAML::Key << "AssetRegistry" << YAML::Value;
-
-			out << YAML::BeginSeq;
-			for (const auto& [handle, metadata] : m_AssetRegistry)
-			{
-				out << YAML::BeginMap;
-				out << YAML::Key << "Handle" << YAML::Value << handle;
-				std::string filepathStr = metadata.FilePath.generic_string();
-				out << YAML::Key << "FilePath" << YAML::Value << filepathStr;
-				const std::string typeString = AssetUtils::AssetTypeToString(metadata.Type);
-				out << YAML::Key << "Type" << YAML::Value << typeString.c_str();
-				out << YAML::EndMap;
-			}
-			out << YAML::EndSeq;
-			out << YAML::EndMap; // Root
-		}
-
-		std::ofstream fout(filePath);
-		fout << out.c_str();
-		return true;
-	}
-
-	bool AssetRegistry::Deserialize(const std::filesystem::path& filePath)
-	{
-		YAML::Node data;
-		try
-		{
-			data = YAML::LoadFile(filePath.string());
-		}
-		catch (YAML::ParserException e)
-		{
-			GE_CORE_ERROR("Failed to load asset registry file '{0}'\n     {1}", filePath, e.what());
-		}
-
-		YAML::Node assetRegistryData = data["AssetRegistry"];
-		if (!assetRegistryData)
-		{
-			GE_WARN("Cannot deserialize asset registry.");
-			return false;
-		}
-
-		for (const auto& node : assetRegistryData)
-		{
-			UUID handle = node["Handle"].as<uint64_t>();
-			AssetMetadata assetMetadata;
-			assetMetadata.Handle = handle;
-			assetMetadata.FilePath = node["FilePath"].as<std::string>();
-			assetMetadata.Type = AssetUtils::AssetTypeFromString(node["Type"].as<std::string>());
-
-			m_AssetRegistry.emplace(handle, assetMetadata);
-		}
-
-		return true;
-	}
 }

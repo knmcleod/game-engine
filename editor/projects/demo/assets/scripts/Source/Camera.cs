@@ -15,7 +15,9 @@ namespace demo
         void OnCreate()
         {
             FollowEntity = FindEntityByTag("Player");
-            Translation = new Vector3(0);
+            Translation = (FollowEntity != null 
+                ? new Vector3(FollowEntity.Translation.x, FollowEntity.Translation.y, FollowDistance)
+                : new Vector3(0, 0, FollowDistance));
         }
 
         void OnUpdate(float timestep)

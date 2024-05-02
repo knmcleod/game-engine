@@ -1,13 +1,14 @@
 #pragma once
 
-#include "../AssetUtils.h"
 #include "AssetMetadata.h"
-#include "GE/Core/UUID/UUID.h"
 
 namespace GE
 {
 	class AssetRegistry
 	{
+		friend class AssetSerializer;
+		friend class AssetManager;
+		friend class EditorAssetManager;
 	public:
 		AssetRegistry();
 		const std::map<UUID, AssetMetadata>& GetRegistry() { return m_AssetRegistry; }
@@ -17,11 +18,9 @@ namespace GE
 		bool AddAsset(const AssetMetadata& metadata);
 		bool RemoveAsset(UUID handle);
 
-		bool Serialize(const std::filesystem::path& filePath);
-		bool Deserialize(const std::filesystem::path& filePath);
 	private:
+		std::filesystem::path m_FilePath;
 		std::map<UUID, AssetMetadata> m_AssetRegistry;
-
 	};
 }
 

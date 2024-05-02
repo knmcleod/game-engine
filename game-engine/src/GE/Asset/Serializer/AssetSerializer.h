@@ -1,41 +1,52 @@
 #pragma once
 
 #include "../Asset.h"
-#include "../Registry/AssetMetadata.h"
+#include "../Registry/AssetRegistry.h"
 #include "../Pack/AssetPack.h"
-
-#include "GE/Rendering/Textures/Texture.h"
-#include "GE/Scene/Scene.h"
 
 namespace GE
 {
-	using AssetImportFunction = std::function<Ref<Asset>(const AssetMetadata&)>;
-	using AssetPackImportFunction = std::function<Ref<Asset>(const AssetPackFile::AssetInfo&)>;
+	using AssetDeserializeFunction = std::function<Ref<Asset>(const AssetMetadata&)>;
+	using AssetPackDeserializeFunction = std::function<Ref<Asset>(const AssetPack::File::AssetInfo&)>;
 
-	using AssetExportFunction = std::function<bool(UUID, const std::filesystem::path&)>;
+	using AssetSerializeFunction = std::function<bool(const AssetMetadata&)>;
 
 	class AssetSerializer
 	{
 	public:
-		static Ref<Asset> ImportAsset(const AssetMetadata& metadata);
-		static Ref<Asset> ImportAsset(const AssetPackFile::AssetInfo& assetInfo);
+		static bool SerializeRegistry(Ref<AssetRegistry> registry);
+		static bool DeserializeRegistry(const std::filesystem::path& filePath, Ref<AssetRegistry> registry);
 
-		static bool ExportAsset(UUID handle, const AssetMetadata& metadata);
-		static bool ExportAsset(UUID handle, const AssetPackFile::AssetInfo& assetInfo);
-	private:
-		// TODO: Implement Audio Sources & Listeners in Asset System
+		static bool SerializePack(Ref<AssetPack> registry);
+		static bool DeserializePack(Ref<AssetPack> registry);
 
-		static Ref<Asset> ImportScene(const AssetMetadata& metadata);
-		static Ref<Asset> ImportSceneFromPack(const AssetPackFile::AssetInfo& assetInfo);
+		static Ref<Asset> DeserializeAsset(const AssetMetadata& metadata);
+		static Ref<Asset> DeserializeAsset(const AssetPack::File::AssetInfo& assetInfo);
+
+		static bool SerializeAsset(const AssetMetadata& metadata);
+		static bool SerializeAsset(const AssetPack::File::AssetInfo& assetInfo);
 		
-		static Ref<Asset> ImportTexture2D(const AssetMetadata& metadata);
-		static Ref<Asset> ImportTexture2DFromPack(const AssetPackFile::AssetInfo& assetInfo);
+	private:
+		static Ref<Asset> DeserializeScene(const AssetMetadata& metadata);
+		static Ref<Asset> DeserializeSceneFromPack(const AssetPack::File::AssetInfo& assetInfo);
+		
+		static Ref<Asset> DeserializeTexture2D(const AssetMetadata& metadata);
+		static Ref<Asset> DeserializeTexture2DFromPack(const AssetPack::File::AssetInfo& assetInfo);
 
-		static bool ExportScene(UUID uuid, const std::filesystem::path& filePath);
+		static Ref<Asset> DeserializeFont(const AssetMetadata& metadata);
+		static Ref<Asset> DeserializeFontFromPack(const AssetPack::File::AssetInfo& assetInfo);
 
-		static std::map<AssetType, AssetImportFunction> s_AssetImportFuncs;
-		static std::map<AssetType, AssetPackImportFunction> s_AssetPackImportFuncs;
+		static Ref<Asset> DeserializeAudio(const AssetMetadata& metadata);
+		static Ref<Asset> DeserializeAudioFromPack(const AssetPack::File::AssetInfo& assetInfo);
 
-		static std::map<AssetType, AssetExportFunction> s_AssetExportFuncs;
+		static Ref<Asset> DeserializeLongAudio(const AssetMetadata& metadata);
+		static Ref<Asset> DeserializeLongAudioFromPack(const AssetPack::File::AssetInfo& assetInfo);
+
+		static bool SerializeScene(const AssetMetadata& metadata);
+
+		static std::map<Asset::Type, AssetDeserializeFunction> s_AssetDeserializeFuncs;
+		static std::map<Asset::Type, AssetPackDeserializeFunction> s_AssetPackDeserializeFuncs;
+
+		static std::map<Asset::Type, AssetSerializeFunction> s_AssetSerializeFuncs;
 	};
 }

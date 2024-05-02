@@ -1,82 +1,10 @@
-Scene: Scene
+Scene: demoExample
 Entities:
-  - Entity: 11677086725533177951
+  - Entity: 12165168401523622704
     TagComponent:
-      Tag: Camera
+      Tag: Left Floor
     TransformComponent:
-      Translation: [0, 0, 0]
-      Rotation: [0, 0, 0]
-      Scale: [1, 1, 1]
-    CameraComponent:
-      FixedAspectRatio: false
-      Primary: true
-      Camera:
-        Far: 1
-        Near: -1
-        FOV: 10
-        Type: 1
-    ScriptComponent:
-      ClassName: demo.Camera
-      ScriptFields:
-        - Name: FollowDistance
-          Type: Float
-          Data: 1
-        - Name: FollowEntity
-          Type: Entity
-          Data: 0
-  - Entity: 7684260973497798982
-    TagComponent:
-      Tag: Player
-    TransformComponent:
-      Translation: [0, 2, 0]
-      Rotation: [0, 0, 0]
-      Scale: [1, 1, 1]
-    SpriteRendererComponent:
-      Color: [1, 0, 1, 1]
-      TilingFactor: 1
-    ScriptComponent:
-      ClassName: demo.Player
-      ScriptFields:
-        - Name: Speed
-          Type: Float
-          Data: 25
-    Rigidbody2DComponent:
-      Type: Dynamic
-      FixedRotation: false
-    BoxCollider2DComponent:
-      Offset: [0, 0]
-      Size: [0.5, 0.5]
-      Density: 1
-      Friction: 0.5
-      Restitution: 0
-      RestitutionThreshold: 0.5
-      Show: false
-  - Entity: 11325243841916185303
-    TagComponent:
-      Tag: Start Floor
-    TransformComponent:
-      Translation: [0, 0, 0]
-      Rotation: [0, 0, 0]
-      Scale: [5, 1, 1]
-    SpriteRendererComponent:
-      Color: [0.0340253711, 0.289215684, 0, 1]
-      TilingFactor: 1
-    Rigidbody2DComponent:
-      Type: Static
-      FixedRotation: true
-    BoxCollider2DComponent:
-      Offset: [0, 0]
-      Size: [0.5, 0.5]
-      Density: 1
-      Friction: 0.5
-      Restitution: 0
-      RestitutionThreshold: 0.5
-      Show: false
-  - Entity: 5337912456677767708
-    TagComponent:
-      Tag: End Floor
-    TransformComponent:
-      Translation: [0, 10, 0]
+      Translation: [-5, 2.5, 0]
       Rotation: [0, 0, 0]
       Scale: [5, 1, 1]
     SpriteRendererComponent:
@@ -114,11 +42,11 @@ Entities:
       Restitution: 0
       RestitutionThreshold: 0.5
       Show: false
-  - Entity: 12165168401523622704
+  - Entity: 5337912456677767708
     TagComponent:
-      Tag: Left Floor
+      Tag: End Floor
     TransformComponent:
-      Translation: [-5, 2.5, 0]
+      Translation: [0, 10, 0]
       Rotation: [0, 0, 0]
       Scale: [5, 1, 1]
     SpriteRendererComponent:
@@ -135,3 +63,80 @@ Entities:
       Restitution: 0
       RestitutionThreshold: 0.5
       Show: false
+  - Entity: 11325243841916185303
+    TagComponent:
+      Tag: Start Floor
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [5, 1, 1]
+    SpriteRendererComponent:
+      Color: [0.0340253711, 0.289215684, 0, 1]
+      TilingFactor: 1
+    Rigidbody2DComponent:
+      Type: Static
+      FixedRotation: true
+    BoxCollider2DComponent:
+      Offset: [0, 0]
+      Size: [0.5, 0.5]
+      Density: 1
+      Friction: 0.5
+      Restitution: 0
+      RestitutionThreshold: 0.5
+      Show: false
+  - Entity: 7684260973497798982
+    TagComponent:
+      Tag: Player
+    TransformComponent:
+      Translation: [0, 2, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    AudioSourceComponent:
+      AssetHandle: 11431965439572258343
+      Gain: 1
+      Pitch: 1
+      Loop: false
+    SpriteRendererComponent:
+      Color: [1, 0, 1, 1]
+      TilingFactor: 1
+    ScriptComponent:
+      ClassName: demo.Player
+      ScriptFields:
+        - Name: Speed
+          Type: Float
+          Data: 25
+    Rigidbody2DComponent:
+      Type: Dynamic
+      FixedRotation: false
+    BoxCollider2DComponent:
+      Offset: [0, 0]
+      Size: [0.5, 0.5]
+      Density: 1
+      Friction: 0.5
+      Restitution: 0
+      RestitutionThreshold: 0.5
+      Show: false
+  - Entity: 11677086725533177951
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      FixedAspectRatio: false
+      Primary: true
+      Camera:
+        Far: 1
+        Near: -1
+        FOV: 10
+        Type: 1
+    ScriptComponent:
+      ClassName: demo.Camera
+      ScriptFields:
+        - Name: FollowDistance
+          Type: Float
+          Data: 1
+        - Name: FollowEntity
+          Type: Entity
+          Data: 0

@@ -1,16 +1,16 @@
 #pragma once
-#include "GE/Core/Time/Time.h"
-#include "GE/Scene/Entity/ScriptableEntity.h"
+
+#include "GE/Asset/Assets/Scene/Scene.h"
 
 namespace GE
 {
 	class CameraController : public ScriptableEntity
 	{
 	public:
-		virtual void OnCreate() {}
+		virtual void OnCreate() override;
 
-		virtual void OnDestroy() {}
+		virtual void OnDestroy() override;
 
-		virtual void OnUpdate(Timestep timestep);
+		virtual void OnUpdate(Timestep timestep) override;
 	};
 }

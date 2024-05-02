@@ -2,16 +2,15 @@
 
 #include "../AssetManager/EditorAssetManager.h"
 
+#include "GE/Asset/Assets/Scene/Scene.h"
 #include "GE/Asset/Serializer/AssetSerializer.h"
 
 #include "GE/Core/Core.h"
 
 #include "GE/Project/Project.h"
-#include "GE/Scene/Scene.h"
 
 #include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
-
 
 namespace GE
 {
@@ -67,8 +66,8 @@ namespace GE
 				{
 					if (ImGui::MenuItem("Import as Asset"))
 					{
-						Ref<Asset> asset = Project::GetAssetManager<EditorAssetManager>()->GetAsset(relativePath);
-						if(asset)
+						AssetMetadata metadata(UUID(), relativePath);
+						if(Project::GetAssetManager<EditorAssetManager>()->AddAsset(metadata))
 							RefreshAssets();
 					}
 					ImGui::EndPopup();

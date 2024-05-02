@@ -8,7 +8,6 @@ namespace GE
 {
 	ProjectSerializer::ProjectSerializer(Ref<Project> project) : m_Project(project)
 	{
-
 	}
 
 	bool ProjectSerializer::Serialize(const std::filesystem::path& filePath)
@@ -19,8 +18,11 @@ namespace GE
 			return false;
 		}
 
-		const auto& spec = Project::GetActive()->GetSpec();
-		GE_CORE_TRACE("Serializing Project: '{0}'", spec.Name);
+		if (filePath.extension().string() != ".gproj")
+		{
+			GE_CORE_WARN("Could not save {0}\n\tFile extension is not .gproj.\n\tExtension: {1}", filePath.string(), filePath.extension().string());
+			return false;
+		}
 
 		YAML::Emitter out;
 		out << YAML::BeginMap; //
@@ -28,11 +30,11 @@ namespace GE
 		{
 			out << YAML::BeginMap; // Project
 
-			out << YAML::Key << "Name" << YAML::Value << spec.Name;
-			out << YAML::Key << "ProjectPath" << YAML::Value << spec.ProjectPath.string();
-			out << YAML::Key << "AssetPath" << YAML::Value << spec.AssetPath.string();
-			out << YAML::Key << "SceneHandle" << YAML::Value << spec.SceneHandle;
-			out << YAML::Key << "ScriptPath" << YAML::Value << spec.ScriptPath.string();
+			out << YAML::Key << "Name" << YAML::Value << m_Project->m_Config.Name;
+			out << YAML::Key << "ProjectPath" << YAML::Value << m_Project->m_Config.ProjectPath.string();
+			out << YAML::Key << "AssetPath" << YAML::Value << m_Project->m_Config.AssetPath.string();
+			out << YAML::Key << "SceneHandle" << YAML::Value << m_Project->m_Config.SceneHandle;
+			out << YAML::Key << "ScriptPath" << YAML::Value << m_Project->m_Config.ScriptPath.string();
 
 			out << YAML::EndMap;
 		}
@@ -40,6 +42,8 @@ namespace GE
 
 		std::ofstream fout(filePath);
 		fout << out.c_str();
+
+		GE_CORE_TRACE("Serializing Project\n\tFilePath: {0}\n\tName: {1}", filePath.string(), m_Project->m_Config.Name);
 
 		return true;
 	}
@@ -51,8 +55,12 @@ namespace GE
 			GE_CORE_WARN("Cannot Deserialize Project. File path is empty.");
 			return false;
 		}
-		
-		auto& spec = m_Project->GetSpec();
+
+		if (filePath.extension().string() != ".gproj")
+		{
+			GE_CORE_WARN("Could not load {0}\n\tFile extension is not .gproj.\n\tExtension: {1}", filePath.string(), filePath.extension().string());
+			return false;
+		}
 
 		YAML::Node data;
 		try
@@ -61,24 +69,24 @@ namespace GE
 		}
 		catch (YAML::ParserException e)
 		{
-			GE_CORE_ERROR("Failed to load project file '{0}'\n     {1}", filePath, e.what());
+			GE_CORE_ERROR("\n\tFailed to load project file. {0}\n\t{1}", filePath.string(), e.what());
 			return false;
 		}
 
 		YAML::Node projectData = data["Project"];
+		if (!projectData)
+			return false;
 
-		spec.Name = projectData["Name"].as<std::string>();
-		GE_CORE_TRACE("Deserializing Project: '{0}'", spec.Name);
-
+		m_Project->m_Config.Name = projectData["Name"].as<std::string>();
 		//projects/demo
-		spec.ProjectPath = projectData["ProjectPath"].as<std::string>(); // equivalent to filePath.parent_path()
+		m_Project->m_Config.ProjectPath = projectData["ProjectPath"].as<std::string>(); // equivalent to filePath.parent_path()
 		//assets
-		spec.AssetPath = projectData["AssetPath"].as<std::string>();
-		//
-		spec.SceneHandle = projectData["SceneHandle"].as<uint64_t>();
+		m_Project->m_Config.AssetPath = projectData["AssetPath"].as<std::string>();
+		//UUID. See AssetManager
+		m_Project->m_Config.SceneHandle = projectData["SceneHandle"].as<uint64_t>();
 		//scripts/Resources/Binaries/demo.dll
-		spec.ScriptPath = projectData["ScriptPath"].as<std::string>();
-
+		m_Project->m_Config.ScriptPath = projectData["ScriptPath"].as<std::string>();
+		GE_CORE_TRACE("Deserializing Project\n\tFilePath: {0}\n\tName: {1}", filePath.string(), m_Project->m_Config.Name);
 		return true;
 	}
 }
