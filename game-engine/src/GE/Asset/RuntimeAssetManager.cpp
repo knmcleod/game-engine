@@ -8,7 +8,7 @@ namespace GE
 {
 	RuntimeAssetManager::RuntimeAssetManager()
 	{
-		DeserializeAssets();
+		m_AssetPack = CreateRef<AssetPack>();
 	}
 
 	RuntimeAssetManager::~RuntimeAssetManager()
@@ -18,23 +18,30 @@ namespace GE
 
 	Ref<Asset> RuntimeAssetManager::GetAsset(UUID handle)
 	{
+		Ref<Asset> asset = nullptr;
 		if (!HandleExists(handle))
 		{
 			GE_CORE_ERROR("Runtime Asset Handle does not exist.");
-			return nullptr;
+			return asset;
 		}
 
 		if (AssetLoaded(handle))
 		{
-			return m_LoadedAssets.at(handle);
+			asset = m_LoadedAssets.at(handle);
 		}
-		Ref<Asset> asset = nullptr;
-
-		asset = m_AssetPack->GetAsset<Asset>(handle);
-		if(asset)
-			m_LoadedAssets[handle] = asset;
+		else
+		{
+			asset = m_AssetPack->GetAsset<Asset>(handle);
+			if (asset)
+				m_LoadedAssets.at(handle) = asset;
+		}
 
 		return asset;
+	}
+
+	const AssetMap& RuntimeAssetManager::GetLoadedAssets()
+	{
+		return m_LoadedAssets;
 	}
 
 	bool RuntimeAssetManager::HandleExists(UUID handle)
@@ -54,6 +61,17 @@ namespace GE
 		return m_AssetPack->AddAsset(m_LoadedAssets.at(handle));
 	}
 
+	bool RuntimeAssetManager::AddAsset(Ref<Asset> asset)
+	{
+		if (HandleExists(asset->GetHandle()) || AssetLoaded(asset->GetHandle()))
+		{
+			GE_WARN("Cannot add Asset to Loaded. Asset already in Loaded.");
+			return false;
+		}
+		m_LoadedAssets.at(asset->GetHandle()) = asset;
+		return true;
+	}
+
 	bool RuntimeAssetManager::RemoveAsset(UUID handle)
 	{
 		if (!HandleExists(handle) || !AssetLoaded(handle))
@@ -64,19 +82,11 @@ namespace GE
 
 	bool RuntimeAssetManager::SerializeAssets()
 	{
-		std::filesystem::path path = "assetPack.gap";
-		if (m_AssetPack && m_AssetPack->m_File.Path.empty())
-			m_AssetPack->m_File.Path = path;
-
 		return AssetSerializer::SerializePack(m_AssetPack);
 	}
 
 	bool RuntimeAssetManager::DeserializeAssets()
 	{
-		std::filesystem::path path = "assetPack.gap";
-		if (m_AssetPack && m_AssetPack->m_File.Path.empty())
-			m_AssetPack->m_File.Path = path;
-
 		return AssetSerializer::DeserializePack(m_AssetPack);
 	}
 

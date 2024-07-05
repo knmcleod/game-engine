@@ -2,55 +2,27 @@
 
 #include "SceneCamera.h"
 
+#include "GE/Rendering/Renderer/2D/Renderer2D.h"
+
 namespace GE
 {
-	SceneCamera::SceneCamera()
+	SceneCamera::SceneCamera(float fov, float nearClip, float farClip, float aspectRatio) : m_FOV(fov), m_NearClip(nearClip), m_FarClip(farClip), m_AspectRatio(aspectRatio)
 	{
-		UpdateProjection();
-	}
-
-	SceneCamera::SceneCamera(float fov, float nearClip, float farClip) : m_FOV(fov), m_NearClip(nearClip), m_FarClip(farClip)
-	{
-		UpdateProjection();
-	}
-
-	glm::quat SceneCamera::GetOrientation() const
-	{
-		return glm::quat(glm::vec3(-m_Pitch, -m_Yaw, 0.0f));
-	}
-
-	glm::vec3 SceneCamera::GetVertical() const
-	{
-		return glm::rotate(GetOrientation(), glm::vec3(0.0f, 1.0f, 0.0f));
-	}
-
-	glm::vec3 SceneCamera::GetHorizontal() const
-	{
-		return glm::rotate(GetOrientation(), glm::vec3(1.0f, 0.0f, 0.0f));
-	}
-
-	glm::vec3 SceneCamera::GetDepth() const
-	{
-		return glm::rotate(GetOrientation(), glm::vec3(0.0f, 0.0f, -1.0f));
+		UpdateView();
 	}
 
 	void SceneCamera::OnUpdate(Timestep ts)
 	{
-		UpdateProjection();
+		UpdateView();
 	}
 
 	void SceneCamera::OnEvent(Event& e)
 	{
 	}
 
-	glm::vec3 SceneCamera::CalculatePosition() const
-	{
-		return m_FocalPoint - GetDepth() * m_Distance;
-	}
-
 	void SceneCamera::UpdateProjection()
 	{
-		m_AspectRatio = m_ViewportWidth / m_ViewportHeight;
+		m_AspectRatio = (float)m_ViewportWidth / (float)m_ViewportHeight;
 
 		switch (p_ProjectionType)
 		{
@@ -74,9 +46,8 @@ namespace GE
 	
 	void SceneCamera::UpdateView()
 	{
-		m_Position = CalculatePosition();
-		glm::quat orientation = GetOrientation();
-		m_ViewMatrix = glm::translate(s_IdentityMatrix, m_Position) * glm::mat4(orientation);
-		m_ViewMatrix = glm::inverse(m_ViewMatrix);
+		UpdateProjection();
+
+		m_ViewProjection = p_Projection * glm::inverse(m_ViewTransform);
 	}
 }

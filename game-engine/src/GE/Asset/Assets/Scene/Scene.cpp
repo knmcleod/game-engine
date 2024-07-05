@@ -12,101 +12,6 @@
 
 namespace GE
 {
-#pragma region Entity
-	Entity::Entity(entt::entity entityID, Scene* scene) : m_EntityID(entityID), m_Scene(scene)
-	{
-		if (m_Scene == nullptr)
-			m_Scene = Project::GetAsset<Scene>(Project::GetConfig().SceneHandle).get();
-	}
-#pragma endregion
-
-#pragma region OnComponentAdded
-
-	template<typename T>
-	void Scene::OnComponentAdded(Entity entity)
-	{
-		static_assert(false);
-	}
-
-	template<>
-	void Scene::OnComponentAdded<IDComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<TagComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<TransformComponent>(Entity entity)
-	{
-
-	}
-
-	template<>
-	void Scene::OnComponentAdded<CameraComponent>(Entity entity)
-	{
-		GetComponent<CameraComponent>(entity).Camera.SetViewport(m_Config.ViewportWidth, m_Config.ViewportHeight);
-	}
-
-	template<>
-	void Scene::OnComponentAdded<AudioSourceComponent>(Entity entity)
-	{
-		
-	}
-
-	template<>
-	void Scene::OnComponentAdded<AudioListenerComponent>(Entity entity)
-	{
-
-	}
-
-	template<>
-	void Scene::OnComponentAdded<SpriteRendererComponent>(Entity entity)
-	{
-
-	}
-
-	template<>
-	void Scene::OnComponentAdded<CircleRendererComponent>(Entity entity)
-	{
-
-	}
-
-	template<>
-	void Scene::OnComponentAdded<TextRendererComponent>(Entity entity)
-	{
-
-	}
-
-	template<>
-	void Scene::OnComponentAdded<NativeScriptComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<ScriptComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<Rigidbody2DComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<BoxCollider2DComponent>(Entity entity)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<CircleCollider2DComponent>(Entity entity)
-	{
-	}
-
-#pragma endregion
-
 	template<typename Component>
 	static void CopyComponent(entt::registry& to, entt::registry& from, const std::unordered_map<UUID, entt::entity>& entityMap)
 	{
@@ -131,7 +36,187 @@ namespace GE
 		}
 	}
 
-	Ref<Scene> Scene::Copy()
+#pragma region Entity
+	Entity::Entity(entt::entity entityID, Scene* scene) : m_EntityID(entityID), m_Scene(scene)
+	{
+		if (m_Scene == nullptr)
+			m_Scene = Project::GetAsset<Scene>(Project::GetConfig().SceneHandle).get();
+	}
+	Entity::~Entity()
+	{
+		m_Scene = nullptr;
+		ClearEntityID();
+	}
+
+	uint64_t Entity::GetByteArray(void* buffer /*= nullptr*/, uint64_t bufferSize /*= 0*/)
+	{
+		/*
+		* Contains
+		* - Offset : Offset of UUID relative to Parent Scene
+		* - Size : Packed Data Size
+		* ~ Data : Packed Data
+		* * ~ Components : Components on Entity
+		* * * - ID : UUID
+		* * * - Tag : Name
+		* * * ~ Transform :
+		* * * * - Translation :
+		* * * * - Rotation :
+		* * * * - Scale :
+		* * * ~ Camera :
+		* * * * ~ SceneCamera :
+		* * * * * - Fov : float
+		* * * * * - NearClip : float
+		* * * * * - FarClip : float
+		* * * * - Primary : bool
+		* * * * - FixedAspectRatio : bool
+		* * * ~ AudioSource :
+		* * * * - Asset Handle :
+		* * * * - Loop : bool
+		* * * * - Pitch : float
+		* * * * - Gain : float
+		* * * ~ AudioListener :
+		* * * * -
+		* * * ~ SpriteRenderer :
+		* * * * - Asset Handle :
+		* * * * - Color : vec4
+		* * * * - TilingFactor : float
+		* * * ~ CircleRenderer :
+		* * * * - Asset Handle :
+		* * * * - Color : vec4
+		* * * * - TilingFactor : float
+		* * * * - Radius : float
+		* * * * - Thickness : float
+		* * * * - Fade : float
+		* * * ~ TextRenderer :
+		* * * * - Asset Handle :
+		* * * * - TextColor : vec4
+		* * * * - BGColor : vec4
+		* * * * - KerningOffset : float
+		* * * * - LineHeightOffset : float
+		* * * * - Text : std::string
+		* * * ~ Rigidbody2D :
+		* * * * - Type : uint16_t
+		* * * * - FixedRotation : bool
+		* * * ~ BoxCollider2D :
+		* * * * - Offset : vec2
+		* * * * - Size : vec2
+		* * * * - Density : float
+		* * * * - Friction : float
+		* * * * - Restitution : float
+		* * * * - RestitutionThreshold : float
+		* * * * - Show : bool
+		* * * ~ CircleCollider2D :
+		* * * * - Offset : vec2
+		* * * * - Radius : float
+		* * * * - Density : float
+		* * * * - Friction : float
+		* * * * - Restitution : float
+		* * * * - RestitutionThreshold : float
+		* * * * - Show : bool
+		* * * ~ NativeScript :
+		* * * * -
+		* * * ~ Script :
+		* * * * - ClassName : std::string
+		* * * * ~ Fields :
+		* * * * * - Name : std::string
+		* * * * * - Type : char*
+		* * * * * - Data :
+		*/
+
+		return 0;
+	}
+
+#pragma region OnComponentAdded
+
+	template<typename T>
+	void Entity::OnComponentAdded()
+	{
+		static_assert(false);
+	}
+
+	template<>
+	void Entity::OnComponentAdded<IDComponent>()
+	{
+	}
+
+	template<>
+	void Entity::OnComponentAdded<TagComponent>()
+	{
+	}
+
+	template<>
+	void Entity::OnComponentAdded<TransformComponent>()
+	{
+
+	}
+
+	template<>
+	void Entity::OnComponentAdded<CameraComponent>()
+	{
+		this->GetComponent<CameraComponent>().ActiveCamera.SetViewport(this->m_Scene->GetConfig().ViewportWidth, this->m_Scene->GetConfig().ViewportWidth);
+	}
+
+	template<>
+	void Entity::OnComponentAdded<AudioSourceComponent>()
+	{
+		
+	}
+
+	template<>
+	void Entity::OnComponentAdded<AudioListenerComponent>()
+	{
+
+	}
+
+	template<>
+	void Entity::OnComponentAdded<SpriteRendererComponent>()
+	{
+
+	}
+
+	template<>
+	void Entity::OnComponentAdded<CircleRendererComponent>()
+	{
+
+	}
+
+	template<>
+	void Entity::OnComponentAdded<TextRendererComponent>()
+	{
+
+	}
+
+	template<>
+	void Entity::OnComponentAdded<NativeScriptComponent>()
+	{
+	}
+
+	template<>
+	void Entity::OnComponentAdded<ScriptComponent>()
+	{
+	}
+
+	template<>
+	void Entity::OnComponentAdded<Rigidbody2DComponent>()
+	{
+	}
+
+	template<>
+	void Entity::OnComponentAdded<BoxCollider2DComponent>()
+	{
+	}
+
+	template<>
+	void Entity::OnComponentAdded<CircleCollider2DComponent>()
+	{
+	}
+#pragma endregion
+
+#pragma endregion
+
+#pragma region Scene
+
+	Ref<Asset> Scene::GetCopy()
 	{
 		Ref<Scene> newScene = CreateRef<Scene>();
 
@@ -156,7 +241,7 @@ namespace GE
 				UUID uuid = sceneRegistry.get<IDComponent>(e).ID;
 				const auto& name = sceneRegistry.get<TagComponent>(e).Tag;
 				Entity entity = newScene->CreateEntityWithUUID(uuid, name);
-				entityMap[uuid] = (entt::entity)entity;
+				entityMap.emplace(uuid, entity);
 			}
 
 			CopyComponent<TransformComponent>(newSceneRegistry, sceneRegistry, entityMap);
@@ -176,58 +261,120 @@ namespace GE
 		return newScene;
 	}
 
-	//Ref<Scene> Scene::Copy(Ref<Scene> scene)
-	//{
-	//	Ref<Scene> newScene = CreateRef<Scene>();
-	//	newScene->m_Config.ViewportWidth = scene->m_Config.ViewportWidth;
-	//	newScene->m_Config.ViewportHeight = scene->m_Config.ViewportHeight;
-	//	newScene->m_Config.State = scene->m_Config.State;
-	//	newScene->m_Config.Name = scene->m_Config.Name;
-	//	auto& sceneRegistry = scene->m_Registry;
-	//	auto& newSceneRegistry = newScene->m_Registry;
-	//	std::unordered_map<UUID, entt::entity> entityMap;
-	//	// Copy Components
-	//	{
-	//		GE_PROFILE_SCOPE("Scene - Copy : Components");
-	//		// Special Case - Find/Set ID & Tag
-	//		auto idView = sceneRegistry.view<IDComponent>();
-	//		for (auto e : idView)
-	//		{
-	//			UUID uuid = sceneRegistry.get<IDComponent>(e).ID;
-	//			const auto& name = sceneRegistry.get<TagComponent>(e).Tag;
-	//			Entity entity = newScene->CreateEntityWithUUID(uuid, name);
-	//			entityMap[uuid] = (entt::entity)entity;
-	//		}
-	//		CopyComponent<TransformComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//		CopyComponent<SpriteRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//		CopyComponent<CircleRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//		CopyComponent<TextRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//		CopyComponent<AudioSourceComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//		CopyComponent<AudioListenerComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//		CopyComponent<CameraComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//		CopyComponent<NativeScriptComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//		CopyComponent<ScriptComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//		CopyComponent<Rigidbody2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//		CopyComponent<BoxCollider2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//		CopyComponent<CircleCollider2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
-	//	}
-	//	return newScene;
-	//}
-
-	Scene::Scene()
+	uint64_t Scene::GetByteArray(void* buffer, uint64_t bufferSize)
 	{
+		//      [68 + ?] SceneInfo  : Value, corressponding Key handled in SerializePack
+		//          [8] Packed Size : Size of whole Scene
+		//			[60 + ?] Data
+		//				[2] Type
+		//				[8] Name
+		//				[8] Steps
+		//				[8] Asset Map Count
+		//				[26 + ?] Asset Map			// Size based on how many Assets are loaded
+		//				    [8] Asset Handle    : Key
+		//				    [18 + ?] AssetInfo	: Value
+		//				        [8] Packed Size
+		//						[10 + ?] Packed Data
+		//							[2] Type
+		//							[8] Name
+		//				[8] Entity Map Count
+		//				[16 + ?] Entity Map			// Size based on how many Entities are loaded
+		//				    [8] Handle			: Key
+		//				    [8 + ?] EntityInfo	: Value
+		//				        [8] Packed Size
+		//						[?]	Packed Data
+
+		uint64_t retSize = 0;
+
+		{
+			//sceneInfo.p_Size += Aligned(sizeof(uint64_t)); // sizeof(packedSize)
+			//sceneInfo.p_Size += Aligned(sizeof(uint64_t)) // sizeof(nameLength)
+			//	+ Aligned(scene->m_Config.Name.size() * sizeof(char)); //sizeof(name)
+
+			//// Assets
+			//{
+			//	sceneInfo.p_Size += Aligned(sizeof(uint64_t)); //sizeof(assetMapCount), how many assets to load
+			//	for (const auto& [uuid, sceneAsset] : Project::GetAssetManager()->GetLoadedAssets())
+			//	{
+			//		AssetInfo ai;
+			//		if (SerializeAsset(sceneAsset, ai)) // sets all AssetInfo using Loaded Asset
+			//		{
+			//			sceneInfo.p_Size += Aligned(sizeof(ai.p_Size)); // ai.Size set in SerializeAsset
+			//			sceneInfo.m_Assets.at(uuid) = ai;
+			//		}
+			//	}
+			//}
+
+			//sceneInfo.p_Data = new uint8_t[sceneInfo.p_Size];
+			//if (sceneInfo.p_Data)
+			//{
+			//	// Start at beginning of buffer
+			//	uint8_t* destination = sceneInfo.p_Data;
+			//	uint8_t* end = destination + sceneInfo.p_Size;
+
+			//	// Clear requiredSize from destination
+			//	memset(destination, 0, sceneInfo.p_Size);
+
+			//	// Fill out buffer/data
+
+			//	*(uint64_t*)destination = sceneInfo.p_Size;
+
+			//	uint64_t stringSize = scene->m_Config.Name.size();
+			//	*(uint64_t*)destination = stringSize;
+			//	destination += Aligned(sizeof(stringSize));
+			//	memcpy(destination, scene->m_Config.Name.c_str(), stringSize * sizeof(char));
+			//	destination += Aligned(scene->m_Config.Name.size() * sizeof(char));
+
+			//	// Assets
+			//	{
+			//		uint64_t assetCount = sceneInfo.m_Assets.size();
+			//		*(uint64_t*)destination = assetCount;
+			//		destination += Aligned(sizeof(assetCount));
+			//
+			//		for (const auto& [uuid, sceneAsset] : Project::GetAssetManager()->GetLoadedAssets())
+			//		{
+			//			uint64_t size = sceneAsset->GetByteArray(destination, end - destination);
+			//			if (size)
+			//			{
+			//				destination += size;
+			//			}
+			//		}
+			//
+			//	}
+			//
+			//	if (destination - sceneInfo.p_Data == sceneInfo.p_Size)
+			//	{
+			//		return true;
+			//	}
+			//	else
+			//	{
+			//		GE_CORE_ASSERT(false, "Buffer overflow.");
+			//		return false;
+			//	}
+			//}
+
+		}
+
+		return bufferSize;
+	}
+
+	Scene::Scene() : Asset()
+	{
+		p_Type = Asset::Type::Scene;
 	}
 
 	Scene::Scene(UUID handle, const std::string& name) : Asset(handle)
 	{
+		p_Type = Scene::Type::Scene;
 		m_Config.Name = name;
 	}
 
 	Scene::~Scene()
 	{
-		OnStop();
+		m_Registry.clear();
 	}
 
+#pragma region Entity Control
 	Entity Scene::GetPrimaryCameraEntity()
 	{
 		auto view = m_Registry.view<CameraComponent>();
@@ -305,16 +452,46 @@ namespace GE
 
 	void Scene::DestroyEntity(Entity entity)
 	{
-		m_Registry.destroy(entity.GetEntityID());
+		m_Registry.destroy(entity);
 		entity.ClearEntityID();
+	}
+
+#pragma endregion
+
+	void Scene::OnResizeViewport(uint32_t width, uint32_t height)
+	{
+		if (m_Config.ViewportWidth == width && m_Config.ViewportHeight == height)
+			return;
+
+		if (width == 0 || height == 0)
+		{
+			GE_CORE_WARN("Scene failed to resize viewport\n\tWidth: {0}\n\tHeight: {1}", width, height);
+			return;
+		}
+
+		m_Config.ViewportWidth = width;
+		m_Config.ViewportHeight = height;
+
+		// Resize non-fixed aspect ratio cameras
+		auto view = m_Registry.view<CameraComponent>();
+		for (auto entity : view)
+		{
+			auto& camera = view.get<CameraComponent>(entity);
+			if (!camera.FixedAspectRatio)
+			{
+				auto& c = camera.ActiveCamera;
+				const glm::vec2 vp = c.GetViewport();
+				if (vp.x != width && vp.y != height)
+					c.SetViewport(width, height);
+			}
+		}
 	}
 
 	void Scene::OnStart(State state, uint32_t viewportWidth, uint32_t viewportHeight)
 	{
-		m_Config.State = state;
 		OnResizeViewport(viewportWidth, viewportHeight);
 
-		switch (m_Config.State)
+		switch (state)
 		{
 		case State::Run:
 			OnRuntimeStart();
@@ -363,6 +540,8 @@ namespace GE
 
 	void Scene::OnRuntimeStart()
 	{
+		m_Config.State = State::Run;
+
 		InitializePhysics2D();
 		InitializeScripting();
 	}
@@ -392,7 +571,7 @@ namespace GE
 		UpdatePhysics2D(timestep);
 		UpdateScripting(timestep);
 
-		if (&camera)
+		if (camera)
 		{
 			camera->OnUpdate(timestep);
 			Render(camera);
@@ -403,20 +582,12 @@ namespace GE
 		}
 	}
 
-	/*
-	*	OnStop shouldn't be called before
-	* 
-	*/
 	void Scene::OnPauseStart()
 	{
 		m_Config.State = State::Pause;
 
 	}
 
-	/*
-	*	Physics2D & Scripting must already be initialized
-	* 
-	*/
 	void Scene::OnPauseUpdate(Timestep timestep, Camera* camera)
 	{	
 		if (m_Config.StepFrames > 0)
@@ -426,7 +597,7 @@ namespace GE
 			m_Config.StepFrames--;
 		}
 
-		if (&camera)
+		if (camera)
 		{
 			camera->OnUpdate(timestep);
 			Render(camera);
@@ -444,41 +615,20 @@ namespace GE
 
 	void Scene::OnEditorUpdate(Timestep timestep, Camera* camera)
 	{
-		if (&camera)
+		if (camera)
 		{
 			camera->OnUpdate(timestep);
 			Render(camera);
 		}
-	}
-
-	void Scene::OnResizeViewport(uint32_t width, uint32_t height)
-	{
-		if ((m_Config.ViewportWidth == width && m_Config.ViewportHeight == height)
-			|| (width == 0 || height == 0))
+		else
 		{
-			GE_CORE_WARN("Scene failed to resize viewport\n\tWidth: {0}\n\tHeight: {1}", (char*)width, (char*)height);
-			return;
-		}
-
-		m_Config.ViewportWidth = width;
-		m_Config.ViewportHeight = height;
-
-		// Resize non-fixed aspect ratio cameras
-		auto view = m_Registry.view<CameraComponent>();
-		for (auto entity : view)
-		{
-			auto& camera = view.get<CameraComponent>(entity);
-			if (!camera.FixedAspectRatio)
-			{
-				camera.Camera.SetViewport(width, height);
-			}
+			Render();
 		}
 	}
 
 	void Scene::Render()
 	{
 		Camera* camera = nullptr;
-		glm::mat4* cameraTransform;
 
 		// Find Primary Camera
 		auto view = m_Registry.view<TransformComponent, CameraComponent>();
@@ -487,8 +637,8 @@ namespace GE
 			auto [tc, cc] = view.get<TransformComponent, CameraComponent>(entity);
 			if (cc.Primary)
 			{
-				camera = &cc.Camera;
-				cameraTransform = &tc.GetTransform();
+				camera = &cc.ActiveCamera;
+				camera->SetViewMatrix(tc.GetTransform());
 				break;
 			}
 		}
@@ -503,8 +653,7 @@ namespace GE
 			GE_PROFILE_SCOPE("Scene -- Render");
 
 			glm::vec2 viewport = camera->GetViewport();
-			if(m_Config.ViewportWidth != viewport.x && m_Config.ViewportHeight != viewport.y)
-				OnResizeViewport((uint32_t)viewport.x, (uint32_t)viewport.y);
+			OnResizeViewport((uint32_t)viewport.x, (uint32_t)viewport.y);
 
 			Renderer2D::Start(*camera);
 
@@ -542,12 +691,13 @@ namespace GE
 				auto [tc, bc2D] = bcView.get<TransformComponent, BoxCollider2DComponent>(entity);
 				if (bc2D.Show)
 				{
-					glm::vec3 translation = tc.Translation + glm::vec3(bc2D.Offset, 0.0025f);
+					/*glm::vec3 translation = tc.Translation + glm::vec3(bc2D.Offset, 0.0025f);
 					glm::vec3 scale = tc.Scale * glm::vec3(bc2D.Size * 2.0f, 1.0f);
-					glm::mat4 transform = glm::translate(Renderer2D::s_RendererData.IdentityMat4, translation)
-						* glm::rotate(Renderer2D::s_RendererData.IdentityMat4, glm::radians(tc.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f))
-						* glm::scale(Renderer2D::s_RendererData.IdentityMat4, scale);
-					Renderer2D::DrawRectangle(transform, glm::vec4(0, 1, 0, 1), (int)entity);
+					glm::mat4 transform = glm::translate(Renderer2D::GetIdentityMat4(), translation)
+						* glm::rotate(Renderer2D::GetIdentityMat4(), glm::radians(tc.Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f))
+						* glm::scale(Renderer2D::GetIdentityMat4(), scale);*/
+					
+					Renderer2D::DrawRectangle(tc.GetTransform(glm::vec3(bc2D.Offset, 0.0025f), glm::vec3(bc2D.Size * 2.0f, 1.0f)), glm::vec4(0, 1, 0, 1), (int)entity);
 				}
 			}
 
@@ -558,11 +708,11 @@ namespace GE
 				auto [tc, cc2D] = ccView.get<TransformComponent, CircleCollider2DComponent>(entity);
 				if (cc2D.Show)
 				{
-					glm::vec3 translation = tc.Translation + glm::vec3(cc2D.Offset, 0.0025f);
-					glm::vec3 scale = tc.Scale * glm::vec3(glm::vec2(cc2D.Radius * 2.0f), 1.0f);
-					glm::mat4 transform = glm::translate(Renderer2D::s_RendererData.IdentityMat4, translation)
-						* glm::scale(Renderer2D::s_RendererData.IdentityMat4, scale);
-					Renderer2D::DrawCircle(transform, glm::vec4(0, 1, 0, 1), cc2D.Radius, 0.5f, 0.4f, (int)entity);
+					/*glm::vec3 translation = tc.Translation + glm::vec3(cc2D.Offset, 0.0025f);
+					glm::vec3 scale = tc.Scale * glm::vec3(glm::vec2(cc2D.Radius) * 4.0f, 1.0f);
+					glm::mat4 transform = glm::translate(Renderer2D::GetIdentityMat4(), translation)
+						* glm::scale(Renderer2D::GetIdentityMat4(), scale);*/
+					Renderer2D::DrawCircle(tc.GetTransform(glm::vec3(cc2D.Offset, 0.0025f), glm::vec3(glm::vec2(cc2D.Radius) * 4.0f, 1.0f)), glm::vec4(0, 1, 0, 1), cc2D.Radius, 0.5f, 0.4f, (int)entity);
 				}
 			}
 
@@ -579,14 +729,14 @@ namespace GE
 		auto view = m_Registry.view<Rigidbody2DComponent>();
 		for (auto e : view)
 		{
-			Entity entity = { e };
-			auto& transformComponent = GetComponent<TransformComponent>(entity);
+			Entity entity = { e, this };
+			auto& tc = GetComponent<TransformComponent>(entity);
 			auto& rb2D = GetComponent<Rigidbody2DComponent>(entity);
 
 			b2BodyDef bodyDef;
 			bodyDef.type = Physics::Rigidbody2DTypeToBox2DBody(rb2D.Type);
-			bodyDef.position.Set(transformComponent.Translation.x, transformComponent.Translation.y);
-			bodyDef.angle = transformComponent.Rotation.z;
+			bodyDef.position.Set(tc.Translation.x, tc.Translation.y);
+			bodyDef.angle = tc.Rotation.z;
 
 			b2Body* body = m_PhysicsWorld->CreateBody(&bodyDef);
 			body->SetFixedRotation(rb2D.FixedRotation);
@@ -601,8 +751,8 @@ namespace GE
 					auto& bc2D = GetComponent<BoxCollider2DComponent>(entity);
 
 					b2PolygonShape polygonShape;
-					polygonShape.SetAsBox(bc2D.Size.x * transformComponent.Scale.x,
-						bc2D.Size.y * transformComponent.Scale.y);
+					polygonShape.SetAsBox(bc2D.Size.x * tc.Scale.x,
+						bc2D.Size.y * tc.Scale.y);
 
 					b2FixtureDef fixtureDef;
 					fixtureDef.shape = &polygonShape;
@@ -621,7 +771,6 @@ namespace GE
 				if (HasComponent<CircleCollider2DComponent>(entity))
 				{
 					auto& cc2D = GetComponent<CircleCollider2DComponent>(entity);
-					auto& tc = GetComponent<TransformComponent>(entity);
 
 					b2CircleShape circleShape;
 					circleShape.m_p.Set(cc2D.Offset.x, cc2D.Offset.y);
@@ -652,7 +801,7 @@ namespace GE
 			auto view = m_Registry.view<Rigidbody2DComponent>();
 			for (auto e : view)
 			{
-				Entity entity = { e };
+				Entity entity = { e, this };
 				auto& transformComponent = GetComponent<TransformComponent>(entity);
 				auto& rb2D = GetComponent<Rigidbody2DComponent>(entity);
 
@@ -693,7 +842,7 @@ namespace GE
 
 		m_Registry.view<ScriptComponent>().each([=](auto entity, auto& sc)
 			{
-				Entity e = { entity };
+				Entity e = { entity, this };
 				Scripting::OnCreateScript(e);
 			});
 	}
@@ -708,7 +857,7 @@ namespace GE
 
 		m_Registry.view<ScriptComponent>().each([=](auto entity, auto& sc)
 			{
-				Entity e = { entity };
+				Entity e = { entity, this };
 				Scripting::OnUpdateScript(e, timestep);
 			});
 	}
@@ -720,4 +869,5 @@ namespace GE
 	}
 #pragma endregion
 
+#pragma endregion
 }

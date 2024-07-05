@@ -4,21 +4,25 @@
 
 namespace GE
 {
-	AssetRegistry::AssetRegistry()
+	AssetRegistry::AssetRegistry(const std::filesystem::path& filePath)
 	{
+		m_FilePath = filePath;
 		m_AssetRegistry = std::map<UUID, AssetMetadata>();
 	}
 
-	AssetMetadata& AssetRegistry::GetAssetMetadata(UUID handle)
+	void AssetRegistry::SetFilePath(const std::filesystem::path& filePath)
+	{
+		if (!filePath.empty() && filePath != m_FilePath)
+			m_FilePath = filePath;
+	}
+
+	const AssetMetadata& AssetRegistry::GetAssetMetadata(UUID handle)
 	{
 		return m_AssetRegistry.find(handle)->second;
 	}
 
 	bool AssetRegistry::AssetExists(UUID handle)
 	{
-		if (m_AssetRegistry.find(handle) == m_AssetRegistry.end())
-			GE_CORE_WARN("Asset Handle does not exist in Registry.");
-
 		return m_AssetRegistry.find(handle) != m_AssetRegistry.end();
 	}
 
@@ -26,13 +30,13 @@ namespace GE
 	{
 		if (metadata.Handle == 0)
 		{
-			GE_CORE_TRACE("Asset Metadata does not exist.");
+			GE_CORE_WARN("Asset Metadata does not exist.");
 			return false;
 		}
 
-		if (m_AssetRegistry.find(metadata.Handle) != m_AssetRegistry.end())
+		if (AssetExists(metadata.Handle))
 		{
-			GE_CORE_TRACE("Asset already exists in Registry.");
+			GE_CORE_WARN("Asset already exists in Registry.");
 			return false;
 		}
 		m_AssetRegistry.emplace(metadata.Handle, metadata);

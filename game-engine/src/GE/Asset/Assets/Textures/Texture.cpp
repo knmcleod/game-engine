@@ -2,15 +2,15 @@
 
 #include "Texture.h"
 
-#include "GE/Rendering/Renderer/Renderer.h"
+#include "GE/Rendering/RenderAPI.h"
 
 #include "Platform/OpenGL/Assets/Texture/OpenGLTexture.h"
 
 namespace GE
 {
-	Ref<Texture2D> Texture2D::Create(const TextureConfiguration& textureConfig, Buffer data /*= Buffer()*/)
+	Ref<Texture2D> Texture2D::Create(const Config& textureConfig, Buffer data /*= Buffer()*/)
 	{
-		switch (Renderer::GetAPI())
+		switch (RenderAPI::GetAPI())
 		{
 		case RenderAPI::API::None:
 			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");

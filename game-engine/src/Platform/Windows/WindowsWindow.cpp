@@ -2,7 +2,6 @@
 
 #include "WindowsWindow.h"
 
-
 #include "GE/Core/Events/ApplicationEvent.h"
 #include "GE/Core/Events/KeyEvent.h"
 #include "GE/Core/Events/MouseEvent.h"
@@ -19,7 +18,7 @@ namespace GE
 	static bool s_GLFWInitialized = false;
 	static int s_GLFWWindowCount = 0;
 
-	WindowsWindow::WindowsWindow(const WindowProps& props)
+	WindowsWindow::WindowsWindow(const Config& props)
 	{
 		Init(props);
 	}
@@ -29,15 +28,15 @@ namespace GE
 		Shutdown();
 	}
 
-	void WindowsWindow::Init(const WindowProps& props)
+	void WindowsWindow::Init(const Config& config)
 	{
 		GE_PROFILE_FUNCTION();
 
-		m_Data.Title = props.Title;
-		m_Data.Width = props.Width;
-		m_Data.Height = props.Height;
+		m_Config.Name = config.Name;
+		m_Config.Width = config.Width;
+		m_Config.Height = config.Height;
 
-		GE_CORE_INFO("Creating window {0} ({1}, {2})", props.Title, props.Width, props.Height);
+		GE_CORE_TRACE("Creating window {0}\n\tWidth, Height : ({1}, {2})", m_Config.Name, m_Config.Width, m_Config.Height);
 
 		if (!s_GLFWInitialized)
 		{
@@ -47,13 +46,18 @@ namespace GE
 			s_GLFWInitialized = true;
 		}
 
-		m_Window = glfwCreateWindow((int)props.Width, (int)props.Height, m_Data.Title.c_str(), nullptr, nullptr);
+		m_Window = glfwCreateWindow((int)m_Config.Width, (int)m_Config.Height, m_Config.Name.c_str(), nullptr, nullptr);
 		s_GLFWWindowCount++;
+
+		glfwGetWindowSize(m_Window, (int*)&m_Config.Width, (int*)&m_Config.Height);
+		glfwGetWindowPos(m_Window, &m_Config.PositionX, &m_Config.PositionY);
+
+		m_Monitor = glfwGetPrimaryMonitor();
 
 		m_Context = new OpenGLContext(m_Window);
 		m_Context->Init();
 
-		glfwSetWindowUserPointer(m_Window, &m_Data);
+		glfwSetWindowUserPointer(m_Window, &m_Config);
 
 		SetVSync(true);
 
@@ -61,7 +65,7 @@ namespace GE
 		glfwSetWindowSizeCallback(m_Window,
 			[](GLFWwindow* window, int width, int height)
 			{
-				WindowData& data =  *(WindowData*)glfwGetWindowUserPointer(window);
+				Config& data =  *(Config*)glfwGetWindowUserPointer(window);
 				data.Width = width;
 				data.Height = height;
 
@@ -73,7 +77,7 @@ namespace GE
 		glfwSetWindowCloseCallback(m_Window, 
 			[](GLFWwindow* window)
 			{
-				WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+				Config& data = *(Config*)glfwGetWindowUserPointer(window);
 				WindowCloseEvent e;
 				data.EventCallback(e);
 			}
@@ -82,7 +86,7 @@ namespace GE
 		glfwSetKeyCallback(m_Window,
 			[](GLFWwindow* window, int key, int scancode, int action, int mods)
 			{
-				WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+				Config& data = *(Config*)glfwGetWindowUserPointer(window);
 				switch (action)
 				{
 					case GLFW_PRESS:
@@ -111,7 +115,7 @@ namespace GE
 		glfwSetCharCallback(m_Window,
 			[](GLFWwindow* window, unsigned int keycode)
 			{
-				WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+				Config& data = *(Config*)glfwGetWindowUserPointer(window);
 				KeyTypedEvent e(keycode);
 				data.EventCallback(e);
 			}
@@ -120,7 +124,7 @@ namespace GE
 		glfwSetMouseButtonCallback(m_Window,
 			[](GLFWwindow* window, int button, int action, int mods)
 			{
-				WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+				Config& data = *(Config*)glfwGetWindowUserPointer(window);
 				switch (action)
 				{
 					case GLFW_PRESS:
@@ -142,7 +146,7 @@ namespace GE
 		glfwSetScrollCallback(m_Window,
 			[](GLFWwindow* window, double xOffset, double yOffset)
 			{
-				WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+				Config& data = *(Config*)glfwGetWindowUserPointer(window);
 				MouseScrolledEvent e((float)xOffset, (float)yOffset);
 				data.EventCallback(e);
 			}
@@ -151,7 +155,7 @@ namespace GE
 		glfwSetCursorPosCallback(m_Window,
 			[](GLFWwindow* window, double xPos, double yPos)
 			{
-				WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
+				Config& data = *(Config*)glfwGetWindowUserPointer(window);
 				MouseMovedEvent e((float)xPos, (float)yPos);
 				data.EventCallback(e);
 			}
@@ -175,7 +179,6 @@ namespace GE
 		GE_PROFILE_FUNCTION();
 
 		glfwPollEvents();
-
 		m_Context->SwapBuffers();
 	}
 
@@ -186,11 +189,40 @@ namespace GE
 		else
 			glfwSwapInterval(0);
 
-		m_Data.VSync = enabled;
+		m_Config.VSync = enabled;
 	}
 
 	bool WindowsWindow::IsVSync() const
 	{
-		return m_Data.VSync;
+		return m_Config.VSync;
+	}
+
+	void WindowsWindow::SetFullscreen(bool fs) const
+	{
+		if (IsFullscreen() == fs)
+			return;
+
+		if (fs)
+		{
+			// backup window position and window size
+			glfwGetWindowPos(m_Window, (int*)&m_Config.PositionX, (int*)&m_Config.PositionY);
+			glfwGetWindowSize(m_Window, (int*)&m_Config.Width, (int*)&m_Config.Height);
+
+			// get resolution of monitor
+			const GLFWvidmode* mode = glfwGetVideoMode(m_Monitor);
+
+			// switch to full screen
+			glfwSetWindowMonitor(m_Window, m_Monitor, 0, 0, mode->width, mode->height, 0);
+		}
+		else
+		{
+			// restore last window size and position
+			glfwSetWindowMonitor(m_Window, nullptr, m_Config.PositionX, m_Config.PositionY, m_Config.Width, m_Config.Height, 0);
+		}
+	}
+
+	bool WindowsWindow::IsFullscreen() const
+	{
+		return glfwGetWindowMonitor(m_Window) != nullptr;
 	}
 }

@@ -4,40 +4,54 @@
 
 namespace GE
 {
-	struct WindowProps
-	{
-		std::string Title;
-		uint32_t Width;
-		uint32_t Height;
-
-		WindowProps(const std::string& title = "Window",
-			uint32_t width = 1280,
-			uint32_t height = 720)
-			: Title(title), Width(width), Height(height)
-		{
-		}
-	};
-
 	//	Interface representing a desktop system based Window
 	class Window
 	{
 	public:
 		using EventCallbackFn = std::function<void(Event&)>;
 
+		/*
+		* 
+		*/
+		struct Config
+		{
+			std::string Name = std::string("New Window");
+
+			unsigned int Width = 1280, Height = 720;
+			int PositionX = 0, PositionY = 0;
+
+			bool VSync = true;
+
+			EventCallbackFn EventCallback = nullptr;
+
+			Config() = default;
+			Config(const std::string& name, unsigned int width, unsigned int height,
+				bool vSync, EventCallbackFn callback) 
+				: Name(name), Width(width), Height(height), VSync(vSync), EventCallback(callback)
+			{
+
+			}
+		};
+
+		static Scope<Window> Create(const Config& config);
+
 		virtual ~Window() {}
-
-		virtual void OnUpdate() = 0;
-
-		virtual unsigned int GetWidth() const = 0;
-		virtual unsigned int GetHeight() const = 0;
 
 		virtual void* GetNativeWindow() const = 0;
 
 		//Window attributes
+		virtual float GetTime() const = 0;
+		virtual unsigned int GetWidth() const = 0;
+		virtual unsigned int GetHeight() const = 0;
+
 		virtual void SetEventCallback(const EventCallbackFn& callback) = 0;
 		virtual void SetVSync(bool enabled) = 0;
 		virtual bool IsVSync() const = 0;
+		virtual void SetFullscreen(bool fs) const = 0;
+		virtual bool IsFullscreen() const = 0;
 
-		static Scope<Window> Create(const WindowProps& props = WindowProps());
+		virtual void Init(const Config& config) = 0;
+		virtual void Shutdown() = 0;
+		virtual void OnUpdate() = 0;
 	};
 }

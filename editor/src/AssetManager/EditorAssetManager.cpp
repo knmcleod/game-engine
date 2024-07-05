@@ -4,8 +4,12 @@
 
 namespace GE
 {
+	EditorAssetManager::EditorAssetManager()
+	{
+		m_AssetRegistry = CreateRef<AssetRegistry>();
+	}
 
-	AssetMetadata& EditorAssetManager::GetMetadata(UUID handle)
+	const AssetMetadata& EditorAssetManager::GetMetadata(UUID handle)
 	{
 		static AssetMetadata s_NullMetadata;
 		if (!HandleExists(handle))
@@ -28,22 +32,15 @@ namespace GE
 			}
 			else
 			{
-				AssetMetadata& metadata = GetMetadata(handle);
-				metadata.Status = AssetStatus::Loading;
-				asset = AssetSerializer::DeserializeAsset(metadata);
-				if (asset)
-				{
-					metadata.Status = AssetStatus::Ready;
-					m_LoadedAssets[metadata.Handle] = asset;
-					return asset;
-				}
-				else
-				{
-					metadata.Status = AssetStatus::Invalid;
-				}
+				return LoadAsset(handle);
 			}
 		}
 		return asset;
+	}
+
+	const AssetMap& EditorAssetManager::GetLoadedAssets()
+	{
+		return m_LoadedAssets;
 	}
 
 	Ref<Asset> EditorAssetManager::GetAsset(const std::filesystem::path& filePath)
@@ -75,71 +72,77 @@ namespace GE
 		return AddAsset(metadata);
 	}
 
+	bool EditorAssetManager::AddAsset(Ref<Asset> asset)
+	{
+		if (AssetLoaded(asset->GetHandle()))
+		{
+			GE_WARN("Cannot add Asset to Loaded. Asset already in Loaded.");
+			return false;
+		}
+		m_LoadedAssets.emplace(asset->GetHandle(), asset);
+		return true;
+	}
+
 	bool EditorAssetManager::AddAsset(const AssetMetadata& metadata)
 	{
-		if(HandleExists(metadata.Handle))
-			return false;
-
 		return m_AssetRegistry->AddAsset(metadata);
 	}
 
 	bool EditorAssetManager::RemoveAsset(UUID handle)
 	{
-		if (HandleExists(handle))
-		{
-			if (AssetLoaded(handle))
-				m_LoadedAssets.erase(handle);
+		if (AssetLoaded(handle))
+			m_LoadedAssets.erase(handle);
 
-			m_AssetRegistry->RemoveAsset(handle);
-			return true;
+		if (!HandleExists(handle))
+			return false;
+
+		return m_AssetRegistry->RemoveAsset(handle);
+	}
+
+	Ref<Asset> EditorAssetManager::LoadAsset(const AssetMetadata& metadata)
+	{
+		Ref<Asset> asset = nullptr;
+		if (asset = AssetSerializer::DeserializeAsset(m_AssetRegistry->GetAssetMetadata(metadata.Handle)))
+		{
+			AddAsset(asset);
 		}
-		return false;
+		return asset;
 	}
 
 	bool EditorAssetManager::SerializeAssets()
 	{
-		std::filesystem::path path = "assetRegistry.gar";
-		if (m_AssetRegistry && m_AssetRegistry->m_FilePath != path)
-			path = m_AssetRegistry->m_FilePath;
-		return SerializeAssets(path);
-	}
-
-	bool EditorAssetManager::DeserializeAssets()
-	{
-		std::filesystem::path path = "assetRegistry.gar";
-		if (m_AssetRegistry && m_AssetRegistry->m_FilePath != path)
-			path = m_AssetRegistry->m_FilePath;
-		return DeserializeAssets(path);
-	}
-
-	bool EditorAssetManager::SerializeAssets(const std::filesystem::path& filePath)
-	{
-		if (m_AssetRegistry->m_FilePath != filePath)
-			m_AssetRegistry->m_FilePath = filePath;
-
 		for (const auto& [handle, metadata] : m_AssetRegistry->GetRegistry())
 		{
 			if (AssetLoaded(handle))
-				AssetSerializer::SerializeAsset(metadata);
+				AssetSerializer::SerializeAsset(m_LoadedAssets.at(handle), metadata);
 		}
 
 		return AssetSerializer::SerializeRegistry(m_AssetRegistry);
 	}
 
-	bool EditorAssetManager::DeserializeAssets(const std::filesystem::path& filePath)
+	bool EditorAssetManager::DeserializeAssets()
 	{
-		m_AssetRegistry = CreateRef<AssetRegistry>();
-		if (!AssetSerializer::DeserializeRegistry(filePath, m_AssetRegistry))
+		if (!AssetSerializer::DeserializeRegistry(m_AssetRegistry))
 			return false;
 
 		for (const auto& [handle, metadata] : m_AssetRegistry->GetRegistry())
 		{
-			if (Ref<Asset> asset = AssetSerializer::DeserializeAsset(metadata))
-			{
-				m_LoadedAssets.emplace(handle, asset);
-			}
+			LoadAsset(metadata);
 		}
 		return true;
+	}
+
+	bool EditorAssetManager::SerializeAssets(const std::filesystem::path& filePath)
+	{
+		m_AssetRegistry->SetFilePath(filePath);
+		return SerializeAssets();
+
+	}
+
+	bool EditorAssetManager::DeserializeAssets(const std::filesystem::path& filePath)
+	{
+		m_AssetRegistry->SetFilePath(filePath);
+		return DeserializeAssets();
 	}
 
 }

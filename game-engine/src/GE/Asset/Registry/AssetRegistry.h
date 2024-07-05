@@ -8,13 +8,16 @@ namespace GE
 	{
 		friend class AssetSerializer;
 		friend class AssetManager;
-		friend class EditorAssetManager;
 	public:
-		AssetRegistry();
-		const std::map<UUID, AssetMetadata>& GetRegistry() { return m_AssetRegistry; }
+		AssetRegistry(const std::filesystem::path& filePath = "assetRegistry.gar");
+		
+		inline const std::map<UUID, AssetMetadata>& GetRegistry() { return m_AssetRegistry; }
+		inline const std::filesystem::path& GetFilePath() { return m_FilePath; }
+		void SetFilePath(const std::filesystem::path& filePath);
 
-		AssetMetadata& GetAssetMetadata(UUID handle);
+		const AssetMetadata& GetAssetMetadata(UUID handle);
 		bool AssetExists(UUID handle);
+
 		bool AddAsset(const AssetMetadata& metadata);
 		bool RemoveAsset(UUID handle);
 

@@ -11,32 +11,33 @@ namespace GE
 		std::vector<uint32_t> m_ColorAttachmentsID;
 		uint32_t m_DepthAttachmentID = 0;
 
-		FramebufferSpecification m_Spec;
-		std::vector<FramebufferTextureSpecification> m_ColorAttachmentSpecs;
-		FramebufferTextureSpecification m_DepthAttachmentSpec;
+		Config p_Config;
+		std::vector<TextureSpecification> m_ColorAttachmentSpecs;
+		TextureSpecification m_DepthAttachmentSpec;
 
 	public:
-		OpenGLFramebuffer(const FramebufferSpecification& spec);
-		virtual ~OpenGLFramebuffer();
+		OpenGLFramebuffer(const Config& spec);
+		~OpenGLFramebuffer();
 
-		virtual inline const FramebufferSpecification& GetSpecification() override { return m_Spec; }
-		virtual inline void SetSpecification(const FramebufferSpecification& spec) override { m_Spec = spec; }
+		inline const Config& GetConfig() override { return p_Config; }
+		inline const uint32_t& GetWidth() override { return p_Config.Width; }
+		inline const uint32_t& GetHeight() override { return p_Config.Height; }
 
-		virtual inline const uint32_t GetColorAttachmentID(uint32_t index = 0) override
+		inline const uint32_t GetColorAttachmentID(uint32_t index = 0) override
 		{ 
 			GE_CORE_ASSERT(index < m_ColorAttachmentsID.size(), "Framebuffer Color Attachment index out of range."); 
 			return m_ColorAttachmentsID[index];
 		}
 
-		virtual void Bind() override;
-		virtual void Unbind() override;
+		void Bind() override;
+		void Unbind() override;
 
-		virtual void Resize(uint32_t width, uint32_t height) override;
-		virtual void Clean() override;
-		virtual void Invalidate() override;
-		virtual void ClearAttachment(uint32_t attachmentIndex, int value) override;
+		void Resize(uint32_t width, uint32_t height) override;
+		void Clean() override;
+		void Invalidate() override;
+		void ClearAttachment(uint32_t attachmentIndex, int value) override;
 
-		virtual int ReadPixel(uint32_t attachmentIndex, int x, int y) override;
+		int ReadPixel(uint32_t attachmentIndex, int x, int y) override;
 
 	};
 }

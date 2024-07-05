@@ -22,7 +22,7 @@ namespace GE
 			UUID Handle = 0;
 
 			uint32_t Parent = (uint32_t)-1;
-			// childs filePath & index relative to parent
+			// <childs filePath, index relative to parent>
 			std::map<std::filesystem::path, uint32_t> Children;
 
 			TreeNode(const std::filesystem::path& filePath, UUID handle) : Path(filePath), Handle(handle)

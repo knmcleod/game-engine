@@ -8,25 +8,35 @@
 
 namespace GE
 {
+    AssetPack::AssetPack(const std::filesystem::path& filePath /*= "assetPack.gap"*/)
+    {
+        m_File.Path = filePath;
+    }
+
+    AssetPack::~AssetPack()
+    {
+        ClearAllFileData();
+    }
+
     template<typename T>
     Ref<T> AssetPack::GetAsset(UUID handle)
     {
-        const AssetPackFile::AssetInfo* assetInfo = nullptr;
+        const AssetInfo* assetInfo = nullptr;
 
         bool found = false;
-		UUID sceneHandle = Project::GetActive()->GetConfig().SceneHandle;
+		UUID sceneHandle = Project::GetConfig().SceneHandle;
 
         if (sceneHandle)
         {
             auto it = m_File.Index.Scenes.find(sceneHandle);
             if (it != m_File.Index.Scenes.end())
             {
-                const AssetPackFile::SceneInfo& sceneInfo = m_File.Index.Scenes.at(sceneHandle);
-                auto assetIt = sceneInfo.Assets.find(handle);
-                if (assetIt != sceneInfo.Assets.end())
+                const SceneInfo& sceneInfo = m_File.Index.Scenes.at(sceneHandle);
+                auto assetIt = sceneInfo.m_Assets.find(handle);
+                if (assetIt != sceneInfo.m_Assets.end())
                 {
                     found = true;
-                    assetInfo = &assetIt-second;
+                    assetInfo = &assetIt->second;
                 }
             }
         }
@@ -35,10 +45,10 @@ namespace GE
         {
             for (const auto& [sceneHandle, sceneInfo] : m_File.Index.Scenes)
             {
-                auto assetIt = sceneInfo.Assets.find(handle);
-                if (assetIt != sceneInfo.Assets.end())
+                auto assetIt = sceneInfo.m_Assets.find(handle);
+                if (assetIt != sceneInfo.m_Assets.end())
                 {
-                    assetInfo = &assetIt-second;
+                    assetInfo = &assetIt->second;
                     break;
                 }
             }
@@ -47,16 +57,8 @@ namespace GE
                 return nullptr;
         }
 
-		Ref<T> asset = AssetSerializer::DeserializeAsset(assetInfo);
-        if (!asset)
-            return nullptr;
-
-        return asset;
-    }
-
-    uint64_t AssetPack::GetBuildVersion() const
-    {
-        return m_File.Header.BuildVersion;
+        
+        return AssetSerializer::DeserializeAsset(assetInfo);
     }
 
     bool AssetPack::HandleExists(UUID handle)
@@ -64,15 +66,35 @@ namespace GE
         return m_HandleIndex.find(handle) != m_HandleIndex.end();
     }
 
-    bool AssetPack::AddAsset(Ref<Asset> asset)
+    bool AssetPack::AddAsset(Ref<Asset> asset, const AssetInfo* assetInfo)
     {
-        UUID sceneHandle = Project::GetActive()->GetConfig().SceneHandle;
-		if (!sceneHandle)
-			return false;
+        if (HandleExists(asset->GetHandle()))
+        {
+            GE_CORE_WARN("Asset handle already exists in Pack.");
+            return false;
+        }
 
-		AssetPack::File::AssetInfo assetInfo;
-		assetInfo.Type = (uint16_t)asset->GetType();
-        m_File.Index.Scenes.at(sceneHandle).Assets.emplace(asset->GetHandle(), assetInfo);
+        if (asset->GetType() == Asset::Type::Scene)
+        {
+            m_File.Index.Scenes.at(asset->GetHandle()) = (SceneInfo&)*assetInfo;
+
+            m_HandleIndex.emplace(asset->GetHandle());
+        }
+        else
+        {
+            UUID sceneHandle = Project::GetConfig().SceneHandle;
+            if (HandleExists(sceneHandle))
+            {
+                m_File.Index.Scenes.at(sceneHandle).m_Assets.at(asset->GetHandle()) = *assetInfo;
+
+                m_HandleIndex.emplace(asset->GetHandle());
+            }
+            else
+            {
+                GE_CORE_WARN("Cannot add asset to Pack.\n\tProject Scene Handle does not exist in Pack.");
+                return false;
+            }
+        }
 		return true;
     }
 
@@ -82,15 +104,16 @@ namespace GE
 		if (asset->GetType() == Asset::Type::Scene && m_File.Index.Scenes.find(handle) != m_File.Index.Scenes.end())
 		{
 			m_File.Index.Scenes.erase(handle);
-			return true;
+            m_HandleIndex.erase(handle);
 		}
 		else
 		{
-			UUID sceneHandle = Project::GetActive()->GetConfig().SceneHandle;
-			if (!sceneHandle || m_File.Index.Scenes.at(sceneHandle).Assets.find(handle) == m_File.Index.Scenes.at(sceneHandle).Assets.end())
+			UUID sceneHandle = Project::GetConfig().SceneHandle;
+			if (!sceneHandle || m_File.Index.Scenes.at(sceneHandle).m_Assets.find(handle) == m_File.Index.Scenes.at(sceneHandle).m_Assets.end())
 				return false;
 
-			m_File.Index.Scenes.at(sceneHandle).Assets.erase(handle);
+			m_File.Index.Scenes.at(sceneHandle).m_Assets.erase(handle);
+            m_HandleIndex.erase(handle);
 		}
 		return true;
 	}

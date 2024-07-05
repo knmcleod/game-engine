@@ -4,20 +4,18 @@
 
 namespace GE
 {
-	class  KeyEvent : public Event
+	class KeyEvent : public Event
 	{
 	public:
+		KeyEvent(int keycode) : m_KeyCode(keycode) {}
 		inline int GetKeyCode() const { return m_KeyCode; }
 
-		EVENT_CLASS_CATEGORY(EventCategoryKeyboard | EventCategoryInput)
+		EVENT_CLASS_CATEGORY(Keyboard | Input)
 	protected:
-		KeyEvent(int keycode)
-			: m_KeyCode(keycode) {}
-
 		int m_KeyCode;
 	};
 
-	class  KeyPressedEvent : public KeyEvent
+	class KeyPressedEvent : public KeyEvent
 	{
 	public:
 		KeyPressedEvent(int keycode, int repeatCount)
@@ -37,7 +35,7 @@ namespace GE
 		int m_RepeatCount;
 	};
 
-	class  KeyReleasedEvent : public KeyEvent
+	class KeyReleasedEvent : public KeyEvent
 	{
 	public:
 		KeyReleasedEvent(int keycode)
@@ -53,7 +51,7 @@ namespace GE
 		EVENT_CLASS_TYPE(KeyReleased)
 	};
 
-	class  KeyTypedEvent : public KeyEvent
+	class KeyTypedEvent : public KeyEvent
 	{
 	public:
 		KeyTypedEvent(int keycode)

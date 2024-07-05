@@ -4,12 +4,8 @@
 
 #include "GE/Rendering/Camera/SceneCamera.h"
 
-#include <glm/glm.hpp>
-
 #define GLM_ENABLE_EXPERIMENTAL
 	#include <glm/gtx/quaternion.hpp>
-
-#include <string>
 
 namespace GE
 {	
@@ -32,7 +28,6 @@ namespace GE
 
 	struct TransformComponent
 	{
-		glm::mat4 s_IdentityMat4 = glm::mat4{ 1.0f };
 		glm::vec3 Translation = { 0.0f, 0.0f, 0.0f };
 		glm::vec3 Rotation = { 0.0f, 0.0f, 0.0f };
 		glm::vec3 Scale = { 1.0f, 1.0f, 1.0f };
@@ -42,26 +37,27 @@ namespace GE
 		TransformComponent(const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale)
 			: Translation(translation), Rotation(rotation), Scale(scale) {}
 	
-		glm::mat4 GetTransform() const
+		const glm::mat4 GetTransform(glm::vec3& translationOffset = glm::vec3(0.0f), glm::vec3& scaleOffset = glm::vec3(1.0f)) const
 		{
-			glm::mat4 rotation = glm::rotate(s_IdentityMat4, Rotation.x, { 1, 0, 0 })
-				* glm::rotate(s_IdentityMat4, Rotation.y, { 0, 1, 0 })
-				* glm::rotate(s_IdentityMat4, Rotation.z, { 0, 0, 1 });
+			glm::mat4 identityMat4 = glm::mat4(1.0f);
+			glm::mat4 rotation = glm::rotate(identityMat4, Rotation.x, {1, 0, 0})
+				* glm::rotate(identityMat4, Rotation.y, { 0, 1, 0 })
+				* glm::rotate(identityMat4, Rotation.z, { 0, 0, 1 });
 
-			return glm::translate(s_IdentityMat4, Translation)
-				* rotation * glm::scale(s_IdentityMat4, Scale);
+			return glm::translate(identityMat4, Translation + translationOffset)
+				* rotation * glm::scale(identityMat4, Scale * scaleOffset);
 		}
 	};
 
 	struct CameraComponent
 	{
-		SceneCamera Camera;
+		SceneCamera ActiveCamera;
 		bool Primary = false;
 		bool FixedAspectRatio = false;
 
 		CameraComponent() = default;
 		CameraComponent(const CameraComponent&) = default;
-		CameraComponent(const SceneCamera camera) : Camera(camera) {}
+		CameraComponent(const SceneCamera camera) : ActiveCamera(camera) {}
 	};
 
 	struct AudioSourceComponent
@@ -97,9 +93,11 @@ namespace GE
 
 	struct CircleRendererComponent
 	{
+		UUID AssetHandle = 0;
 		glm::vec4 Color = glm::vec4(1.0f);
+		float TilingFactor = 1.0f;
 		float Radius = 0.5f; // Game Engine is 1x1, thus radius = 1/2;
-		float Thickness = 0.5f; // 1: Full, 0: Empty
+		float Thickness = 1.0f; // 1: Full, 0: Empty
 		float Fade = 0.0; // Blurs Circle 1: Full Fade 0: No Fade
 
 		CircleRendererComponent() = default;
@@ -160,8 +158,8 @@ namespace GE
 		float Friction = 0.5f;
 		float Restitution = 0.0f; // For bounciness
 		float RestitutionThreshold = 0.5f;
-
 		bool Show = true;
+
 		void* RuntimeFixture = nullptr;
 
 		CircleCollider2DComponent() = default;
@@ -190,7 +188,7 @@ namespace GE
 
 	struct ScriptComponent
 	{
-		std::string ClassName;
+		std::string ClassName = std::string();
 
 		ScriptComponent() = default;
 		ScriptComponent(const ScriptComponent&) = default;

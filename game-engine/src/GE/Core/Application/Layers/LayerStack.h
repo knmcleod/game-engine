@@ -6,7 +6,7 @@
 
 namespace GE
 {
-	class  LayerStack
+	class LayerStack
 	{
 	public:
 		LayerStack();

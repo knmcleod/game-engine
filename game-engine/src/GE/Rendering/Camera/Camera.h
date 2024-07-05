@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GE/Core/Time/Time.h"
+#include "GE/Core/Time/Timestep.h"
 #include "GE/Core/Events/Event.h"
 
 #include <glm/glm.hpp>
@@ -11,8 +11,6 @@
 
 namespace GE
 {
-	static const glm::mat4& s_IdentityMatrix = glm::mat4(1.0f);
-
 	class Camera
 	{
 		friend class Scene;
@@ -28,37 +26,36 @@ namespace GE
 		inline const ProjectionType& GetProjectionType() const { return p_ProjectionType; }
 		inline const glm::mat4& GetProjection() const { return p_Projection; }
 
-		virtual const glm::mat4& GetViewMatrix() const = 0;
+		/*
+		* ViewProjection updated in UpdateView
+		*/
 		virtual const glm::mat4& GetViewProjection() const = 0;
-
 		virtual const glm::vec2 GetViewport() = 0;
-		virtual void SetViewport(float width, float height) = 0;
-
 		virtual const float& GetNearClip() const = 0; 
-		virtual void SetNearClip(float value) = 0;
-
 		virtual const float& GetFarClip() const = 0;
-		virtual void SetFarClip(float value) = 0; 
-
 		virtual const float& GetFOV() const = 0;
-		virtual void SetFOV(float size) = 0;
+
+		virtual void SetViewMatrix(const glm::mat4& transform) = 0;
+		virtual void SetViewport(uint32_t width, uint32_t height) = 0;
+		virtual void SetNearClip(float value) = 0;
+		virtual void SetFarClip(float value) = 0;
+		virtual void SetFOV(float value) = 0;
 
 		virtual void OnUpdate(Timestep ts) = 0;
 		virtual void OnEvent(Event& e) = 0;
 
 	protected:
-		virtual glm::quat GetOrientation() const = 0;
-		virtual glm::vec3 GetVertical() const = 0;
-		virtual glm::vec3 GetHorizontal() const = 0;
-		virtual glm::vec3 GetDepth() const = 0;
-
-		virtual glm::vec3 CalculatePosition() const = 0;
+		/*
+		* Call after the following changes 
+		*	Viewport/aspectRatio
+		*	near/far clip
+		*	FOV
+		*/
 		virtual void UpdateProjection() = 0;
 		virtual void UpdateView() = 0;
 
 	protected:
 		glm::mat4 p_Projection = glm::mat4(1.0f);
 		ProjectionType p_ProjectionType = ProjectionType::Orthographic;
-
 	};
 }

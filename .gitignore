@@ -1,28 +1,17 @@
-
-*.obj
-*.ipch
-*.log
-*.tlog
-*.vsidx
-*.db
-*.vcxproj
-*.filters
-*.pdb
-*.lib
-*.idb
-*.recipe
+# Visual Studio files and folder
+.vs/
 *.user
-*.pch
-*.ilk
-*.db-wal
-*.opendb
-*.db-shm
-.vs
-bin
-bin-int
-game-engine/vender/mono/bin
-game-engine/vender/mono/etc
-game-engine/vender/mono/share
-/editor/projects/demo/assets/scripts/Resources/Intermediates/Debug
-/game-engine/vender/OpenAL/OpenAL1.1/samples
-/game-engine/vender/OpenAL/OpenAL1.1/docs
+**.sln
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
+**.csproj
+
+# Game Engine files
+*.log
+*.json
+
+# Binaries
+**/bin/
+bin-int/
+/editor/projects/demo/assets/scripts/Resources

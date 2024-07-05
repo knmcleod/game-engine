@@ -2,13 +2,17 @@
 
 #include "Log.h"
 
+// This ignores all warnings raised inside External headers
+#pragma warning(push, 0)
+#include <spdlog/fmt/ostr.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#pragma warning(pop)
 
 namespace GE
 {
-	std::shared_ptr<spdlog::logger> Log::s_CoreLogger;
-	std::shared_ptr<spdlog::logger> Log::s_ClientLogger;
+	std::shared_ptr<spdlog::logger> Log::s_CoreLogger = nullptr;
+	std::shared_ptr<spdlog::logger> Log::s_ClientLogger = nullptr;
 
 	void Log::Init()
 	{

@@ -2,6 +2,8 @@
 
 #include "OpenGLRenderAPI.h"
 
+#include <glad/glad.h>
+
 namespace GE
 {
 	void OpenGLRenderAPI::Init()
@@ -32,6 +34,7 @@ namespace GE
 	{
 		vertexArray->Bind();
 		glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);
+		vertexArray->Unbind();
 		
 	}
 
@@ -39,6 +42,7 @@ namespace GE
 	{
 		vertexArray->Bind();
 		glDrawArrays(GL_LINES, 0, vertexCount);
+		vertexArray->Unbind();
 	}
 
 	void OpenGLRenderAPI::SetLineWidth(float thickness)

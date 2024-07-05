@@ -5,12 +5,15 @@
 #include "GE/Asset/Assets/Audio/Audio.h"
 #include "GE/Asset/Assets/Scene/Scene.h"
 
+#include "GE/Asset/RuntimeAssetManager.h"
+
 #include "GE/Project/Project.h"
 
 #include "GE/Scripting/Scripting.h"
 
 #include <stb_image.h>
 #include <yaml-cpp/yaml.h>
+#include <chrono>
 
 namespace YAML {
 
@@ -133,7 +136,7 @@ namespace GE
 		{ Asset::Type::Scene,		AssetSerializer::DeserializeScene		},
 		{ Asset::Type::Texture2D,	AssetSerializer::DeserializeTexture2D	},
 		{ Asset::Type::Font,		AssetSerializer::DeserializeFont		},
-		{ Asset::Type::AudioSource, AssetSerializer::DeserializeAudio		},
+		{ Asset::Type::AudioClip,	AssetSerializer::DeserializeAudio		},
 	};
 
 	std::map<Asset::Type, AssetPackDeserializeFunction> AssetSerializer::s_AssetPackDeserializeFuncs =
@@ -141,7 +144,7 @@ namespace GE
 		{ Asset::Type::Scene,		AssetSerializer::DeserializeSceneFromPack		},
 		{ Asset::Type::Texture2D,	AssetSerializer::DeserializeTexture2DFromPack	},
 		{ Asset::Type::Font,		AssetSerializer::DeserializeFontFromPack		},
-		{ Asset::Type::AudioSource, AssetSerializer::DeserializeAudioFromPack		},
+		{ Asset::Type::AudioClip,	AssetSerializer::DeserializeAudioFromPack		},
 	};
 
 	std::map<Asset::Type, AssetSerializeFunction> AssetSerializer::s_AssetSerializeFuncs =
@@ -149,122 +152,11 @@ namespace GE
 		{ Asset::Type::Scene, AssetSerializer::SerializeScene }
 	};
 
-	template<typename T, typename S, int N, msdf_atlas::GeneratorFunction<S, N> func>
-	static Ref<Texture2D> CreateAndCacheFontAtlas(const AssetMetadata& metadata, const std::string& atlasName,
-		Font::AtlasConfig& atlasConfig, Ref<Font::MSDFData> msdfData)
+	std::map<Asset::Type, AssetPackSerializeFunction> AssetSerializer::s_AssetPackSerializeFuncs =
 	{
-		msdfgen::FreetypeHandle* ft = msdfgen::initializeFreetype();
-		if (!ft)
-		{
-			GE_CORE_ERROR("Failed to load Font Freetype Handle");
-			return 0;
-		}
-
-		std::string fontString = metadata.FilePath.string();
-		msdfgen::FontHandle* font = msdfgen::loadFont(ft, fontString.c_str());
-		if (!font)
-		{
-			GE_CORE_ERROR("Failed to load Font Atlas.");
-			return 0;
-		}
-
-		struct CharsetRange
-		{
-			uint32_t Begin, End;
-		};
-
-		static const CharsetRange charsetRanges[] =
-		{
-			{ 0x0020, 0x00FF } // Basic Latin + Latin Supplement
-		};
-
-		msdf_atlas::Charset charset;
-		for (CharsetRange range : charsetRanges)
-		{
-			for (uint32_t c = range.Begin; c <= range.End; c++)
-				charset.add(c);
-		}
-
-		msdfData->FontGeometry = msdf_atlas::FontGeometry(&msdfData->Glyphs);
-		int loadedGlyph = msdfData->FontGeometry.loadCharset(font, 1.0, charset);
-
-		destroyFont(font);
-		deinitializeFreetype(ft);
-
-		float scale = 50.0;
-		msdf_atlas::TightAtlasPacker atlasPacker;
-		atlasPacker.setPixelRange(2.0);
-		atlasPacker.setMiterLimit(1.0);
-		atlasPacker.setSpacing(0.0);
-		atlasPacker.setScale(scale);
-		int remaining = atlasPacker.pack(msdfData->Glyphs.data(), msdfData->Glyphs.size());
-
-		int width, height;
-		atlasPacker.getDimensions(width, height);
-		scale = atlasPacker.getScale();
-		atlasConfig.Width = width;
-		atlasConfig.Height = height;
-		atlasConfig.Scale = scale;
-
-#define DEFAULT_ANGLE_THRESHOLD 3.0
-#define LCG_MULTIPLIER 6364136223846793005ull
-#define LCG_INCREMENT 1442695040888963407ull
-
-		if (atlasConfig.ExpensiveColoring)
-		{
-			msdf_atlas::Workload([&glyphs = msdfData->Glyphs, &seed = atlasConfig.Seed](int i, int threadNum) -> bool
-				{
-					unsigned long long glyphSeed = (LCG_MULTIPLIER * (seed ^ i) + LCG_INCREMENT) * !!seed;
-					glyphs[i].edgeColoring(msdfgen::edgeColoringInkTrap, DEFAULT_ANGLE_THRESHOLD, glyphSeed);
-					return true;
-				}, msdfData->Glyphs.size()).finish(atlasConfig.ThreadCount);
-		}
-		else
-		{
-			unsigned long long glyphSeed = atlasConfig.Seed;
-			for (msdf_atlas::GlyphGeometry& glyph : msdfData->Glyphs)
-			{
-				glyphSeed *= LCG_MULTIPLIER;
-				glyph.edgeColoring(msdfgen::edgeColoringInkTrap, DEFAULT_ANGLE_THRESHOLD, glyphSeed);
-			}
-		}
-
-		msdf_atlas::GeneratorAttributes attributes;
-		attributes.config.overlapSupport = true;
-		attributes.scanlinePass = true;
+		{ Asset::Type::Scene, AssetSerializer::SerializeSceneToPack }
+	};
 	
-		msdf_atlas::ImmediateAtlasGenerator<S, N, func, msdf_atlas::BitmapAtlasStorage<T, N>> atlasGenerator(atlasConfig.Width, atlasConfig.Height);
-		atlasGenerator.setAttributes(attributes);
-		atlasGenerator.setThreadCount(8);
-		atlasGenerator.generate(msdfData->Glyphs.data(), msdfData->Glyphs.size());
-	
-		msdfgen::BitmapConstRef<T, N> bitmap = atlasGenerator.atlasStorage();
-		TextureConfiguration config;
-		config.Height = bitmap.height;
-		config.Width = bitmap.width;
-		config.InternalFormat = ImageFormat::RBG8;
-		config.Format = DataFormat::RGB;
-		config.GenerateMips = false;
-	
-		Buffer dataBuffer((void*)bitmap.pixels, bitmap.height * bitmap.width * (config.InternalFormat == ImageFormat::RBG8 ? 3 : 4));
-		Ref<Texture2D> texture = Texture2D::Create(config, dataBuffer);
-
-		return texture;
-	}
-
-	template<typename T, typename U>
-	static Ref<T> GetAudioBuffer(Ref<U> audioBuffer)
-	{
-		return static_ref_cast<T, U>(audioBuffer);
-	}
-
-	static std::int32_t convert_to_int(char* audioClip, std::size_t len)
-	{
-		std::int32_t a = 0;
-		std::memcpy(&a, audioClip, len);
-		return a;
-	}
-
 	static void SerializeEntity(YAML::Emitter& out, Entity entity)
 	{
 		GE_CORE_ASSERT(entity.HasComponent<IDComponent>(), "Cannot serialize Entity without ID.");
@@ -278,7 +170,7 @@ namespace GE
 			out << YAML::Key << "TagComponent";
 			out << YAML::BeginMap; // TagComponent
 			auto& tag = entity.GetComponent<TagComponent>().Tag;
-
+			GE_CORE_TRACE("Serializing entity\n\tUUID: {0}\n\tName: {1}", (uint64_t)entityHandle, tag.c_str());
 			out << YAML::Key << "Tag" << YAML::Value << tag;
 
 			out << YAML::EndMap; // TagComponent
@@ -302,7 +194,7 @@ namespace GE
 			out << YAML::Key << "CameraComponent";
 			out << YAML::BeginMap; // CameraComponent
 			auto& component = entity.GetComponent<CameraComponent>();
-			auto& camera = component.Camera;
+			auto& camera = component.ActiveCamera;
 
 			out << YAML::Key << "FixedAspectRatio" << YAML::Value << component.FixedAspectRatio;
 			out << YAML::Key << "Primary" << YAML::Value << component.Primary;
@@ -419,45 +311,45 @@ namespace GE
 					{
 						if (scriptFieldMap.find(name) == scriptFieldMap.end())
 							continue;
-
+						ScriptField::Type type = field.GetType();
 						out << YAML::BeginMap; // ScriptFields
 
 						out << YAML::Key << "Name" << YAML::Value << name;
-						out << YAML::Key << "Type" << YAML::Value << ScriptFieldTypeToString(field.Type);
+						out << YAML::Key << "Type" << YAML::Value << Scripting::ScriptFieldTypeToString(type);
 						out << YAML::Key << "Data" << YAML::Value;
 
-						ScriptFieldInstance& scriptFieldInstance = scriptFieldMap.at(name);
-						switch (field.Type)
+						ScriptField& scriptField = scriptFieldMap.at(name);
+						switch (type)
 						{
-						case ScriptFieldType::Char:
-							out << scriptFieldInstance.GetValue<char>();
+						case ScriptField::Type::Char:
+							out << scriptField.GetValue<char>();
 							break;
-						case ScriptFieldType::Int:
-							out << scriptFieldInstance.GetValue<int>();
+						case ScriptField::Type::Int:
+							out << scriptField.GetValue<int>();
 							break;
-						case ScriptFieldType::UInt:
-							out << scriptFieldInstance.GetValue<uint32_t>();
+						case ScriptField::Type::UInt:
+							out << scriptField.GetValue<uint32_t>();
 							break;
-						case ScriptFieldType::Float:
-							out << scriptFieldInstance.GetValue<float>();
+						case ScriptField::Type::Float:
+							out << scriptField.GetValue<float>();
 							break;
-						case ScriptFieldType::Byte:
-							out << scriptFieldInstance.GetValue<int8_t>();
+						case ScriptField::Type::Byte:
+							out << scriptField.GetValue<int8_t>();
 							break;
-						case ScriptFieldType::Bool:
-							out << scriptFieldInstance.GetValue<bool>();
+						case ScriptField::Type::Bool:
+							out << scriptField.GetValue<bool>();
 							break;
-						case ScriptFieldType::Vector2:
-							out << scriptFieldInstance.GetValue<glm::vec2>();
+						case ScriptField::Type::Vector2:
+							out << scriptField.GetValue<glm::vec2>();
 							break;
-						case ScriptFieldType::Vector3:
-							out << scriptFieldInstance.GetValue<glm::vec3>();
+						case ScriptField::Type::Vector3:
+							out << scriptField.GetValue<glm::vec3>();
 							break;
-						case ScriptFieldType::Vector4:
-							out << scriptFieldInstance.GetValue<glm::vec4>();
+						case ScriptField::Type::Vector4:
+							out << scriptField.GetValue<glm::vec4>();
 							break;
-						case ScriptFieldType::Entity:
-							out << scriptFieldInstance.GetValue<UUID>();
+						case ScriptField::Type::Entity:
+							out << scriptField.GetValue<UUID>();
 							break;
 						}
 
@@ -511,6 +403,126 @@ namespace GE
 		}
 
 		out << YAML::EndMap; // Entity
+	}
+
+	template<typename T, typename S, int N, msdf_atlas::GeneratorFunction<S, N> func>
+	static Ref<Texture2D> CreateAndCacheFontAtlas(const AssetMetadata& metadata, const std::string& atlasName,
+		Font::AtlasConfig& atlasConfig, Ref<Font::MSDFData> msdfData)
+	{
+		msdfgen::FreetypeHandle* ft = msdfgen::initializeFreetype();
+		if (!ft)
+		{
+			GE_CORE_ERROR("Failed to load Font Freetype Handle");
+			return 0;
+		}
+
+		std::filesystem::path path = Project::GetPathToAsset(metadata.FilePath);
+		std::string fontString = path.string();
+		msdfgen::FontHandle* font = msdfgen::loadFont(ft, fontString.c_str());
+		if (!font)
+		{
+			GE_CORE_ERROR("Failed to load Font Atlas.");
+			return 0;
+		}
+
+		struct CharsetRange
+		{
+			uint32_t Begin, End;
+		};
+
+		static const CharsetRange charsetRanges[] =
+		{
+			{ 0x0020, 0x00FF } // Basic Latin + Latin Supplement
+		};
+
+		msdf_atlas::Charset charset;
+		for (CharsetRange range : charsetRanges)
+		{
+			for (uint32_t c = range.Begin; c <= range.End; c++)
+				charset.add(c);
+		}
+
+		msdfData->FontGeometry = msdf_atlas::FontGeometry(&msdfData->Glyphs);
+		int loadedGlyph = msdfData->FontGeometry.loadCharset(font, 1.0, charset);
+
+		destroyFont(font);
+		deinitializeFreetype(ft);
+
+		float scale = 50.0;
+		msdf_atlas::TightAtlasPacker atlasPacker;
+		atlasPacker.setPixelRange(2.0);
+		atlasPacker.setMiterLimit(1.0);
+		atlasPacker.setSpacing(0);
+		atlasPacker.setScale(scale);
+		int remaining = atlasPacker.pack(msdfData->Glyphs.data(), (int)msdfData->Glyphs.size());
+
+		int width, height;
+		atlasPacker.getDimensions(width, height);
+		scale = (float)atlasPacker.getScale();
+		atlasConfig.Width = width;
+		atlasConfig.Height = height;
+		atlasConfig.Scale = scale;
+
+#define DEFAULT_ANGLE_THRESHOLD 3.0
+#define LCG_MULTIPLIER 6364136223846793005ull
+#define LCG_INCREMENT 1442695040888963407ull
+
+		if (atlasConfig.ExpensiveColoring)
+		{
+			msdf_atlas::Workload([&glyphs = msdfData->Glyphs, &seed = atlasConfig.Seed](int i, int threadNum) -> bool
+				{
+					unsigned long long glyphSeed = (LCG_MULTIPLIER * (seed ^ i) + LCG_INCREMENT) * !!seed;
+					glyphs[i].edgeColoring(msdfgen::edgeColoringInkTrap, DEFAULT_ANGLE_THRESHOLD, glyphSeed);
+					return true;
+				}, (int)msdfData->Glyphs.size()).finish(atlasConfig.ThreadCount);
+		}
+		else
+		{
+			unsigned long long glyphSeed = atlasConfig.Seed;
+			for (msdf_atlas::GlyphGeometry& glyph : msdfData->Glyphs)
+			{
+				glyphSeed *= LCG_MULTIPLIER;
+				glyph.edgeColoring(msdfgen::edgeColoringInkTrap, DEFAULT_ANGLE_THRESHOLD, glyphSeed);
+			}
+		}
+
+		msdf_atlas::GeneratorAttributes attributes;
+		attributes.config.overlapSupport = true;
+		attributes.scanlinePass = true;
+	
+		msdf_atlas::ImmediateAtlasGenerator<S, N, func, msdf_atlas::BitmapAtlasStorage<T, N>> atlasGenerator(atlasConfig.Width, atlasConfig.Height);
+		atlasGenerator.setAttributes(attributes);
+		atlasGenerator.setThreadCount(8);
+		atlasGenerator.generate(msdfData->Glyphs.data(), (int)msdfData->Glyphs.size());
+	
+		msdfgen::BitmapConstRef<T, N> bitmap = atlasGenerator.atlasStorage();
+		Texture::Config config;
+		config.Height = bitmap.height;
+		config.Width = bitmap.width;
+		config.InternalFormat = Texture::ImageFormat::RGB8;
+		config.Format = Texture::DataFormat::RGB;
+		config.GenerateMips = false;
+	
+		Buffer dataBuffer((void*)bitmap.pixels, 
+			bitmap.height * bitmap.width * (config.InternalFormat == Texture::ImageFormat::RGB8 ? 3 : 4));
+		Ref<Texture2D> texture = Texture2D::Create(config, dataBuffer);
+
+		return texture;
+	}
+
+#pragma region Audio
+
+	template<typename T, typename U>
+	static Ref<T> GetAudioBuffer(Ref<U> audioBuffer)
+	{
+		return static_ref_cast<T, U>(audioBuffer);
+	}
+
+	static std::int32_t convert_to_int(char* audioClip, std::size_t len)
+	{
+		std::int32_t a = 0;
+		std::memcpy(&a, audioClip, len);
+		return a;
 	}
 
 	static  bool LoadWavFile(std::ifstream& file, std::uint8_t& channels, std::int32_t& sampleRate, std::uint8_t& bitsPerSample, uint32_t& size)
@@ -672,43 +684,35 @@ namespace GE
 			return 0;
 		}
 
-		if (audioBuffer->Size <= 0)
-			return false;
-			
-		if (audioBuffer->BufferType == AudioBuffer::Type::Short)
+		for (uint32_t i = 0; i < audioBuffer->NUM_BUFFERS; i++)
 		{
-			Ref<ShortAudioBuffer> buffer = GetAudioBuffer<ShortAudioBuffer>(audioBuffer);
-			char* data = buffer->Data;
-			data = new char[audioBuffer->Size];
-
-			stream.read(data, audioBuffer->Size);
-
-		}
-		else if (audioBuffer->BufferType == AudioBuffer::Type::Long)
-		{
-			Ref<LongAudioBuffer> buffer = GetAudioBuffer<LongAudioBuffer>(audioBuffer);
-			for (int i = 0; i < buffer->NUM_BUFFERS; i++)
-			{
-				char* soundData = new char[audioBuffer->Size];
-				stream.read(soundData, audioBuffer->Size);
-				buffer->Data[i] = soundData;
-			}
+			uint8_t* soundData = new uint8_t[audioBuffer->Size];
+			stream.read((char*)soundData, audioBuffer->Size);
+			audioBuffer->Data += *soundData;
 		}
 
 		stream.close();
 		return true;
 	}
 
+#pragma endregion
+
 	bool AssetSerializer::SerializeRegistry(Ref<AssetRegistry> registry)
 	{
+		// gar(Game Asset Registry) file
+		GE_CORE_INFO("Asset Registry Serialization Started.");
+
 		YAML::Emitter out;
 		{
 			out << YAML::BeginMap; // Root
 			out << YAML::Key << "AssetRegistry" << YAML::Value;
+			GE_CORE_TRACE("Serializing AssetRegistry\n\tFilePath : {0}", registry->m_FilePath.string().c_str());
 
 			out << YAML::BeginSeq;
 			for (const auto& [handle, metadata] : registry->GetRegistry())
 			{
+				GE_CORE_TRACE("Serializing Asset\n\tUUID : {0}\n\tFilePath : {1}\n\tType : {2}", (uint64_t)handle, metadata.FilePath.string().c_str(), AssetUtils::AssetTypeToString(metadata.Type));
+				
 				out << YAML::BeginMap;
 				out << YAML::Key << "Handle" << YAML::Value << handle;
 				std::string filepathStr = metadata.FilePath.generic_string();
@@ -722,24 +726,25 @@ namespace GE
 		}
 		std::filesystem::path path = Project::GetPathToAsset(registry->m_FilePath);
 		std::ofstream fout(path);
-		if (!fout.good() || !fout.is_open())
-		{
-			GE_CORE_ERROR("Failed to Serialize Asset Registry");
-			return false;
-		}
-		fout << out.c_str();
-		fout.close();
 
-		return true;
+		if (fout.is_open() && fout.good())
+		{
+			fout << out.c_str();
+			fout.close();
+			GE_CORE_INFO("Asset Registry Serialization Complete.");
+			return true;
+		}
+
+		GE_CORE_WARN("Asset Registry Serialization Failed.");
+		return false;
 	}
 
-	bool AssetSerializer::DeserializeRegistry(const std::filesystem::path& filePath, Ref<AssetRegistry> registry)
+	bool AssetSerializer::DeserializeRegistry(Ref<AssetRegistry> registry)
 	{
-		registry->m_FilePath = filePath;
-
 		const std::filesystem::path& path = Project::GetPathToAsset(registry->m_FilePath);
 		if (path.empty())
 			return false;
+		GE_CORE_INFO("Asset Registry Deserialization Started.\n\tFilePath : {0}", path.string().c_str());
 
 		YAML::Node data;
 		try
@@ -748,13 +753,14 @@ namespace GE
 		}
 		catch (YAML::ParserException e)
 		{
-			GE_CORE_ERROR("Failed to load asset registry file. {0}\n\t{1}", path.string(), e.what());
+			GE_CORE_ERROR("Failed to load Asset Registry file. {0}\n\t{1}", path.string().c_str(), e.what());
+			return false;
 		}
 
 		YAML::Node assetRegistryData = data["AssetRegistry"];
 		if (!assetRegistryData)
 		{
-			GE_WARN("Cannot deserialize asset registry.");
+			GE_WARN("Asset Registry Deserialization Failed.\n\tAssetRegistry Node not found.");
 			return false;
 		}
 
@@ -765,135 +771,213 @@ namespace GE
 			assetMetadata.Handle = handle;
 			assetMetadata.FilePath = node["FilePath"].as<std::string>();
 			assetMetadata.Type = AssetUtils::AssetTypeFromString(node["Type"].as<std::string>());
-
+			GE_CORE_TRACE("Deserializing Asset\n\tUUID : {0}\n\tFilePath : {1}\n\tType : {2}", (uint64_t)assetMetadata.Handle, assetMetadata.FilePath.string().c_str(), AssetUtils::AssetTypeToString(assetMetadata.Type));
 			registry->AddAsset(assetMetadata);
 		}
-
+		GE_CORE_INFO("Asset Registry Deserialization Complete.");
 		return true;
 	}
 
+	// TODO:
 	bool AssetSerializer::SerializePack(Ref<AssetPack> pack)
 	{
-		// gap file
-
-		// header, info [] = byte
-		//  [4] signature "GAP"
+		// gap(Game Asset Pack) file
+		//  [bytes]
+		
+		//	[16] header, info
+		//  [4] signature // File Extension "GAP"
 		//  [4] Version // File Format Version
-		//  [8] Build Version // Time Built
+		//  [8] Build Version // Date/Time Built
 
-		// index, data
-		//  [8] App Binary Offset // Start of
-		//  [8] App Binary Size   // Size of
-		//  [?] Scene Map
+		//	[100 + ?] index, data. Size depends on Assets.
+		//  [8] Offset	// Start of index relative to SOF(start of file), header Size
+		//  [8] Size	// Size of all Scenes, Count & Map
+		//	[8] Scene Map Count
+		//  [76 + ?] Scene Map			// Size based on how many Scenes are loaded
 		//      [8] Asset Handle    : Key
-		//      SceneInfo           : Value
-		//          [8] Packed Offset
-		//          [8] Packed Size
-		//          [2] Flags
-		//          [?] Asset Map
-		//              [8] Asset Handle    : Key
-		//              AssetInfo           : Value
-		//                  [8] Packed Offset
-		//                  [8] Packed Size
-		//                  [2] Flags
-		//                  [2] Asset Type
+		//      [68 + ?] SceneInfo  : Value
+		//          [8] Packed Size : Size of whole Scene
+		//			[60 + ?] Data
+		//				[2] Type
+		//				[8] Name
+		//				[8] Asset Map Count
+		//				[26 + ?] Asset Map			// Size based on how many Assets are loaded
+		//				    [8] Asset Handle    : Key
+		//				    [18 + ?] AssetInfo	: Value
+		//				        [8] Packed Size
+		//						[10 + ?] Packed Data
+		//							[2] Type
+		//							[8] Name
+		//				[8] Entity Map Count
+		//				[16 + ?] Entity Map			// Size based on how many Entities are loaded
+		//				    [8] Handle			: Key
+		//				    [8 + ?] EntityInfo	: Value
+		//				        [8] Packed Size
+		//						[?]	Packed Data
 
 		std::ofstream stream(Project::GetPathToAsset(pack->m_File.Path), std::ios::out | std::ios::binary | std::ios::app);
 		if (!stream)
 		{
-			GE_CORE_ERROR("Could not open Asset Binary file to write.");
+			GE_CORE_ERROR("Could not open Asset Pack file to write.");
 			return false;
 		}
 
-		// Header
-		stream.write(pack->m_File.Header.HEADER, sizeof(pack->m_File.Header.HEADER));
-		stream.write(reinterpret_cast<const char*>(&pack->m_File.Header.Version),
-			sizeof(pack->m_File.Header.Version));
-		stream.write(reinterpret_cast<const char*>(&pack->m_File.Header.BuildVersion),
-			sizeof(pack->m_File.Header.BuildVersion));
-
-		// Index
-		stream.write(reinterpret_cast<const char*>(&pack->m_File.Index.Offset), sizeof(pack->m_File.Index.Offset));
-		stream.write(reinterpret_cast<const char*>(&pack->m_File.Index.Size), sizeof(pack->m_File.Index.Size));
-		stream.write(reinterpret_cast<const char*>(pack->m_File.Index.Scenes.size()), sizeof(pack->m_File.Index.Scenes.size()));
-		for (const auto& [sceneHandle, sceneInfo] : pack->m_File.Index.Scenes)
+		// MOVE: For Assets & Entities, use inside SerializeScene
 		{
-			stream.write(reinterpret_cast<const char*>(sceneHandle), sizeof(sceneHandle));
-			stream.write(reinterpret_cast<const char*>(&sceneInfo.Offset), sizeof(sceneInfo.Offset));
-			stream.write(reinterpret_cast<const char*>(&sceneInfo.Size), sizeof(sceneInfo.Size));
-			stream.write(reinterpret_cast<const char*>(sceneInfo.Flags), sizeof(sceneInfo.Flags));
-			stream.write(reinterpret_cast<const char*>(sceneInfo.Assets.size()), sizeof(sceneInfo.Assets.size()));
-			for (const auto& [assetHandle, assetInfo] : sceneInfo.Assets)
+			size_t testSize = ToByteArray();
+			if (testSize != 0)
 			{
-				stream.write(reinterpret_cast<const char*>((uint64_t)assetHandle), sizeof((uint64_t)assetHandle));
-				stream.write(reinterpret_cast<const char*>(assetInfo.Offset), sizeof(assetInfo.Offset));
-				stream.write(reinterpret_cast<const char*>(assetInfo.Size), sizeof(assetInfo.Size));
-				stream.write(reinterpret_cast<const char*>(assetInfo.Flags), sizeof(assetInfo.Flags));
-				stream.write(reinterpret_cast<const char*>(assetInfo.Type), sizeof(assetInfo.Type));
+				//Reserve Memory
+				uint8_t* mem = new uint8_t[testSize];
 
+				if (ToByteArray(mem, testSize) == testSize)
+				{
+					GE_CORE_TRACE("Serialized Asset Pack");
+				}
+				else
+				{
+					GE_CORE_ASSERT(false, "");
+				}
+
+				delete[] mem;
+				mem = nullptr;
+			}
+			else
+			{
+				GE_CORE_ASSERT(false, "");
+			}
+		}
+
+		// Header
+		{
+			stream.write(pack->m_File.FileHeader.HEADER, sizeof(pack->m_File.FileHeader.HEADER));
+			stream.write(reinterpret_cast<const char*>(&pack->m_File.FileHeader.Version),
+				sizeof(pack->m_File.FileHeader.Version));
+
+			pack->m_File.FileHeader.BuildVersion = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+			stream.write(reinterpret_cast<const char*>(&pack->m_File.FileHeader.BuildVersion),
+				sizeof(pack->m_File.FileHeader.BuildVersion));
+		}
+			
+		// Index
+		{
+			// Set Index.Offset based on Header.Size
+			pack->m_File.Index.Offset = pack->GetHeaderSize();
+			stream.write(reinterpret_cast<const char*>(&pack->m_File.Index.Offset), sizeof(pack->m_File.Index.Offset));
+
+			for (const auto& [uuid, asset] : Project::GetAssetManager()->GetLoadedAssets())
+			{
+				if (asset->GetType() == Asset::Type::Scene)
+				{
+					if (SerializeAsset(asset, pack->m_File.Index.Scenes.at(uuid)))
+					{
+						// Scene and its children have been populated into pack->m_File.Index.Scenes.at(uuid)
+						// Scene.Size should represent the total scene size and be aligned
+						// Add to Index.Size for each Scene Asset
+						pack->m_File.Index.Size += pack->m_File.Index.Scenes.at(uuid).p_Size;
+					}
+				}
 			}
 
+			pack->m_File.Index.Size += Aligned(sizeof(pack->m_File.Index.Scenes.size()));
+			stream.write(reinterpret_cast<const char*>(&pack->m_File.Index.Size), sizeof(pack->m_File.Index.Size));
+			stream.write(reinterpret_cast<const char*>(pack->m_File.Index.Scenes.size()), sizeof(pack->m_File.Index.Scenes.size()));
+			for (const auto& [sceneHandle, sceneInfo] : pack->m_File.Index.Scenes)
+			{
+				// Write all data
+				stream.write(reinterpret_cast<const char*>(sceneHandle), sizeof(sceneHandle));
+
+				stream.write(reinterpret_cast<const char*>(&sceneInfo.p_Size), sizeof(sceneInfo.p_Size));
+				stream.write(reinterpret_cast<const char*>(sceneInfo.p_Data), sceneInfo.p_Size);
+
+			}
 		}
+		
 		stream.close();
 
-		bool status = stream.good();
-		if (status)
-		{
-			const auto& index = pack->m_File.Index;
-			for (const auto& [sceneHandle, sceneInfo] : index.Scenes)
-			{
-				pack->m_HandleIndex.insert(sceneHandle);
-			}
-		}
-
-		return status;
+		return stream.good();
 	}
 
+	// TODO:
 	bool AssetSerializer::DeserializePack(Ref<AssetPack> pack)
 	{
-		pack = CreateRef<AssetPack>();
+		// gap(Game Asset Pack) file
+		//  [bytes]
+
+		//	[16] header, info
+		//  [4] signature // File Extension "GAP"
+		//  [4] Version // File Format Version
+		//  [8] Build Version // Date/Time Built
+
+		//	[100 + ?] index, data. Size depends on Assets.
+		//  [8] Offset	// Start of index relative to SOF(start of file), header Size
+		//  [8] Size	// Size of all Scenes, Count & Map
+		//	[8] Scene Map Count
+		//  [76 + ?] Scene Map			// Size based on how many Scenes are loaded
+		//      [8] Asset Handle    : Key
+		//      [68 + ?] SceneInfo  : Value
+		//          [8] Packed Size : Size of whole Scene
+		//			[60 + ?] Data
+		//				[2] Type
+		//				[8] Name
+		//				[8] Asset Map Count
+		//				[26 + ?] Asset Map			// Size based on how many Assets are loaded
+		//				    [8] Asset Handle    : Key
+		//				    [18 + ?] AssetInfo	: Value
+		//				        [8] Packed Size
+		//						[10 + ?] Packed Data
+		//							[2] Type
+		//							[8] Name
+		//				[8] Entity Map Count
+		//				[16 + ?] Entity Map			// Size based on how many Entities are loaded
+		//				    [8] Handle			: Key
+		//				    [8 + ?] EntityInfo	: Value
+		//				        [8] Packed Size
+		//						[?]	Packed Data
 
 		std::ifstream stream(Project::GetPathToAsset(pack->m_File.Path), std::ios::out | std::ios::binary);
 		if (!stream)
 		{
-			GE_CORE_ERROR("Could not open Asset Binary file to read.");
+			GE_CORE_ERROR("Could not open Asset Pack file to read.");
 			return false;
 		}
 
 		// Header
-		stream.read((char*)&pack->m_File.Header.HEADER, sizeof(pack->m_File.Header.HEADER));
-		stream.read((char*)&pack->m_File.Header.Version, sizeof(pack->m_File.Header.Version));
-		stream.read((char*)&pack->m_File.Header.BuildVersion, sizeof(pack->m_File.Header.BuildVersion));
+		{
+			stream.read((char*)&pack->m_File.FileHeader.HEADER, sizeof(pack->m_File.FileHeader.HEADER));
+			stream.read((char*)&pack->m_File.FileHeader.Version, sizeof(pack->m_File.FileHeader.Version));
+			stream.read((char*)&pack->m_File.FileHeader.BuildVersion, sizeof(pack->m_File.FileHeader.BuildVersion));
+		}
 
 		// Index
-		stream.read((char*)&pack->m_File.Index.Offset, sizeof(pack->m_File.Index.Offset));
-		stream.read((char*)&pack->m_File.Index.Size, sizeof(pack->m_File.Index.Size));
-		int sceneCount = 0;
-		stream.read((char*)&sceneCount, sizeof(sceneCount));
-		for (int i = 0; i < sceneCount; i++)
 		{
-			uint64_t sceneHandle = 0;
-			stream.read((char*)&sceneHandle, sizeof(sceneHandle));
-			AssetPack::File::SceneInfo sceneInfo;
-			stream.read((char*)&sceneInfo.Offset, sizeof(sceneInfo.Offset));
-			stream.read((char*)&sceneInfo.Size, sizeof(sceneInfo.Size));
-			stream.read((char*)&sceneInfo.Flags, sizeof(sceneInfo.Flags));
-
-			pack->m_File.Index.Scenes[sceneHandle] = sceneInfo;
-
-			int assetCount = 0;
-			stream.read((char*)&assetCount, sizeof(assetCount));
-			for (int j = 0; j < assetCount; j++)
+			stream.read((char*)&pack->m_File.Index.Offset, sizeof(pack->m_File.Index.Offset));
+			stream.read((char*)&pack->m_File.Index.Size, sizeof(pack->m_File.Index.Size));
+			int sceneCount = 0;
+			stream.read((char*)&sceneCount, sizeof(sceneCount));
+			for (int i = 0; i < sceneCount; i++)
 			{
-				uint64_t assetHandle = 0;
-				stream.read((char*)&assetHandle, sizeof(assetHandle));
-				AssetPack::File::AssetInfo assetInfo;
-				stream.read((char*)&assetInfo.Offset, sizeof(assetInfo.Offset));
-				stream.read((char*)&assetInfo.Size, sizeof(assetInfo.Size));
-				stream.read((char*)&assetInfo.Flags, sizeof(assetInfo.Flags));
-				stream.read((char*)&assetInfo.Type, sizeof(assetInfo.Type));
+				uint64_t sceneHandle = 0;
+				stream.read((char*)&sceneHandle, sizeof(sceneHandle));
+				SceneInfo sceneInfo;
+				stream.read((char*)&sceneInfo.p_Size, sizeof(sceneInfo.p_Size));
+				stream.read((char*)&sceneInfo.p_Data, sceneInfo.p_Size);
 
-				pack->m_File.Index.Scenes[sceneHandle].Assets[assetHandle] = assetInfo;
+				if (Ref<Asset> sceneAsset = DeserializeAsset(sceneInfo))
+				{
+					Project::GetAssetManager()->AddAsset(sceneAsset);
+					pack->AddAsset(sceneAsset, &sceneInfo);
+
+					for (const auto& [uuid, childAsset] : sceneInfo.m_Assets)
+					{
+						if (Ref<Asset> asset = DeserializeAsset(childAsset))
+						{
+							Project::GetAssetManager()->AddAsset(asset);
+							pack->AddAsset(asset, &childAsset);
+						}
+					}
+
+				}
 
 			}
 		}
@@ -906,40 +990,56 @@ namespace GE
 	{
 		if (s_AssetDeserializeFuncs.find(metadata.Type) == s_AssetDeserializeFuncs.end())
 		{
-			GE_CORE_ERROR("Deserialize function not found for Type: {0}", AssetUtils::AssetTypeToString(metadata.Type));
+			GE_CORE_ERROR("Deserialize metadata function not found for Type: {0}", AssetUtils::AssetTypeToString(metadata.Type));
 			return nullptr;
 		}
 		return s_AssetDeserializeFuncs.at(metadata.Type)(metadata);
 	}
 
-	Ref<Asset> AssetSerializer::DeserializeAsset(const AssetPack::File::AssetInfo& assetInfo)
+	Ref<Asset> AssetSerializer::DeserializeAsset(const AssetInfo& assetInfo)
 	{
-		Asset::Type assetType = (Asset::Type)assetInfo.Type;
+		Asset::Type assetType = (Asset::Type)assetInfo.p_Type;
 		if (s_AssetPackDeserializeFuncs.find(assetType) == s_AssetPackDeserializeFuncs.end())
 		{
-			GE_CORE_ERROR("Deserializeer function not found for Type: " + AssetUtils::AssetTypeToString(assetType));
+			GE_CORE_ERROR("Deserialize function not found for Type: " + AssetUtils::AssetTypeToString(assetType));
 			return nullptr;
 		}
 		return s_AssetPackDeserializeFuncs.at(assetType)(assetInfo);
 	}
 
-	bool AssetSerializer::SerializeAsset(const AssetMetadata& metadata)
+	bool AssetSerializer::SerializeAsset(Ref<Asset> asset, const AssetMetadata& metadata)
 	{
 		if (s_AssetSerializeFuncs.find(metadata.Type) == s_AssetSerializeFuncs.end())
 		{
-			GE_CORE_ERROR("Serializer function not found for Type: " + AssetUtils::AssetTypeToString(metadata.Type));
+			GE_CORE_ERROR("Serialize metadata function not found for Type: " + AssetUtils::AssetTypeToString(metadata.Type));
 			return false;
 		}
-		return s_AssetSerializeFuncs.at(metadata.Type)(metadata);
+		return s_AssetSerializeFuncs.at(metadata.Type)(asset, metadata);
+	}
+
+	bool AssetSerializer::SerializeAsset(Ref<Asset> asset, const AssetInfo& assetInfo)
+	{
+		if (s_AssetPackSerializeFuncs.find(asset->GetType()) == s_AssetPackSerializeFuncs.end())
+		{
+			GE_CORE_ERROR("Serialize asset info function not found for Type: " + AssetUtils::AssetTypeToString(asset->GetType()));
+			return false;
+		}
+		return s_AssetPackSerializeFuncs.at(asset->GetType())(asset, assetInfo);
 	}
 
 	Ref<Asset> AssetSerializer::DeserializeScene(const AssetMetadata& metadata)
 	{
+		Ref<Scene> scene = CreateRef<Scene>(metadata.Handle);
+		scene->p_Status = Asset::Status::Loading;
+
 		std::filesystem::path path = Project::GetPathToAsset(metadata.FilePath);
+
 		std::ifstream stream(path);
 		std::stringstream strStream;
-		strStream << stream.rdbuf();
-
+		if (stream.good())
+		{
+			strStream << stream.rdbuf();
+		}
 		YAML::Node data;
 		try
 		{
@@ -947,15 +1047,18 @@ namespace GE
 		}
 		catch (YAML::ParserException e)
 		{
-			GE_CORE_ERROR("Failed to load asset registry file. {0}\n\t{1}", path.string(), e.what());
+			GE_CORE_ERROR("Failed to load Scene Asset file. {0}\n\t{1}", path.string(), e.what());
 		}
 
 		if (!data["Scene"])
-			return false;
+		{
+			scene->p_Status = Asset::Status::Invalid;
+			return scene;
+		}
 
 		std::string sceneName = data["Scene"].as<std::string>();
-		GE_CORE_TRACE("Deserializing Scene\n\tPath: {0}\n\tName: {1}", path.string(), sceneName.c_str());
-		Ref<Scene> scene = CreateRef<Scene>(metadata.Handle, sceneName);
+		GE_CORE_TRACE("Deserializing Scene\n\tUUID : {0}\n\tName : {1}\n\tPath : {2}", (uint64_t)metadata.Handle, sceneName.c_str(), path.string());
+		scene->m_Config.Name = sceneName;
 
 		auto entities = data["Entities"];
 		if (entities)
@@ -970,7 +1073,7 @@ namespace GE
 				if (tagComponent)
 					name = tagComponent["Tag"].as<std::string>();
 
-				GE_CORE_TRACE("Deserializing entity\n\tID: {0},\n\tName: {1}", uuid, name);
+				GE_CORE_TRACE("Deserializing entity\n\tUUID : {0},\n\tName : {1}", uuid, name);
 
 				Entity deserializedEntity = scene->CreateEntityWithUUID(uuid, name);
 
@@ -990,11 +1093,11 @@ namespace GE
 				{
 					auto& cc = scene->GetOrAddComponent<CameraComponent>(deserializedEntity);
 					auto& cameraProps = cameraComponent["Camera"];
-
-					cc.Camera.SetProjectionType((SceneCamera::ProjectionType)cameraProps["Type"].as<int>());
-					cc.Camera.SetFOV(cameraProps["FOV"].as<float>());
-					cc.Camera.SetNearClip(cameraProps["Near"].as<float>());
-					cc.Camera.SetFarClip(cameraProps["Far"].as<float>());
+					
+					cc.ActiveCamera.SetProjectionType((SceneCamera::ProjectionType)cameraProps["Type"].as<int>());
+					cc.ActiveCamera.SetFOV(cameraProps["FOV"].as<float>());
+					cc.ActiveCamera.SetNearClip(cameraProps["Near"].as<float>());
+					cc.ActiveCamera.SetFarClip(cameraProps["Far"].as<float>());
 
 					cc.Primary = cameraComponent["Primary"].as<bool>();
 					cc.FixedAspectRatio = cameraComponent["FixedAspectRatio"].as<bool>();
@@ -1098,73 +1201,72 @@ namespace GE
 							}
 
 							std::string scriptFieldTypeString = field["Type"].as<std::string>();
-							ScriptFieldType scriptFieldType = StringToScriptFieldType(scriptFieldTypeString);
+							ScriptField::Type scriptFieldType = Scripting::StringToScriptFieldType(scriptFieldTypeString);
 
-							ScriptFieldInstance& scriptFieldInstance = scriptFieldMap[scriptFieldName];
-							scriptFieldInstance.Field = scriptClassFields.at(scriptFieldName);
-
+							ScriptField& scriptField = scriptFieldMap[scriptFieldName];
+							
 							switch (scriptFieldType)
 							{
-							case GE::ScriptFieldType::None:
+							case GE::ScriptField::Type::None:
 								break;
-							case GE::ScriptFieldType::Char:
+							case GE::ScriptField::Type::Char:
 							{
 								char data = field["Data"].as<char>();
-								scriptFieldInstance.SetValue<char>(data);
+								scriptField.SetValue<char>(data);
 								break;
 							}
-							case GE::ScriptFieldType::Int:
+							case GE::ScriptField::Type::Int:
 							{
 								int32_t data = field["Data"].as<int32_t>();
-								scriptFieldInstance.SetValue<int32_t>(data);
+								scriptField.SetValue<int32_t>(data);
 								break;
 							}
-							case GE::ScriptFieldType::UInt:
+							case GE::ScriptField::Type::UInt:
 							{
 								uint32_t data = field["Data"].as<uint32_t>();
-								scriptFieldInstance.SetValue<uint32_t>(data);
+								scriptField.SetValue<uint32_t>(data);
 								break;
 							}
-							case GE::ScriptFieldType::Float:
+							case GE::ScriptField::Type::Float:
 							{
 								float data = field["Data"].as<float>();
-								scriptFieldInstance.SetValue<float>(data);
+								scriptField.SetValue<float>(data);
 								break;
 							}
-							case GE::ScriptFieldType::Byte:
+							case GE::ScriptField::Type::Byte:
 							{
 								int8_t data = field["Data"].as<int8_t>();
-								scriptFieldInstance.SetValue<int8_t>(data);
+								scriptField.SetValue<int8_t>(data);
 								break;
 							}
-							case GE::ScriptFieldType::Bool:
+							case GE::ScriptField::Type::Bool:
 							{
 								bool data = field["Data"].as<bool>();
-								scriptFieldInstance.SetValue<bool>(data);
+								scriptField.SetValue<bool>(data);
 								break;
 							}
-							case GE::ScriptFieldType::Vector2:
+							case GE::ScriptField::Type::Vector2:
 							{
 								glm::vec2 data = field["Data"].as<glm::vec2>();
-								scriptFieldInstance.SetValue<glm::vec2>(data);
+								scriptField.SetValue<glm::vec2>(data);
 								break;
 							}
-							case GE::ScriptFieldType::Vector3:
+							case GE::ScriptField::Type::Vector3:
 							{
 								glm::vec3 data = field["Data"].as<glm::vec3>();
-								scriptFieldInstance.SetValue<glm::vec3>(data);
+								scriptField.SetValue<glm::vec3>(data);
 								break;
 							}
-							case GE::ScriptFieldType::Vector4:
+							case GE::ScriptField::Type::Vector4:
 							{
 								glm::vec4 data = field["Data"].as<glm::vec4>();
-								scriptFieldInstance.SetValue<glm::vec4>(data);
+								scriptField.SetValue<glm::vec4>(data);
 								break;
 							}
-							case GE::ScriptFieldType::Entity:
+							case GE::ScriptField::Type::Entity:
 							{
 								UUID data = field["Data"].as<UUID>();
-								scriptFieldInstance.SetValue<UUID>(data);
+								scriptField.SetValue<UUID>(data);
 								break;
 							}
 							}
@@ -1215,20 +1317,15 @@ namespace GE
 			}
 		}
 		
+		scene->p_Status = Asset::Status::Ready;
 		return scene;
 	}
 
-	Ref<Asset> AssetSerializer::DeserializeSceneFromPack(const AssetPack::File::AssetInfo& assetInfo)
+	// TODO:
+	Ref<Asset> AssetSerializer::DeserializeSceneFromPack(const AssetInfo& assetInfo)
 	{
 		GE_CORE_ERROR("Cannot import Scene from AssetPack");
-		return false;
-		/*
-		GE_CORE_TRACE("Deserializing Scene from Pack");
-		Ref<Scene> scene = CreateRef<Scene>();
-
-		asset = scene;
-		return true;
-		*/
+		return nullptr;
 	}
 
 	Ref<Asset> AssetSerializer::DeserializeTexture2D(const AssetMetadata& metadata)
@@ -1244,18 +1341,18 @@ namespace GE
 		GE_CORE_ASSERT(data, "Failed to load stb image!");
 		data.Size = width * height * channels;  // Assumed 1 byte per channel
 
-		TextureConfiguration config;
+		Texture::Config config;
 		config.Height = height;
 		config.Width = width;
 		if (channels == 3)
 		{
-			config.InternalFormat = ImageFormat::RBG8;
-			config.Format = DataFormat::RGB;
+			config.InternalFormat = Texture::ImageFormat::RGB8;
+			config.Format = Texture::DataFormat::RGB;
 		}
 		else if (channels == 4)
 		{
-			config.InternalFormat = ImageFormat::RBGA8;
-			config.Format = DataFormat::RGBA;
+			config.InternalFormat = Texture::ImageFormat::RGBA8;
+			config.Format = Texture::DataFormat::RGBA;
 		}
 		else
 			GE_CORE_WARN("Unsupported Texture2D Channels.");
@@ -1267,10 +1364,11 @@ namespace GE
 		return texture;
 	}
 
-	Ref<Asset> AssetSerializer::DeserializeTexture2DFromPack(const AssetPack::File::AssetInfo& assetInfo)
+	// TODO:
+	Ref<Asset> AssetSerializer::DeserializeTexture2DFromPack(const AssetInfo& assetInfo)
 	{
 		GE_CORE_ERROR("Cannot import Texture2D from AssetPack");
-		return false;
+		return nullptr;
 		/*
 		Buffer data;
 		TextureConfiguration config;
@@ -1284,86 +1382,67 @@ namespace GE
 
 	Ref<Asset> AssetSerializer::DeserializeFont(const AssetMetadata& metadata)
 	{
-		Ref<Font> asset = CreateRef<Font>();
-		asset->p_Handle = metadata.Handle;
-
+		Ref<Font> asset = CreateRef<Font>(metadata.Handle);
+		asset->p_Status = Asset::Status::Loading;
 		asset->m_AtlasConfig.Texture =  CreateAndCacheFontAtlas<uint8_t, float, 3, msdf_atlas::msdfGenerator>
 			(metadata, "FontAtlas", asset->m_AtlasConfig, asset->m_MSDFData);
+
+		asset->p_Status = Asset::Status::Ready;
 		return asset;
 	}
 
-	Ref<Asset> AssetSerializer::DeserializeFontFromPack(const AssetPack::File::AssetInfo& assetInfo)
+	// TODO:
+	Ref<Asset> AssetSerializer::DeserializeFontFromPack(const AssetInfo& assetInfo)
 	{
-		return Ref<Asset>();
+		GE_CORE_ERROR("Cannot import Font from AssetPack");
+		return nullptr;
 	}
 
+	// TODO: Fix audio
 	Ref<Asset> AssetSerializer::DeserializeAudio(const AssetMetadata& metadata)
 	{
-		Ref<AudioSource> audioSource = CreateRef<AudioSource>();
+		Ref<AudioClip> audioSource = CreateRef<AudioClip>();
 		audioSource->p_Handle = metadata.Handle;
 
 		if (LoadWav(Project::GetPathToAsset(metadata.FilePath), audioSource->m_AudioBuffer))
 		{
-			switch (audioSource->m_AudioBuffer->BufferType)
+			alGenBuffers(audioSource->m_AudioBuffer->NUM_BUFFERS, audioSource->m_AudioBuffer->Buffers);
+
+			for (std::size_t i = 0; i < audioSource->m_AudioBuffer->NUM_BUFFERS; ++i)
 			{
-			case AudioBuffer::Type::None:
-			{
-				GE_CORE_ERROR("Could not load Audio Source Buffer.");
-				return audioSource;
-			}
-			case AudioBuffer::Type::Short:
-			{
-				Ref<ShortAudioBuffer> shortBuffer = audioSource->GetBuffer<ShortAudioBuffer>();
-				alGenBuffers(1, &shortBuffer->Buffer);
-				alBufferData(shortBuffer->Buffer, shortBuffer->Format, shortBuffer->Data, shortBuffer->Size, shortBuffer->SampleRate);
+				alBufferData(audioSource->m_AudioBuffer->Buffers[i], 
+					audioSource->m_AudioBuffer->Format, 
+					&audioSource->m_AudioBuffer->Data[i], audioSource->m_AudioBuffer->Size,
+					audioSource->m_AudioBuffer->SampleRate);
 
 				ALenum error = alGetError();
 				if (error != AL_NO_ERROR)
 				{
 					GE_CORE_ERROR("OpenAL Error: {0}", (char*)alGetString(error));
-					if (shortBuffer->Buffer && alIsBuffer(shortBuffer->Buffer))
-						alDeleteBuffers(1, &shortBuffer->Buffer);
+					if (audioSource->m_AudioBuffer->Buffers[i] && alIsBuffer(audioSource->m_AudioBuffer->Buffers[i]))
+						alDeleteBuffers(1, &audioSource->m_AudioBuffer->Buffers[i]);
 					return 0;
 				}
-				break;
 			}
-			case AudioBuffer::Type::Long:
-			{
-				Ref<LongAudioBuffer> longBuffer = audioSource->GetBuffer<LongAudioBuffer>();
-				alGenBuffers(longBuffer->NUM_BUFFERS, longBuffer->Buffers);
-
-				for (std::size_t i = 0; i < longBuffer->NUM_BUFFERS; ++i)
-				{
-					alBufferData(longBuffer->Buffers[i], longBuffer->Format, &longBuffer->Data[i], longBuffer->Size, longBuffer->SampleRate);
-
-					ALenum error = alGetError();
-					if (error != AL_NO_ERROR)
-					{
-						GE_CORE_ERROR("OpenAL Error: {0}", (char*)alGetString(error));
-						if (longBuffer->Buffers[i] && alIsBuffer(longBuffer->Buffers[i]))
-							alDeleteBuffers(1, &longBuffer->Buffers[i]);
-						return 0;
-					}
-				}
-				break;
-			}
-			}
+				
 		}
 
 		return audioSource;
 	}
 
-	Ref<Asset> AssetSerializer::DeserializeAudioFromPack(const AssetPack::File::AssetInfo& assetInfo)
+	// TODO: do last, fix Audio from metadata first
+	Ref<Asset> AssetSerializer::DeserializeAudioFromPack(const AssetInfo& assetInfo)
 	{
-		return Ref<Asset>();
+		GE_CORE_ERROR("Cannot import Audio from AssetPack");
+		return nullptr;
 	}
 	
-	bool AssetSerializer::SerializeScene(const AssetMetadata& metadata)
+	bool AssetSerializer::SerializeScene(Ref<Asset> asset, const AssetMetadata& metadata)
 	{
 		std::filesystem::path path = Project::GetPathToAsset(metadata.FilePath);
-		GE_CORE_TRACE("Serializing Scene\n\tPath: {}", path.string());
-		Ref<Scene> scene = Project::GetAsset<Scene>(metadata.Handle);
-		
+		Ref<Scene> scene = Project::GetAssetAs<Scene>(asset);
+		GE_CORE_TRACE("Serializing Scene\n\tUUID : {0}\n\tName : {1}\n\tPath : {2}", (uint64_t)metadata.Handle, scene->GetName().c_str(), path.string());
+
 		YAML::Emitter out;
 		{
 			out << YAML::BeginMap;
@@ -1380,14 +1459,64 @@ namespace GE
 			out << YAML::EndMap;
 		}
 		std::ofstream fout(path);
-		if (!fout.good() || !fout.is_open())
+		if (fout.is_open() && fout.good())
 		{
-			GE_CORE_ERROR("Failed to Serialize Scene Asset");
-			return false;
+			fout << out.c_str();
+			fout.close();
+			GE_CORE_TRACE("Scene Serialization Complete.");
+			return true;
 		}
-		fout << out.c_str();
-		fout.close();
-		return true;
+		
+		GE_CORE_WARN("Scene Serialization Failed.");
+		return false;
+	}
+
+	bool AssetSerializer::SerializeSceneToPack(Ref<Asset> asset, const AssetInfo& assetInfo)
+	{
+		//      [68 + ?] SceneInfo  : Value, corressponding Key handled in SerializePack
+		//          [8] Packed Size : Size of whole Scene
+		//			[60 + ?] Data
+		//				[2] Type
+		//				[8] Name
+		//				[8] Asset Map Count
+		//				[26 + ?] Asset Map			// Size based on how many Assets are loaded
+		//				    [8] Asset Handle    : Key
+		//				    [18 + ?] AssetInfo	: Value
+		//				        [8] Packed Size
+		//						[10 + ?] Packed Data
+		//							[2] Type
+		//							[8] Name
+		//				[8] Entity Map Count
+		//				[16 + ?] Entity Map			// Size based on how many Entities are loaded
+		//				    [8] Handle			: Key
+		//				    [8 + ?] EntityInfo	: Value
+		//				        [8] Packed Size
+		//						[?]	Packed Data
+		
+		Ref<Scene> scene = Project::GetAssetAs<Scene>(asset);
+		SceneInfo* sceneInfo = Project::GetAssetManager<RuntimeAssetManager>()->GetAssetInfo<SceneInfo>(assetInfo);
+		
+		sceneInfo->p_Size = scene->GetByteArray(); // Get requiredSize
+		if (sceneInfo->p_Size != 0)
+		{
+			//Reserve Memory using requiredSize
+			sceneInfo->p_Data = new uint8_t[sceneInfo->p_Size];
+
+			// Set & Verify data
+			if (scene->GetByteArray(sceneInfo->p_Data, sceneInfo->p_Size) == sceneInfo->p_Size)
+			{
+				GE_CORE_TRACE("Serialized Scene to Pack.");
+				return true;
+			}
+
+		}
+		else
+		{
+			GE_CORE_ASSERT(false, "");
+		}
+
+		return false;
+
 	}
 
 }

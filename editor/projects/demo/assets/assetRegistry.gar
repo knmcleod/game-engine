@@ -14,6 +14,9 @@ AssetRegistry:
   - Handle: 11431965439572258343
     FilePath: audio/vgmenuselect.wav
     Type: AudioClip
+  - Handle: 15517549476448095152
+    FilePath: audio/b423b42.wav
+    Type: AudioClip
   - Handle: 16203209201710611844
     FilePath: textures/Stop_Button.png
     Type: Texture2D

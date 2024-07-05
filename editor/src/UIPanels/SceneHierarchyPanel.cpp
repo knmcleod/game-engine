@@ -5,15 +5,19 @@
 #include "GE/Asset/Assets/Audio/Audio.h"
 #include "GE/Asset/Assets/Textures/Texture.h"
 
-#include "GE/Core/Util/PlatformUtils.h"
+#include "GE/Core/FileSystem/FileSystem.h"
 
 #include "GE/Project/Project.h"
 
 #include "GE/Scripting/Scripting.h"
 
 #include <filesystem>
+
+// This ignores all warnings raised inside External headers
+#pragma warning(push, 0)
 #include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
+#pragma warning(pop)
 
 namespace GE
 {
@@ -77,15 +81,58 @@ namespace GE
 		}
 	}
 
-	SceneHierarchyPanel::SceneHierarchyPanel(Ref<Scene> scene)
+	SceneHierarchyPanel::SceneHierarchyPanel(Scene* scene)
 	{
 		SetScene(scene);
 	}
 
-	void SceneHierarchyPanel::SetScene(Ref<Scene> scene)
+	void SceneHierarchyPanel::SetScene(Scene* scene)
 	{
 		m_Scene = scene;
-		m_SelectedEntity = Entity(entt::null, scene.get());
+		if (m_SelectedEntity != Entity() && m_SelectedEntity.HasComponent<IDComponent>())
+			m_SelectedEntity = m_Scene->GetEntityByUUID(m_SelectedEntity.GetComponent<IDComponent>().ID);
+	}
+
+	void SceneHierarchyPanel::OnImGuiRender()
+	{
+		{
+			ImGui::Begin("Scene Hierarchy");
+
+			m_Scene->GetRegistry().each([&](auto entityID)
+				{
+					Entity entity{ entityID, m_Scene };
+					DrawEntity(entity);
+				});
+
+			if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
+			{
+				m_SelectedEntity = Entity();
+			}
+			
+			//	Right-Click Blank space
+			if (ImGui::BeginPopupContextWindow(0))
+			{
+				if (ImGui::MenuItem("Create Empty Entity"))
+				{
+					m_Scene->CreateEntity("Empty Entity");
+				}
+				
+				ImGui::EndPopup();
+			}
+
+			ImGui::End();
+		}
+
+		{
+			ImGui::Begin("Properties");
+
+			if (m_SelectedEntity)
+			{
+				DrawComponents(m_SelectedEntity);
+			}
+
+			ImGui::End();
+		}
 	}
 
 	void SceneHierarchyPanel::DrawEntity(Entity entity)
@@ -126,48 +173,6 @@ namespace GE
 			if (m_SelectedEntity == entity)
 				m_SelectedEntity = Entity();
 			m_Scene->DestroyEntity(entity);
-		}
-	}
-
-	void SceneHierarchyPanel::OnImGuiRender()
-	{
-		{
-			ImGui::Begin("Scene Hierarchy");
-
-			m_Scene->GetRegistry().each([&](auto entityID)
-				{
-					Entity entity{ entityID, m_Scene.get() };
-					DrawEntity(entity);
-				});
-
-			if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
-			{
-				m_SelectedEntity = Entity();
-			}
-			
-			//	Right-Click Blank space
-			if (ImGui::BeginPopupContextWindow(0))
-			{
-				if (ImGui::MenuItem("Create Empty Entity"))
-				{
-					m_Scene->CreateEntity("Empty Entity");
-				}
-				
-				ImGui::EndPopup();
-			}
-
-			ImGui::End();
-		}
-
-		{
-			ImGui::Begin("Properties");
-
-			if (m_SelectedEntity)
-			{
-				DrawComponents(m_SelectedEntity);
-			}
-
-			ImGui::End();
 		}
 	}
 
@@ -229,7 +234,7 @@ namespace GE
 		DrawComponent<CameraComponent>("Camera", entity,
 			[](auto& component)
 			{
-				auto& camera = component.Camera;
+				auto& camera = component.ActiveCamera;
 
 				ImGui::Checkbox("Primary", &component.Primary);
 				ImGui::Checkbox("Fixed Aspect Ratio", &component.FixedAspectRatio);
@@ -253,9 +258,9 @@ namespace GE
 					ImGui::EndCombo();
 				}
 
-				float size = camera.GetFOV();
-				if (ImGui::DragFloat("Size", &size))
-					camera.SetFOV(size);
+				float fov = camera.GetFOV();
+				if (ImGui::DragFloat("FOV", &fov))
+					camera.SetFOV(fov);
 
 				float nearClip = camera.GetNearClip();
 				if (ImGui::DragFloat("Near Clip", &nearClip))
@@ -277,11 +282,11 @@ namespace GE
 				{
 					if (Project::GetAssetManager<EditorAssetManager>()->HandleExists(component.AssetHandle))
 					{
-						Ref<Asset> asset = Project::GetActive()->GetAssetManager()->GetAsset(component.AssetHandle);
+						Ref<Asset> asset = Project::GetAssetManager()->GetAsset(component.AssetHandle);
 						Asset::Type type = asset->GetType();
-						if (type == Asset::Type::AudioSource)
+						if (type == Asset::Type::AudioClip)
 						{
-							Project::GetAsset<AudioSource>(asset->GetHandle())->Play();
+							Project::GetAsset<AudioClip>(asset->GetHandle())->Play();
 						}
 						else
 						{
@@ -290,7 +295,7 @@ namespace GE
 					}
 					else
 					{
-
+						GE_ERROR("No AudioClip Found.");
 					}
 				}
 				if (ImGui::BeginDragDropTarget())
@@ -299,9 +304,9 @@ namespace GE
 					{
 						const UUID handle = *(UUID*)payload->Data;
 
-						Ref<Asset> asset = Project::GetActive()->GetAssetManager()->GetAsset(handle);
+						Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
 						Asset::Type type = asset->GetType();
-						if (type == Asset::Type::AudioSource)
+						if (type == Asset::Type::AudioClip)
 						{
 							component.AssetHandle = asset->GetHandle();
 						}
@@ -328,10 +333,10 @@ namespace GE
 				{
 					if (ImGui::Button("Texture"))
 					{
-						std::string filePath = FileDialogs::LoadFile("PNG(*.png)\0*.png\0");
+						std::string filePath = FileSystem::LoadFromFileDialog("PNG(*.png)\0*.png\0");
 						if (!filePath.empty())
 						{
-							Ref<Texture2D> texture = Project::GetAsset<Texture2D>(filePath);
+							Ref<Asset> texture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
 							if (texture)
 							{
 								component.AssetHandle = texture->GetHandle();
@@ -344,7 +349,7 @@ namespace GE
 						{
 							const UUID handle = *(UUID*)payload->Data;
 
-							Ref<Asset> asset = Project::GetActive()->GetAssetManager()->GetAsset(handle);
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
 							if (asset->GetType() == Asset::Type::Texture2D)
 							{
 								component.AssetHandle = asset->GetHandle();
@@ -378,22 +383,23 @@ namespace GE
 				ImGui::DragFloat("Kerning", &component.KerningOffset);
 				ImGui::DragFloat("Line Height Spacing", &component.LineHeightOffset);
 
-				auto& text = component.Text;
+				std::string& text = component.Text;
 			
 				char buffer[256];
 				memset(buffer, 0, sizeof(buffer));
-				strcpy_s(buffer, sizeof(buffer), text.c_str());
+				if(!text.empty())
+					strcpy_s(buffer, sizeof(buffer), text.c_str());
 				if (ImGui::InputTextMultiline("Text", buffer, sizeof(buffer)))
 					text = std::string(buffer);
 
 				{
-					Ref<Font> font;
+					Ref<Asset> font = nullptr;
 					if (ImGui::Button("Font"))
 					{
-						std::string filePath = FileDialogs::LoadFile("TTF(*.ttf)\0*.ttf\0");
+						std::string filePath = FileSystem::LoadFromFileDialog("TTF(*.ttf)\0*.ttf\0");
 						if (!filePath.empty())
 						{
-							font = Project::GetAsset<Font>(filePath);
+							font = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
 							if (font)
 							{
 								component.AssetHandle = font->GetHandle();
@@ -407,7 +413,7 @@ namespace GE
 						{
 							const UUID handle = *(UUID*)payload->Data;
 
-							Ref<Asset> asset = Project::GetActive()->GetAssetManager()->GetAsset(handle);
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
 							if (asset->GetType() == Asset::Type::Font)
 							{
 								component.AssetHandle = asset->GetHandle();
@@ -422,7 +428,7 @@ namespace GE
 				
 					if (font)
 					{
-						Ref<Texture2D> fontAtlas = font->GetAtlasTexture();
+						Ref<Texture2D> fontAtlas = Project::GetAsset<Font>(font->GetHandle())->GetAtlasTexture();
 						if (fontAtlas != nullptr)
 							ImGui::Image((ImTextureID)fontAtlas->GetID(), { 512, 512 }, { 0, 1 }, { 1, 0 });
 					}
@@ -462,31 +468,32 @@ namespace GE
 
 							for (const auto& [name, field] : fields)
 							{
-								if (field.Type == ScriptFieldType::Bool)
+								ScriptField::Type type = field.GetType();
+								if (type == ScriptField::Type::Bool)
 								{
 									bool data = scriptInstance->GetFieldValue<bool>(name);
 									if (ImGui::Checkbox(name.c_str(), &data))
 										scriptInstance->SetFieldValue<bool>(name, data);
 								}
-								else if (field.Type == ScriptFieldType::Float)
+								else if (type == ScriptField::Type::Float)
 								{
 									float data = scriptInstance->GetFieldValue<float>(name);
 									if (ImGui::DragFloat(name.c_str(), &data))
 										scriptInstance->SetFieldValue<float>(name, data);
 								}
-								else if (field.Type == ScriptFieldType::Vector2)
+								else if (type == ScriptField::Type::Vector2)
 								{
 									glm::vec2 data = scriptInstance->GetFieldValue<glm::vec2>(name);
 									if (ImGui::DragFloat2(name.c_str(), glm::value_ptr(data)))
 										scriptInstance->SetFieldValue<glm::vec2>(name, data);
 								}
-								else if (field.Type == ScriptFieldType::Vector3)
+								else if (type == ScriptField::Type::Vector3)
 								{
 									glm::vec3 data = scriptInstance->GetFieldValue<glm::vec3>(name);
 									if (ImGui::DragFloat3(name.c_str(), glm::value_ptr(data)))
 										scriptInstance->SetFieldValue<glm::vec3>(name, data);
 								}
-								else if (field.Type == ScriptFieldType::Vector4)
+								else if (type == ScriptField::Type::Vector4)
 								{
 									glm::vec4 data = scriptInstance->GetFieldValue<glm::vec4>(name);
 									if (ImGui::DragFloat4(name.c_str(), glm::value_ptr(data)))
@@ -507,74 +514,73 @@ namespace GE
 							// ScriptFieldInstance already exists, display it
 							if (scriptingFieldMap.find(name) != scriptingFieldMap.end())
 							{
-								ScriptFieldInstance& fieldInstance = scriptingFieldMap.at(name);
-
-								if (field.Type == ScriptFieldType::Bool)
+								ScriptField& field = scriptingFieldMap.at(name);
+								ScriptField::Type type = field.GetType();
+								if (type == ScriptField::Type::Bool)
 								{
-									bool data = fieldInstance.GetValue<bool>();
+									bool data = field.GetValue<bool>();
 									if (ImGui::Checkbox(name.c_str(), &data))
-										fieldInstance.SetValue<bool>(data);
+										field.SetValue<bool>(data);
 								}
-								else if (field.Type == ScriptFieldType::Float)
+								else if (type == ScriptField::Type::Float)
 								{
-									float data = fieldInstance.GetValue<float>();
+									float data = field.GetValue<float>();
 									if (ImGui::DragFloat(name.c_str(), &data))
-										fieldInstance.SetValue<float>(data);
+										field.SetValue<float>(data);
 								}
-								else if (field.Type == ScriptFieldType::Vector2)
+								else if (type == ScriptField::Type::Vector2)
 								{
-									glm::vec2 data = fieldInstance.GetValue<glm::vec2>();
+									glm::vec2 data = field.GetValue<glm::vec2>();
 									if (ImGui::DragFloat2(name.c_str(), glm::value_ptr(data)))
-										fieldInstance.SetValue<glm::vec2>(data);
+										field.SetValue<glm::vec2>(data);
 								}
-								else if (field.Type == ScriptFieldType::Vector3)
+								else if (type == ScriptField::Type::Vector3)
 								{
-									glm::vec3 data = fieldInstance.GetValue<glm::vec3>();
+									glm::vec3 data = field.GetValue<glm::vec3>();
 									if (ImGui::DragFloat3(name.c_str(), glm::value_ptr(data)))
-										fieldInstance.SetValue<glm::vec3>(data);
+										field.SetValue<glm::vec3>(data);
 								}
-								else if (field.Type == ScriptFieldType::Vector4)
+								else if (type == ScriptField::Type::Vector4)
 								{
-									glm::vec4 data = fieldInstance.GetValue<glm::vec4>();
+									glm::vec4 data = field.GetValue<glm::vec4>();
 									if (ImGui::DragFloat4(name.c_str(), glm::value_ptr(data)))
-										fieldInstance.SetValue<glm::vec4>(data);
+										field.SetValue<glm::vec4>(data);
 								}
 
 							}
 							else // Add ScriptFieldInstance for display
 							{
-								ScriptFieldInstance& fieldInstance = scriptingFieldMap[name];
-								fieldInstance.Field = field;
-
-								if (field.Type == ScriptFieldType::Bool)
+								ScriptField& field = scriptingFieldMap[name];
+								ScriptField::Type type = field.GetType();
+								if (type == ScriptField::Type::Bool)
 								{
 									bool data = false;
 									if (ImGui::Checkbox(name.c_str(), &data))
-										fieldInstance.SetValue<bool>(data);
+										field.SetValue<bool>(data);
 								}
-								else if (field.Type == ScriptFieldType::Float)
+								else if (type == ScriptField::Type::Float)
 								{
 									float data = 0.0f;
 									if (ImGui::DragFloat(name.c_str(), &data))
-										fieldInstance.SetValue<float>(data);
+										field.SetValue<float>(data);
 								}
-								else if (field.Type == ScriptFieldType::Vector2)
+								else if (type == ScriptField::Type::Vector2)
 								{
 									glm::vec2 data = glm::vec2();
 									if (ImGui::DragFloat2(name.c_str(), glm::value_ptr(data)))
-										fieldInstance.SetValue<glm::vec2>(data);
+										field.SetValue<glm::vec2>(data);
 								}
-								else if (field.Type == ScriptFieldType::Vector3)
+								else if (type == ScriptField::Type::Vector3)
 								{
 									glm::vec3 data = glm::vec3();
 									if (ImGui::DragFloat3(name.c_str(), glm::value_ptr(data)))
-										fieldInstance.SetValue<glm::vec3>(data);
+										field.SetValue<glm::vec3>(data);
 								}
-								else if (field.Type == ScriptFieldType::Vector4)
+								else if (type == ScriptField::Type::Vector4)
 								{
 									glm::vec4 data = glm::vec4();
 									if (ImGui::DragFloat4(name.c_str(), glm::value_ptr(data)))
-										fieldInstance.SetValue<glm::vec4>(data);
+										field.SetValue<glm::vec4>(data);
 								}
 
 							}

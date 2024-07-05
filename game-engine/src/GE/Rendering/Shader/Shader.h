@@ -7,7 +7,8 @@ namespace GE
 	class Shader
 	{
 	public:
-		enum class ShaderDataType
+		// TODO: Math wrapper
+		enum class DataType
 		{
 			None,
 			Float, Float2, Float3, Float4,
@@ -16,53 +17,45 @@ namespace GE
 			Bool
 		};
 
-		static uint32_t ShaderDataTypeSize(ShaderDataType type)
+		static uint32_t GetDataTypeSize(DataType type)
 		{
 			switch (type)
 			{
-			case ShaderDataType::Float:
+			case DataType::Float:
 				return 4;
-			case ShaderDataType::Float2:
+			case DataType::Float2:
 				return 4 * 2;
-			case ShaderDataType::Float3:
+			case DataType::Float3:
 				return 4 * 3;
-			case ShaderDataType::Float4:
+			case DataType::Float4:
 				return 4 * 4;
-			case ShaderDataType::Mat3:
+			case DataType::Mat3:
 				return 4 * 3 * 3;
-			case ShaderDataType::Mat4:
+			case DataType::Mat4:
 				return 4 * 4 * 4;
-			case ShaderDataType::Int:
+			case DataType::Int:
 				return 4;
-			case ShaderDataType::Int2:
+			case DataType::Int2:
 				return 4 * 2;
-			case ShaderDataType::Int3:
+			case DataType::Int3:
 				return 4 * 3;
-			case ShaderDataType::Int4:
+			case DataType::Int4:
 				return 4 * 4;
-			case ShaderDataType::Bool:
+			case DataType::Bool:
 				return 1;
 			}
 
-			GE_CORE_ASSERT(false, "Unknown ShaderDataType!");
+			GE_CORE_ASSERT(false, "Unknown DataType!");
 			return 0;
 		}
 
-		virtual ~Shader() {};
-
-		virtual const std::string& GetName() const = 0;
-
-		//	Returns created Shader given vertex and fragment sources
-		static Ref<Shader> Create(const std::string& name, const std::string& vertexSrc,
-			const std::string& fragmentSrc);
-		
-		//	Returns created Shader given path
+		static Ref<Shader> Create(const std::string& name, 
+			const std::string& vertexSrc, const std::string& fragmentSrc);
 		static Ref<Shader> Create(const std::string& path);
 
-		// Binds program
-		virtual void Bind() const = 0;
-		// Uninds program
-		virtual void Unbind() const = 0;
+		virtual ~Shader() {}
+
+		virtual const std::string& GetName() const = 0;
 
 		virtual void SetMat4(const std::string& name, const glm::mat4& value) = 0;
 		virtual void SetFloat4(const std::string& name, const glm::vec4& value) = 0;
@@ -72,12 +65,18 @@ namespace GE
 		virtual void SetInt(const std::string& name, const int value) = 0;
 		virtual void SetIntArray(const std::string& name, const int* values, uint32_t count) = 0;
 
+		// Binds program
+		virtual void Bind() const = 0;
+		// Uninds program
+		virtual void Unbind() const = 0;
+
 	};
 
+	// TODO: Remove, Move Shader to Assets
 	class ShaderLibrary
 	{
 	public:
-		void Add(const Ref<Shader>& shader, const std::string& name = "Shader");
+		void Add(Ref<Shader> shader, const std::string& name = "Shader");
 		Ref<Shader> Load(const std::string& path, const std::string& name = "Shader");
 
 		Ref<Shader> Get(const std::string& name);

@@ -2,15 +2,15 @@
 
 #include "Framebuffer.h"
 
-#include "GE/Rendering/Renderer/Renderer.h"
+#include "GE/Rendering/RenderAPI.h"
 
 #include "Platform/OpenGL/Framebuffers/OpenGLFramebuffer.h"
 
 namespace GE
 {
-	Ref<Framebuffer> Framebuffer::Create(const FramebufferSpecification& spec)
+	Ref<Framebuffer> Framebuffer::Create(const Framebuffer::Config& spec)
 	{
-		switch (Renderer::GetAPI())
+		switch (RenderAPI::GetAPI())
 		{
 		case RenderAPI::API::None:
 			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");

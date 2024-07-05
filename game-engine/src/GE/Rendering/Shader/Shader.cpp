@@ -2,17 +2,16 @@
 
 #include "Shader.h"
 
-#include "GE/Rendering/Renderer/Renderer.h"
+#include "GE/Rendering/RenderAPI.h"
 
 #include "Platform/OpenGL/Shader/OpenGLShader.h"
 
 
 namespace GE
 {
-
 	Ref<Shader> Shader::Create(const std::string& name, const std::string& vertexSrc, const std::string& fragmentSrc)
 	{
-		switch (Renderer::GetAPI())
+		switch (RenderAPI::GetAPI())
 		{
 		case RenderAPI::API::None:
 			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");
@@ -28,7 +27,7 @@ namespace GE
 
 	Ref<Shader> Shader::Create(const std::string& path)
 	{
-		switch (Renderer::GetAPI())
+		switch (RenderAPI::GetAPI())
 		{
 		case RenderAPI::API::None:
 			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");
@@ -44,9 +43,9 @@ namespace GE
 
 #pragma region ShaderLibrary
 
-	void ShaderLibrary::Add(const Ref<Shader>& shader, const std::string& name)
+	void ShaderLibrary::Add(Ref<Shader> shader, const std::string& name)
 	{
-		if (name == "")
+		if (name == std::string())
 		{
 			auto& name = shader->GetName();
 			GE_CORE_ASSERT(!Exists(name), "Shader already exists!");

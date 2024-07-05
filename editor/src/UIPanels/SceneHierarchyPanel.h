@@ -8,20 +8,22 @@ namespace GE
 {
 	class SceneHierarchyPanel
 	{
+		friend class EditorLayer;
+	public:
+		SceneHierarchyPanel(Scene* scene);
+
+		inline const Entity& GetSelectedEntity() const { return m_SelectedEntity; }
+		inline const glm::vec4& GetSelectedColor() const { return m_SelectedColor; }
+
+		void OnImGuiRender();
 	private:
-		Ref<Scene> m_Scene;
-		Entity m_SelectedEntity;
+		void SetScene(Scene* scene);
 
 		void DrawEntity(Entity entity);
 		void DrawComponents(Entity entity);
-	public:
-		SceneHierarchyPanel(Ref<Scene> scene);
-
-		void SetScene(Ref<Scene> scene);
-
-		void SetSelectedEntity(Entity entity) { m_SelectedEntity = entity; }
-		Entity GetSelectedEntity() const { return m_SelectedEntity; }
-
-		void OnImGuiRender();
+	private:
+		Scene* m_Scene;
+		Entity m_SelectedEntity;
+		glm::vec4 m_SelectedColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	};
 }

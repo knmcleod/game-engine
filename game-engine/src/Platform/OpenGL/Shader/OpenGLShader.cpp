@@ -240,44 +240,58 @@ namespace GE
 
 	void OpenGLShader::UploadUniformIntArray(const std::string& name, const int* values, uint32_t count)
 	{
+		this->Bind();
 		GLint location = glGetUniformLocation(m_RendererID, name.c_str());
 		glUniform1iv(location, count, values);
+		this->Unbind();
 	}
 	
 	void OpenGLShader::UploadUniformInt(const std::string& name, int value)
 	{
+		this->Bind();
 		GLint location = glGetUniformLocation(m_RendererID, name.c_str());
 		glUniform1i(location, value);
+		this->Unbind();
 	}
 
 	void OpenGLShader::UploadUniformFloat(const std::string& name, const float& value)
 	{
+		this->Bind();
 		GLint location = glGetUniformLocation(m_RendererID, name.c_str());
 		glUniform1f(location, value);
+		this->Unbind();
 	}
 
 	void OpenGLShader::UploadUniformFloat2(const std::string& name, const glm::vec2& vector)
 	{
+		this->Bind();
 		GLint location = glGetUniformLocation(m_RendererID, name.c_str());
 		glUniform2f(location, vector.x, vector.y);
+		this->Unbind();
 	}
 
 	void OpenGLShader::UploadUniformFloat3(const std::string& name, const glm::vec3& vector)
 	{
+		this->Bind();
 		GLint location = glGetUniformLocation(m_RendererID, name.c_str());
 		glUniform3f(location, vector.x, vector.y, vector.z);
+		this->Unbind();
 	}
 
 	void OpenGLShader::UploadUniformFloat4(const std::string& name, const glm::vec4& vector)
 	{
+		this->Bind();
 		GLint location = glGetUniformLocation(m_RendererID, name.c_str());
 		glUniform4f(location, vector.x, vector.y, vector.z, vector.w);
+		this->Unbind();
 	}
 
 	void OpenGLShader::UploadUniformMat4(const std::string& name, const glm::mat4& matrix)
 	{
+		this->Bind();
 		GLint location = glGetUniformLocation(m_RendererID, name.c_str());
 		glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix));
+		this->Unbind();
 	}
 
 }

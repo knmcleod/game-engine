@@ -2,7 +2,6 @@
 
 #include <filesystem>
 #include <iostream>
-#include <memory>
 #include <utility>
 #include <algorithm>
 #include <functional>
@@ -17,11 +16,9 @@
 
 //	-- Core	--
 #include "GE/Core/Core.h"
-#include "GE/Core/Debug/Instrumentor.h"
 #include "GE/Core/Buffer.h"
 
 #ifdef GE_PLATFORM_WINDOWS
 	#include <Windows.h>
 	#include <commdlg.h>
 #endif // GE_PLATFORM_WINDOWS
-

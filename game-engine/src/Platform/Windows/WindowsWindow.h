@@ -10,43 +10,34 @@ namespace GE
 	class WindowsWindow : public Window
 	{
 	public:
-		WindowsWindow(const WindowProps& props);
+		WindowsWindow(const Config& config);
 		virtual ~WindowsWindow();
 
 		void OnUpdate() override;
 
-		inline virtual unsigned int GetWidth() const override { return m_Data.Width; }
-		inline virtual unsigned int GetHeight() const override { return m_Data.Height; }
+		inline float GetTime() const override { return (float)glfwGetTime(); }
+		inline unsigned int GetWidth() const override { return m_Config.Width; }
+		inline unsigned int GetHeight() const override { return m_Config.Height; }
 
-		inline virtual void* GetNativeWindow() const override { return m_Window;  }
+		inline void* GetNativeWindow() const override { return m_Window;  }
 
 		//Window attributes
-		inline void SetEventCallback(const EventCallbackFn& callback) override
-		{
-			m_Data.EventCallback = callback;
-		}
+		inline void SetEventCallback(const EventCallbackFn& callback) override { m_Config.EventCallback = callback; }
 		void SetVSync(bool enabled) override;
 		bool IsVSync() const override;
+		void SetFullscreen(bool fs) const override;
+		bool IsFullscreen() const override;
 
-	protected:
-		virtual void Init(const WindowProps& props);
-		virtual void Shutdown();
-
+		void Init(const Config& props) override;
+		void Shutdown() override;
 	private:
-		GLFWwindow* m_Window;
-		Context* m_Context;
+		Config m_Config;
 
-		struct WindowData
-		{
-			std::string Title = "WindowData";
-			unsigned int Width = 1280, Height = 720;
-			bool VSync = true;
+		GLFWmonitor* m_Monitor = nullptr;
+		GLFWwindow* m_Window = nullptr;
 
-			EventCallbackFn EventCallback;
-
-		};
-
-		WindowData m_Data;
+		Context* m_Context = nullptr;
+		
 	};
 }
 

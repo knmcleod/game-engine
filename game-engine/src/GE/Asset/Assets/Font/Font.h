@@ -2,10 +2,12 @@
 
 #include "GE/Asset/Assets/Textures/Texture.h"
 
-//#undef INFINITE
+// This ignores all warnings raised inside External headers
+#pragma warning(push, 0)
 #include <msdfgen/msdfgen.h>
 #include <msdfgen-ext.h>
 #include <msdf-atlas-gen/msdf-atlas-gen.h>
+#pragma warning(pop)
 
 namespace GE
 {
@@ -32,12 +34,24 @@ namespace GE
 			msdf_atlas::FontGeometry FontGeometry;
 		};
 
-		virtual inline const Asset::Type GetType() const { return Asset::Type::Font; }
+		Ref<Asset> GetCopy() override;
 
 		Font();
-		~Font() override {};
+		Font(UUID handle);
+		~Font() override;
 
-		Ref<MSDFData> GetMSDFData() const { return m_MSDFData; }
+		/*
+		*	Returns size required to fill buffer
+		*
+		*	param: buffer = buffer to be filled
+		*	param: bufferSize = size of buffer
+		*
+		*	If failed or default, returns 0.
+		*	Implement per inherited Asset.
+		*/
+		uint64_t GetByteArray(void* buffer = nullptr, uint64_t bufferSize = 0) override;
+
+		Ref<MSDFData> GetMSDFData() const { GE_CORE_ASSERT(m_MSDFData, "Font Data does not exist."); return m_MSDFData; }
 		const AtlasConfig& GetAtlasConfig() const { return m_AtlasConfig; }
 		Ref<Texture2D> GetAtlasTexture() const { return m_AtlasConfig.Texture; }
 	private:

@@ -44,21 +44,13 @@ namespace GE
 				auto relativePath = std::filesystem::relative(dir.path(), m_RootPath);
 				std::string pathString = relativePath.filename().string();
 
-
 				bool isDirectory = std::filesystem::is_directory(path);
 
-				if (isDirectory)
+				if (ImGui::Button(pathString.c_str()))
 				{
-					if (ImGui::Button(pathString.c_str()))
+					if (isDirectory)
 					{
 						m_CurrentPath /= path.filename();
-					}
-				}
-				else
-				{
-					if (ImGui::Button(pathString.c_str()))
-					{
-						
 					}
 				}
 
@@ -75,7 +67,7 @@ namespace GE
 
 			}
 		}
-		else
+		else // Assets only
 		{
 			// Get root node(directory)
 			TreeNode* node = &m_TreeNodes[0];
@@ -149,9 +141,9 @@ namespace GE
 					TreeNode newNode(filepath, handle);
 					newNode.Parent = currentNodeIndex;
 					m_TreeNodes.push_back(newNode);
-					m_TreeNodes[currentNodeIndex].Children[filepath] = m_TreeNodes.size() - 1;
+					m_TreeNodes[currentNodeIndex].Children[filepath] = (unsigned int)m_TreeNodes.size() - 1;
 
-					currentNodeIndex = m_TreeNodes.size() - 1;
+					currentNodeIndex = (uint32_t)m_TreeNodes.size() - 1;
 				}
 			}
 		}

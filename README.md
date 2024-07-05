@@ -5,34 +5,45 @@ Game Engine is an early-stage rendering engine for Windows.
 The goal of Game Engine is to learn the processes involved in creating a game engine and environment.
 
 ### Materials Used
-Game Engine is written by me, Kerra McLeod, starting in August 2023, made studying from the works of Jason Gregorys "Game Engine Architecture", Yan Chernikov (The Cherno) "Game Engine", and others in the game development community.
+Game Engine is written by me, Kerra McLeod, starting in August 2023, inspired by the works of Jason Gregorys "Game Engine Architecture", Yan Chernikov (The Cherno) "Game Engine", and others in the game development community.
 
 ## Get Started
-Visual Studio 2019 is recommended. 
+Visual Studio 2022 is recommended.
+Premake5 is required.
+
 Game Engine is untested on development environments other than Windows builds.
 
 Start by cloning the repository with `git clone --recursive https://github.com/knmcleod/game-engine`.
+Locate Win-GenerateProjects.bat in scripts, and run.
+Next, locate game-engine.sln in main directory, and build.
 
-## Plans 
-Starting Janurary 2024, the Demo application will begin development. The Demo will replace the Sandbox application.
-Throughout the development of Demo, Game Engine will be updated as needed.
+To use Game Editor Application, navigate to bin/%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}/editor/editor.exe
+    NOTE: %{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture} is specified by premake5.lua
 
+## Features 
 Features are subject to change.
-
-### Current features:
+### Current:
+- Application Window using GLFW
 - Input & Event system
+- Project System, including Asset Management
+- Text Asset Registry using filesystem for Asset Management
 - 2D Rendering using OpenGL (sprites, quads, circles & rectangle/lines)
-- Native scripting using C++
-- Entity system using entt
+- Text Font using MSDF-atlas-gen
+- Scene Asset using Entities
+- Entity Component system using entt
+- Native C++ Scripting, extending Entity
+- C# Scripting using Mono
 - 2D Physics system using box2d
-- Editor application for game development using Game Engine
+- Editor Application for game development using Game Engine
 
-### Future features:
+### Future:
 - More Editor application Tools
-- Scripting using C#
+- Binary Asset Pack for Asset Management
 - Audio system
+- 3D Physics
+- 2D Animation
+- Lighting
 - Artificial Intelligence
-- Demo application showcasing classic games like Checkers, Minesweeper & Bumper Cars using Game Engine
 - Networking
 - User Interface : Accessibility Settings
 - Platform Support (Mac, Linux, Android & iOS) : (DirectX, Vulkan, Metal)
@@ -44,3 +55,6 @@ Features are subject to change.
     - Custom formats
     - Localization
     - Stripping Symbols
+
+- Demo application showcasing classic games like Checkers, Minesweeper & Bumper Cars using Game Engine
+- More Games using Game Engine

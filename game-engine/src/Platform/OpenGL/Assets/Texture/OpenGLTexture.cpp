@@ -6,44 +6,45 @@
 
 namespace GE
 {
-	static GLenum GLInternalFormatFromImageFormat(const ImageFormat& format)
+	static GLenum GLInternalFormatFromImageFormat(const Texture::ImageFormat& format)
 	{
 		switch (format)
 		{
-		case ImageFormat::R8:
+		case Texture::ImageFormat::R8:
 			return GL_RGB8;
-		case ImageFormat::RBG8:
+		case Texture::ImageFormat::RGB8:
 			return GL_RGB8;
-		case ImageFormat::RBGA8:
+		case Texture::ImageFormat::RGBA8:
 			return GL_RGB8;
-		case ImageFormat::RGBA32F:
+		case Texture::ImageFormat::RGBA32F:
 			return GL_RGB8;
-		case ImageFormat::None:
+		case Texture::ImageFormat::None:
 			return NULL;
 			break;
 		}
 		return NULL;
 	}
 
-	static GLenum GLDataFormatFromDataFormat(const DataFormat& format)
+	static GLenum GLDataFormatFromDataFormat(const Texture::DataFormat& format)
 	{
 		switch (format)
 		{
-		case DataFormat::RGB:
+		case Texture::DataFormat::RGB:
 			return GL_RGB; // 3 channels
-		case DataFormat::RGBA:
+		case Texture::DataFormat::RGBA:
 			return GL_RGBA; // 4 channels
-		case DataFormat::None:
+		case Texture::DataFormat::None:
 			return NULL;
 			break;
 		}
 		return NULL;
 	}
 
-	OpenGLTexture2D::OpenGLTexture2D(const TextureConfiguration& textureConfig, Buffer data /* = Buffer() */)
+	OpenGLTexture2D::OpenGLTexture2D(const Config& textureConfig, Buffer data /* = Buffer() */)
 	{
 		GE_CORE_ASSERT(textureConfig.InternalFormat != ImageFormat::None, "No Internal Format Specified.");
 
+		p_Type = Asset:: Type::Texture2D;
 		m_Config.Width = textureConfig.Width;
 		m_Config.Height = textureConfig.Height;
 		m_Config.GenerateMips = textureConfig.GenerateMips;
@@ -64,9 +65,35 @@ namespace GE
 		glDeleteTextures(1, &m_RendererID);
 	}
 	
+	Ref<Asset> OpenGLTexture2D::GetCopy()
+	{
+		GE_CORE_WARN("Could not copy OpenGLTexture2D Asset. Returning nullptr.");
+		return nullptr;
+	}
+
+	uint64_t OpenGLTexture2D::GetByteArray(void* buffer, uint64_t bufferSize)
+	{
+		/*
+		* - Type
+		* - Name
+		* ~ Config
+		* * - Width
+		* * - Height
+		* * - InternalFormat
+		* * - Format
+		* * - GenerateMips
+		* ~ Buffer
+		* * - Size
+		* * - Data
+		*/
+
+		return 0;
+	}
+
 	void OpenGLTexture2D::SetData(Buffer data)
 	{
 		GE_PROFILE_FUNCTION();
+		this->buffer = data;
 
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);

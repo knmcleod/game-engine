@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GE/Asset/Asset.h"
+#include "GE/Asset/Assets/Asset.h"
 
 #include <filesystem>
 #include <map>
@@ -16,7 +16,7 @@ namespace GE
 			{ ".png",	Asset::Type::Texture2D		},
 			{ ".jpg",	Asset::Type::Texture2D		},
 			{ ".ttf",	Asset::Type::Font			},
-			{ ".wav",	Asset::Type::AudioSource	}
+			{ ".wav",	Asset::Type::AudioClip		}
 		};
 
 		static Asset::Type AssetTypeFromFileExtension(const std::filesystem::path& extension)
@@ -30,26 +30,15 @@ namespace GE
 		}
 	}
 
-	enum class AssetStatus
-	{
-		None = 0,
-		Ready = 1,
-		Invalid = 2,
-		Loading = 3
-	};
-
 	struct AssetMetadata
 	{
 		UUID Handle = 0;
 		Asset::Type Type = Asset::Type::None;
 		std::filesystem::path FilePath = std::filesystem::path();
 		
-		AssetStatus Status = AssetStatus::None;
+		Asset::Status Status = Asset::Status::None;
 
-		AssetMetadata()
-		{
-
-		}
+		AssetMetadata() = default;
 
 		AssetMetadata(UUID handle, const std::filesystem::path& filePath = std::filesystem::path())
 			: FilePath(filePath), Handle(handle)

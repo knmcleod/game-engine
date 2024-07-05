@@ -2,10 +2,12 @@
 
 #include "GE/Core/Application/Application.h"
 
-#include "GE/Core/Debug/Instrumentor.h"
-
 #ifdef GE_PLATFORM_WINDOWS
-	extern GE::Application* GE::CreateApplication(ApplicationCommandLineArgs args);
+	/*
+	* Defined in Client Application
+	* Example: EditorApplication.cpp
+	*/ 
+	extern GE::Application* GE::CreateApplication(Application::CommandLineArgs args);
 
 	int main(int argc, char** argv)
 	{

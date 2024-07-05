@@ -14,7 +14,7 @@ namespace GE
 	{
 		if (filePath.empty())
 		{
-			GE_CORE_WARN("Cannot Serialize Project. Project is undefined.");
+			GE_CORE_WARN("Cannot Serialize Project.\n\tFile path is empty.");
 			return false;
 		}
 
@@ -24,6 +24,8 @@ namespace GE
 			return false;
 		}
 
+		GE_CORE_TRACE("Serializing Project\n\tFilePath : {0}\n\tName : {1}", filePath.string(), m_Project->m_Config.Name);
+
 		YAML::Emitter out;
 		out << YAML::BeginMap; //
 		out << YAML::Key << "Project" << YAML::Value;
@@ -31,6 +33,8 @@ namespace GE
 			out << YAML::BeginMap; // Project
 
 			out << YAML::Key << "Name" << YAML::Value << m_Project->m_Config.Name;
+			out << YAML::Key << "Width" << YAML::Value << m_Project->m_Config.Width;
+			out << YAML::Key << "Height" << YAML::Value << m_Project->m_Config.Height;
 			out << YAML::Key << "ProjectPath" << YAML::Value << m_Project->m_Config.ProjectPath.string();
 			out << YAML::Key << "AssetPath" << YAML::Value << m_Project->m_Config.AssetPath.string();
 			out << YAML::Key << "SceneHandle" << YAML::Value << m_Project->m_Config.SceneHandle;
@@ -43,8 +47,6 @@ namespace GE
 		std::ofstream fout(filePath);
 		fout << out.c_str();
 
-		GE_CORE_TRACE("Serializing Project\n\tFilePath: {0}\n\tName: {1}", filePath.string(), m_Project->m_Config.Name);
-
 		return true;
 	}
 
@@ -52,13 +54,13 @@ namespace GE
 	{
 		if (filePath.empty())
 		{
-			GE_CORE_WARN("Cannot Deserialize Project. File path is empty.");
+			GE_CORE_WARN("Cannot Deserialize Project.\n\tFile path is empty.");
 			return false;
 		}
 
 		if (filePath.extension().string() != ".gproj")
 		{
-			GE_CORE_WARN("Could not load {0}\n\tFile extension is not .gproj.\n\tExtension: {1}", filePath.string(), filePath.extension().string());
+			GE_CORE_WARN("Could not load {0}\n\tFile extension is not .gproj.\n\tExtension: {1}", filePath.string().c_str(), filePath.extension().string().c_str());
 			return false;
 		}
 
@@ -78,6 +80,10 @@ namespace GE
 			return false;
 
 		m_Project->m_Config.Name = projectData["Name"].as<std::string>();
+		GE_CORE_TRACE("Deserializing Project\n\tFilePath: {0}\n\tName: {1}", filePath.string(), m_Project->m_Config.Name);
+
+		m_Project->m_Config.Width = projectData["Width"].as<uint32_t>();
+		m_Project->m_Config.Height = projectData["Height"].as<uint32_t>();
 		//projects/demo
 		m_Project->m_Config.ProjectPath = projectData["ProjectPath"].as<std::string>(); // equivalent to filePath.parent_path()
 		//assets
@@ -86,7 +92,7 @@ namespace GE
 		m_Project->m_Config.SceneHandle = projectData["SceneHandle"].as<uint64_t>();
 		//scripts/Resources/Binaries/demo.dll
 		m_Project->m_Config.ScriptPath = projectData["ScriptPath"].as<std::string>();
-		GE_CORE_TRACE("Deserializing Project\n\tFilePath: {0}\n\tName: {1}", filePath.string(), m_Project->m_Config.Name);
+
 		return true;
 	}
 }

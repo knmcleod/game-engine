@@ -4,7 +4,6 @@
 
 #include "GE/Core/Core.h"
 
-#include <string>
 #include <filesystem>
 
 namespace GE
@@ -16,22 +15,65 @@ namespace GE
 		struct Config
 		{
 			std::string Name = "New Project";
-			std::filesystem::path ProjectPath;
+			uint32_t Width = 1280, Height = 720;
 
+			std::filesystem::path ProjectPath;
 			std::filesystem::path AssetPath;
 			std::filesystem::path ScriptPath;
 
 			UUID SceneHandle = 0;
 		};
 
-		inline static const UUID& GetSceneHandle() { return s_ActiveProject->m_Config.SceneHandle; }
+		/*
+		* Types of Asset Managers
+		*	1: Runtime, read from binary file
+		*	2: Editor, read from text file
+		*/
+		template<typename T>
+		inline static Ref<T> NewAssetManager()
+		{	
+			Ref<T> assetManager = CreateRef<T>();
+			s_ActiveProject->m_AssetManager = assetManager;
+			return static_ref_cast<T, AssetManager>(s_ActiveProject->m_AssetManager);
+		}
 
-		inline static Ref<Project> GetActive() { return s_ActiveProject; }
-
-		inline static const std::filesystem::path GetProjectPath()
+		template<typename T>
+		inline static Ref<T> GetAssetManager()
 		{
-			GE_CORE_ASSERT(s_ActiveProject, "Cannot get Project Asset Path. No Active Project.");
-			return std::filesystem::path(s_ActiveProject->m_Config.ProjectPath);
+			return static_ref_cast<T, AssetManager>(s_ActiveProject->m_AssetManager);
+		}
+
+		template<typename T>
+		inline static Ref<T> GetAsset(UUID handle)
+		{
+			Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+			return static_ref_cast<T, Asset>(asset);
+		}
+		
+		template<typename T>
+		inline static Ref<T> GetAsset(const std::filesystem::path& filePath)
+		{
+			Ref<Asset> asset = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
+			return static_ref_cast<T, Asset>(asset);
+		}
+
+		template<typename T>
+		inline static Ref<T> GetAssetAs(Ref<Asset> asset)
+		{
+			return static_ref_cast<T, Asset>(asset);
+		}
+
+		template<typename T>
+		inline static Ref<T> GetCopy(UUID handle)
+		{
+			Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+			return GetCopy<T>(asset);
+		}
+		
+		template<typename T>
+		inline static Ref<T> GetCopy(Ref<Asset> asset)
+		{
+			return static_ref_cast<T, Asset>(asset->GetCopy());
 		}
 
 		/*
@@ -57,45 +99,42 @@ namespace GE
 			return std::filesystem::path(s_ActiveProject->m_Config.ProjectPath / s_ActiveProject->m_Config.AssetPath / path);
 		}
 
-		template<typename T>
-		inline static Ref<T> NewAssetManager()
-		{	
-			Ref<T> assetManager = CreateRef<T>();
-			s_ActiveProject->m_AssetManager = assetManager;
-			return std::static_pointer_cast<T>(s_ActiveProject->m_AssetManager);
-		}
-
-		template<typename T>
-		inline static Ref<T> GetAssetManager()
+		/*
+		* Returns filesystem path from project dir to given script asset path
+		* Example:
+		*	param path = Player/Player.cs
+		*	output = projects/demo/assets/scripts/Source/path
+		*/
+		inline static const std::filesystem::path GetPathToScriptAsset(const std::filesystem::path& path)
 		{
-			return std::static_pointer_cast<T>(s_ActiveProject->m_AssetManager);
+			GE_CORE_ASSERT(s_ActiveProject, "Cannot get Project Asset Path. No Active Project.");
+			return std::filesystem::path(GetPathToAsset("scripts/Source") / path);
 		}
 
-		template<typename T>
-		inline static Ref<T> GetAsset(UUID handle)
+		inline static const std::filesystem::path GetProjectPath()
 		{
-			Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
-			return std::static_pointer_cast<T>(asset);
+			GE_CORE_ASSERT(s_ActiveProject, "Cannot get Project Asset Path. No Active Project.");
+			return std::filesystem::path(s_ActiveProject->m_Config.ProjectPath);
 		}
 
-		template<typename T>
-		static Ref<T> GetAsset(const std::filesystem::path& filePath)
-		{
-			Ref<Asset> asset = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
-			return std::static_pointer_cast<T>(asset);
-		}
+		inline static void SetViewport(uint32_t width, uint32_t height) { s_ActiveProject->m_Config.Width = width; s_ActiveProject->m_Config.Height = height; }
+		inline static const Config& GetConfig() { return s_ActiveProject->m_Config; }
+		inline static const uint32_t& GetWidth() { return s_ActiveProject->m_Config.Width; }
+		inline static const uint32_t& GetHeight() { return s_ActiveProject->m_Config.Height; }
 
-		static Ref<Project> Load(const std::filesystem::path& path);
+		inline static const UUID& GetSceneHandle() { return s_ActiveProject->m_Config.SceneHandle; }
+		inline static Ref<AssetManager> GetAssetManager() { return s_ActiveProject->m_AssetManager; }
+
+		inline static Ref<Project> GetActive() { return s_ActiveProject; }
+		inline static Ref<Project> New();
+
+		static bool Load(const std::filesystem::path& path);
 		static bool Save(const std::filesystem::path& path);
-
-		static inline const Config& GetConfig() { return s_ActiveProject->m_Config; }
-		static inline Ref<AssetManager> GetAssetManager() { return s_ActiveProject->m_AssetManager; }
-
-	private:
+	private: 
 		Config m_Config = Config();
 		Ref<AssetManager> m_AssetManager;
 
-		inline static Ref<Project> s_ActiveProject;
+		static Ref<Project> s_ActiveProject;
 	};
 
 }

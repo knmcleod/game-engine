@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GE/Asset/Asset.h"
+#include "GE/Asset/Assets/Asset.h"
 
 #include "GE/Core/Core.h"
 
@@ -23,8 +23,8 @@ namespace GE
 			case Asset::Type::Font:
 				return "Font";
 				break;
-			case Asset::Type::AudioSource:
-				return "AudioSource";
+			case Asset::Type::AudioClip:
+				return "AudioClip";
 				break;
 			}
 			return "None";
@@ -45,9 +45,9 @@ namespace GE
 			{
 				return Asset::Type::Font;
 			}
-			if (typeString == "AudioSource")
+			if (typeString == "AudioClip")
 			{
-				return Asset::Type::AudioSource;
+				return Asset::Type::AudioClip;
 			}
 
 			return Asset::Type::None;
@@ -65,13 +65,16 @@ namespace GE
 	class AssetManager
 	{
 	public:
-		virtual ~AssetManager() {};
-		virtual Ref<Asset> GetAsset(UUID handle) = 0; // Blocking
+		virtual ~AssetManager() = default;
+
+		virtual Ref<Asset> GetAsset(UUID handle) = 0;
+		virtual const AssetMap& GetLoadedAssets() = 0;
 
 		virtual bool HandleExists(UUID handle) = 0;
 		virtual bool AssetLoaded(UUID handle) = 0;
 
 		virtual bool AddAsset(UUID handle) = 0;
+		virtual bool AddAsset(Ref<Asset> asset) = 0;
 		virtual bool RemoveAsset(UUID handle) = 0;
 
 		virtual bool SerializeAssets() = 0;

@@ -9,7 +9,19 @@ namespace GE
 	{
 		uint8_t* Data = nullptr;
 		uint64_t Size = 0;
+
+		operator bool() const { return (bool)Data; }
 		
+		template<typename T>
+		T* As() { return (T*)Data; }
+
+		static Buffer Copy(Buffer other)
+		{
+			Buffer result(other.Size);
+			memcpy(result.Data, other.Data, other.Size);
+			return result;
+		}
+
 		Buffer() = default;
 		
 		Buffer(const Buffer&) = default;
@@ -23,13 +35,6 @@ namespace GE
 			: Data((uint8_t*)data), Size(size)
 		{
 
-		}
-
-		static Buffer Copy(Buffer other)
-		{
-			Buffer result(other.Size);
-			memcpy(result.Data, other.Data, other.Size);
-			return result;
 		}
 
 		void Allocate(uint64_t size)
@@ -46,15 +51,5 @@ namespace GE
 			Size = 0;
 		}
 
-		template<typename T>
-		T* As()
-		{
-			return (T*)Data;
-		}
-
-		operator bool() const
-		{
-			return (bool)Data;
-		}
 	};
 }

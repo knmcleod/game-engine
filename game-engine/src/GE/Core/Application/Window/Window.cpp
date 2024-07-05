@@ -8,10 +8,10 @@
 
 namespace GE
 {
-	Scope<Window> Window::Create(const WindowProps& props)
+	Scope<Window> Window::Create(const Config& config)
 	{
 #ifdef GE_PLATFORM_WINDOWS
-		return CreateScope<WindowsWindow>(props);
+		return CreateScope<WindowsWindow>(config);
 #else
 		GE_CORE_ASSERT(false, "Unknown Platform!");
 		return nullptr

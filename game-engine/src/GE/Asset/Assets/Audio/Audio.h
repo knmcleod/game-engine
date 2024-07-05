@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GE/Asset/Asset.h"
+#include "GE/Asset/Assets/Asset.h"
 
 #include <al.h>
 #include <alc.h>
@@ -10,15 +10,6 @@ namespace GE
 {
 	struct AudioBuffer
 	{
-		enum class Type
-		{
-			None = 0,
-			Short,
-			Long
-		};
-
-		AudioBuffer() = default;
-
 		// Bits per Sample
 		uint8_t BPS = 0;
 		uint8_t Channels = 2;
@@ -26,32 +17,17 @@ namespace GE
 		int32_t SampleRate = 16;
 		int32_t Format = 0;
 
-		uint32_t Size = 0;
-
-		Type BufferType = Type::None;
-
-	};
-
-	struct ShortAudioBuffer : public AudioBuffer
-	{
-		ShortAudioBuffer() = default;
-
-		uint32_t Buffer = 0;
-		char* Data = 0;
-	};
-
-	struct LongAudioBuffer : public AudioBuffer
-	{
-		LongAudioBuffer() = default;
-
-		static const uint32_t NUM_BUFFERS = 4;
-		std::size_t Cursor = Size * NUM_BUFFERS;
-
+		const static uint8_t NUM_BUFFERS = 4;
 		uint32_t Buffers[NUM_BUFFERS];
-		std::vector<char*> Data = std::vector<char*>(NUM_BUFFERS);
+		uint64_t Cursor = Size * NUM_BUFFERS;
+
+		// Size of Data read from .wav file
+		uint32_t Size = 0;
+		// Data read from .wav file
+		uint8_t* Data = nullptr;
 	};
 
-	class AudioSource : public Asset
+	class AudioClip : public Asset
 	{
 		friend class AssetSerializer;
 	public:
@@ -63,19 +39,18 @@ namespace GE
 			float Gain = 1.0f;
 		};
 
-		static inline const Asset::Type GetAssetType() { return Asset::Type::AudioSource; }
-		inline const Asset::Type GetType() const override { return GetAssetType(); }
+		AudioClip();
+		AudioClip(const Config& config, const glm::vec3& position = glm::vec3(0), const glm::vec3& velocity = glm::vec3(0));
+		~AudioClip() override;
 
-		AudioSource();
-		AudioSource(const Config& config, const glm::vec3& position = glm::vec3(0), const glm::vec3& velocity = glm::vec3(0));
-		~AudioSource() override;
+		Ref<Asset> GetCopy() override;
+		uint64_t GetByteArray(void* buffer = nullptr, uint64_t bufferSize = 0) override;
 
 		void SetSourceValues();
 
 		const uint32_t& GetSource() const { return m_Config.SourceID; }
 
-		template<typename T>
-		Ref<T> GetBuffer() { return static_ref_cast<T, AudioBuffer>(m_AudioBuffer); }
+		Ref<AudioBuffer> GetBuffer() { return m_AudioBuffer; }
 
 		void Play(Config& audioConfig = Config(), const glm::vec3& position = glm::vec3(0), const glm::vec3& velocity = glm::vec3(0));
 	private:

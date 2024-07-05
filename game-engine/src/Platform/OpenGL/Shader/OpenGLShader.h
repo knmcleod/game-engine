@@ -12,45 +12,45 @@ namespace GE
 	{
 	public:
 		// Converts Shader data type to OpenGL type
-		static GLenum ShaderDataTypeToOpenGLBaseType(Shader::ShaderDataType type)
+		static GLenum ShaderDataTypeToOpenGLBaseType(Shader::DataType type)
 		{
 			switch (type)
 			{
-			case Shader::ShaderDataType::Float:
+			case Shader::DataType::Float:
 				return GL_FLOAT;
 				break;
-			case Shader::ShaderDataType::Float2:
+			case Shader::DataType::Float2:
 				return GL_FLOAT;
 				break;
-			case Shader::ShaderDataType::Float3:
+			case Shader::DataType::Float3:
 				return GL_FLOAT;
 				break;
-			case Shader::ShaderDataType::Float4:
+			case Shader::DataType::Float4:
 				return GL_FLOAT;
 				break;
-			case Shader::ShaderDataType::Mat3:
+			case Shader::DataType::Mat3:
 				return GL_FLOAT;
 				break;
-			case Shader::ShaderDataType::Mat4:
+			case Shader::DataType::Mat4:
 				return GL_FLOAT;
 				break;
-			case Shader::ShaderDataType::Int:
+			case Shader::DataType::Int:
 				return GL_INT;
 				break;
-			case Shader::ShaderDataType::Int2:
+			case Shader::DataType::Int2:
 				return GL_INT;
 				break;
-			case Shader::ShaderDataType::Int3:
+			case Shader::DataType::Int3:
 				return GL_INT;
 				break;
-			case Shader::ShaderDataType::Int4:
+			case Shader::DataType::Int4:
 				return GL_INT;
 				break;
-			case Shader::ShaderDataType::Bool:
+			case Shader::DataType::Bool:
 				return GL_BOOL;
 				break;
 			}
-			GE_CORE_ASSERT(false, "Unknown ShaderDataType!");
+			GE_CORE_ASSERT(false, "Unknown DataType!");
 			return 0;
 		}
 
@@ -74,26 +74,26 @@ namespace GE
 		virtual ~OpenGLShader();
 
 		virtual const std::string& GetName() const override { return m_Name;  }
-
-		//	Binds program using OpenGL
-		virtual void Bind() const override;
-
-		//	Unbinds program using OpenGL
-		virtual void Unbind() const override;
-			
+		
+		// Bind and Unbind handled
 		virtual void SetMat4(const std::string& name, const glm::mat4& value) override;
+		// Bind and Unbind handled
 		virtual void SetFloat4(const std::string& name, const glm::vec4& value) override;
+		// Bind and Unbind handled
 		virtual void SetFloat3(const std::string& name, const glm::vec3& value) override;
+		// Bind and Unbind handled
 		virtual void SetFloat2(const std::string& name, const glm::vec2& value) override;
+		// Bind and Unbind handled
 		virtual void SetFloat(const std::string& name, const float& value) override;
+		// Bind and Unbind handled
 		virtual void SetInt(const std::string& name, const int value) override;
+		// Bind and Unbind handled
 		virtual void SetIntArray(const std::string& name, const int* values, uint32_t count) override;
+
+		virtual void Bind() const override;
+		virtual void Unbind() const override;
 		
 	private:
-		uint32_t m_RendererID = 0;
-
-		std::string m_Name;
-
 		std::string ReadFile(const std::string& path);
 
 		std::unordered_map<GLenum, std::string> Preprocess(const std::string& src);
@@ -102,31 +102,42 @@ namespace GE
 		void Compile(const std::unordered_map<GLenum, std::string>& shaderSrc);
 		
 		// Uploads uniform int array to renderer using OpenGL
+		// Bind and Unbind handled
 		void UploadUniformIntArray(const std::string& name,
 			const int* values, uint32_t count);
 
 		// Uploads uniform int to renderer using OpenGL
+		// Bind and Unbind handled
 		void UploadUniformInt(const std::string& name,
 			int value);
 
 		// Uploads uniform float to renderer using OpenGL
+		// Bind and Unbind handled
 		void UploadUniformFloat(const std::string& name,
 			const float& vector);
 
 		// Uploads uniform 2d float to renderer using OpenGL
+		// Bind and Unbind handled
 		void UploadUniformFloat2(const std::string& name,
 			const glm::vec2& vector);
 
 		// Uploads uniform 3d float to renderer using OpenGL
+		// Bind and Unbind handled
 		void UploadUniformFloat3(const std::string& name,
 			const glm::vec3& vector);
 
 		// Uploads uniform 4d float to renderer using OpenGL
+		// Bind and Unbind handled
 		void UploadUniformFloat4(const std::string& name,
 			const glm::vec4& vector);
 
 		// Uploads uniform 4x4 matrix to renderer using OpenGL
+		// Bind and Unbind handled
 		void UploadUniformMat4(const std::string& name,
 			const glm::mat4& matrix);
+	private:
+		uint32_t m_RendererID = 0;
+
+		std::string m_Name;
 	};
 }

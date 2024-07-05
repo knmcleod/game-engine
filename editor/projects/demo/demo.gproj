@@ -1,5 +1,7 @@
 Project:
   Name: demo
+  Width: 1920
+  Height: 1057
   ProjectPath: projects/demo
   AssetPath: assets
   SceneHandle: 8321772525370642796

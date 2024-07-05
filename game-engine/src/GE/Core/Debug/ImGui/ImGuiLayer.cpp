@@ -1,0 +1,142 @@
+#include "GE/GEpch.h"
+
+#include "ImGuiLayer.h"
+
+#include "GE/Core/Application/Application.h"
+
+#include <imgui/imgui.h>
+#include <GLFW/glfw3.h>
+
+#define IMGUI_IMPL_OPENGL_LOADER_GLAD
+#include <imgui/backends/imgui_impl_opengl3.cpp>
+#include <imgui/backends/imgui_impl_glfw.cpp>
+#include <imgui/imgui_internal.h>
+
+namespace GE
+{
+	static void SetDarkTheme(ImGuiStyle& style)
+	{
+		auto& colors = style.Colors;
+		colors[ImGuiCol_WindowBg] = ImVec4{ 0.095f, 0.095f, 0.095f, 1.0f };
+
+		// Headers
+		colors[ImGuiCol_Header] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_HeaderHovered] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_HeaderActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Buttons
+		colors[ImGuiCol_Button] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_ButtonHovered] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_ButtonActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Frame BG
+		colors[ImGuiCol_FrameBg] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_FrameBgHovered] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_FrameBgActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Tab
+		colors[ImGuiCol_Tab] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_TabHovered] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_TabActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+		colors[ImGuiCol_TabUnfocused] = ImVec4{ 0.45f, 0.45f, 0.45f, 1.0f };
+		colors[ImGuiCol_TabUnfocusedActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Name
+		colors[ImGuiCol_TitleBg] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_TitleBgActive] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+	}
+
+	ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer")
+	{
+
+	}
+
+	ImGuiLayer::~ImGuiLayer()
+	{
+
+	}
+
+	void ImGuiLayer::OnAttach()
+	{
+		//	Context Setup
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+
+		ImGuiIO& io = ImGui::GetIO(); (void)io;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+		//	Style Setup
+		ImGui::StyleColorsDark();
+		ImGuiStyle& style = ImGui::GetStyle();
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			style.WindowRounding = 0.0f;
+			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+			SetDarkTheme(style);
+		}
+
+		const Application& application = Application::GetApp();
+		GLFWwindow* window = static_cast<GLFWwindow*>(application.GetWindow().GetNativeWindow());
+		
+		//	Platform/Renderer bindings Setup
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
+		ImGui_ImplOpenGL3_Init("#version 410");
+	}
+
+	void ImGuiLayer::OnDetach()
+	{
+		ImGui_ImplOpenGL3_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
+	}
+
+	void ImGuiLayer::OnEvent(Event& e)
+	{
+		if (m_BlockEvents)
+		{
+			ImGuiIO& io = ImGui::GetIO();
+			if (!e.IsHandled())
+			{
+				e.SetHandled(false | e.IsInCategory(Event::Mouse) & io.WantCaptureMouse);
+				e.SetHandled(false | e.IsInCategory(Event::Keyboard) & io.WantCaptureKeyboard);
+			}
+		}
+	}
+
+	void ImGuiLayer::Begin()
+	{
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+	}
+
+	void ImGuiLayer::End()
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		const Application& application = Application::GetApp();
+		io.DisplaySize = ImVec2((float)application.GetWindow().GetWidth(), (float)application.GetWindow().GetHeight());
+
+		//Rendering
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			GLFWwindow* backup_current_contect = glfwGetCurrentContext();
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+			glfwMakeContextCurrent(backup_current_contect);
+
+		}
+	}
+	
+	uint32_t ImGuiLayer::GetActiveWidgetID() const
+	{
+		ImGuiContext& imguiContext = *GImGui;
+		return imguiContext.ActiveId;
+	}
+}

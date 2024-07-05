@@ -28,24 +28,25 @@ namespace GE
 		glBindVertexArray(0);
 	}
 
-	void OpenGLVertexArray::AddVertexBuffer(const Ref<VertexBuffer>& vertexBuffer)
+	void OpenGLVertexArray::AddVertexBuffer(Ref<VertexBuffer> vertexBuffer)
 	{
 		GE_PROFILE_FUNCTION();
-		GE_CORE_ASSERT(vertexBuffer->GetLayout().GetElements().size(), "Vertex Buffer has no Layout.");
+		auto& layout = vertexBuffer->GetLayout();
+		GE_CORE_ASSERT(layout.GetElements().size(), "Vertex Buffer has no Layout.");
 
 		this->Bind();
 		vertexBuffer->Bind();
 
 		uint32_t index = 0;
-		auto& layout = vertexBuffer->GetLayout();
+		
 		for (auto& element : layout)
 		{
 			switch (element.Type)
 			{
-			case Shader::ShaderDataType::Float:
-			case Shader::ShaderDataType::Float2:
-			case Shader::ShaderDataType::Float3:
-			case Shader::ShaderDataType::Float4:
+			case Shader::DataType::Float:
+			case Shader::DataType::Float2:
+			case Shader::DataType::Float3:
+			case Shader::DataType::Float4:
 			{
 				glEnableVertexAttribArray(index);
 				glVertexAttribPointer(index,
@@ -57,11 +58,11 @@ namespace GE
 				index++;
 				break;
 			}
-			case Shader::ShaderDataType::Int:
-			case Shader::ShaderDataType::Int2:
-			case Shader::ShaderDataType::Int3:
-			case Shader::ShaderDataType::Int4:
-			case Shader::ShaderDataType::Bool:
+			case Shader::DataType::Int:
+			case Shader::DataType::Int2:
+			case Shader::DataType::Int3:
+			case Shader::DataType::Int4:
+			case Shader::DataType::Bool:
 			{
 				glEnableVertexAttribArray(index);
 				glVertexAttribIPointer(index,
@@ -72,8 +73,8 @@ namespace GE
 				index++;
 				break;
 			}
-			case Shader::ShaderDataType::Mat3:
-			case Shader::ShaderDataType::Mat4:
+			case Shader::DataType::Mat3:
+			case Shader::DataType::Mat4:
 			{
 				uint8_t count = element.GetComponentCount();
 				for (uint8_t i = 0; i < count; i++)
@@ -98,7 +99,7 @@ namespace GE
 		m_VertexBuffers.push_back(vertexBuffer);
 	}
 
-	void OpenGLVertexArray::AddIndexBuffer(const Ref<IndexBuffer>& indexBuffer)
+	void OpenGLVertexArray::AddIndexBuffer(Ref<IndexBuffer> indexBuffer)
 	{
 		this->Bind();
 		m_IndexBuffer = indexBuffer;

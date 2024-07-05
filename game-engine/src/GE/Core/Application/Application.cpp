@@ -2,48 +2,53 @@
 
 #include "Application.h"
 
-#include "GE/Core/EntryPoint.h"
-#include "GE/Core/Time/Time.h"
+#include "GE/Core/FileSystem/FileSystem.h"
+#include "GE/Core/Time/Timestep.h"
 
 #include "GE/Rendering/RenderCommand.h"
-#include "GE/Rendering/Shader/Shader.h"
-#include "GE/Rendering/VertexArray/VertexArray.h"
 
-#include <GLFW/glfw3.h>
-
+#include "GE/Scripting/Scripting.h"
 namespace GE
 {
 #define BIND_EVENT_FN(x) std::bind(&Application::x, s_Instance, std::placeholders::_1)
 	
 	Application* Application::s_Instance = 0;
 
-	Application::Application(const ApplicationSpecification specification) : m_Specification(specification)
+	Application::Application(const Application::Config& spec) : p_Config(spec)
 	{
 		GE_PROFILE_FUNCTION();
 		GE_CORE_INFO("Core Application Constructor Start.");
 		GE_CORE_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
 
-		// Sets working directory
-		if (!m_Specification.WorkingDirectory.empty())
-			std::filesystem::current_path(m_Specification.WorkingDirectory);
+		//  Sets working directory
+		if (!p_Config.WorkingDirectory.empty())
+			std::filesystem::current_path(p_Config.WorkingDirectory);
+
+		if (!LoadProject())
+		{
+			GE_CORE_ERROR("Could not Load Application Project.");
+			Close();
+			return;
+		}
 
 		// Creates Window and Binds Events
-		m_Window = Window::Create(WindowProps(specification.Name));
+		m_Window = Window::Create(Window::Config(p_Config.Name, Project::GetWidth(), Project::GetHeight(), true, nullptr));
 		m_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));
 		
 		RenderCommand::Init();
 
-		// Creates ImGui Layer
-		m_ImGuiLayer = new ImGuiLayer();
-		PushOverlay(m_ImGuiLayer);
+		p_ImGuiLayer = new ImGuiLayer();
+		PushOverlay(p_ImGuiLayer);
+
 		GE_CORE_INFO("Core Application Constructor Complete.");
 	}
 
 	Application::~Application()
 	{
 		GE_CORE_INFO("Core Application Destructor Start.");
-
+		
+		Scripting::Shutdown();
 		RenderCommand::ShutDown();
 		GE_CORE_INFO("Core Application Destructor Complete.");
 	}
@@ -52,35 +57,34 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		while (m_Running)
+		while (p_Running)
 		{
-			Timestep timestep;
 			{
 				GE_PROFILE_SCOPE("Time Compilation - Application::Run()");
-				float time = (float)glfwGetTime();
-				timestep = time - m_LastFrameTime;
-				m_LastFrameTime = time;
+				float time = m_Window->GetTime();
+				p_TS = time - p_LastFrameTime;
+				p_LastFrameTime = time;
 			}
 
 			ExecuteMainThread();
 
-			if (!m_Minimized)
+			if (!p_Minimized)
 			{
 				{ //	Updates Layers
 					GE_PROFILE_SCOPE("LayerStack - Application::Run()");
-					for (Layer* layer : m_LayerStack)
+					for (Layer* layer : p_LayerStack)
 					{
-						layer->OnUpdate(timestep);
+						layer->OnUpdate(p_TS);
 					}
 				}
 				{ //	Updates ImGui
 					GE_PROFILE_SCOPE("ImGui LayerStack - Application::Run()");
-					m_ImGuiLayer->Begin();
-					for (Layer* layer : m_LayerStack)
+					p_ImGuiLayer->Begin();
+					for (Layer* layer : p_LayerStack)
 					{
 						layer->OnImGuiRender();
 					}
-					m_ImGuiLayer->End();
+					p_ImGuiLayer->End();
 				}
 			}
 
@@ -93,8 +97,8 @@ namespace GE
 
 	void Application::Close()
 	{
+		p_Running = false;
 		GE_CORE_INFO("Application Closed.");
-		m_Running = false;
 	}
 
 #pragma region Layer Handling
@@ -103,7 +107,7 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		m_LayerStack.PushLayer(layer);
+		p_LayerStack.PushLayer(layer);
 		layer->OnAttach();
 	}
 
@@ -111,7 +115,7 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		m_LayerStack.PushOverlay(overlay);
+		p_LayerStack.PushOverlay(overlay);
 		overlay->OnAttach();
 	}
 
@@ -119,7 +123,7 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		if (m_LayerStack.PopLayer(layer))
+		if (p_LayerStack.PopLayer(layer))
 			layer->OnDetach();
 	}
 
@@ -127,17 +131,19 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		if (m_LayerStack.PopOverlay(overlay))
+		if (p_LayerStack.PopOverlay(overlay))
 			overlay->OnDetach();
 	}
 #pragma endregion
 
-	void Application::SubmitToMainThread(const std::function<void()>& function)
+#pragma region Thread Handling
+
+	void Application::SubmitToMainThread(const std::function<void()>& func)
 	{
 		// Lock for this scope, won't lock again till unlocked
-		std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
+		std::scoped_lock<std::mutex> lock(p_MainThreadMutex);
 
-		m_MainThread.emplace_back(function);
+		p_MainThread.emplace_back(func);
 	}
 
 	void Application::ExecuteMainThread()
@@ -145,14 +151,18 @@ namespace GE
 		std::vector<std::function<void()>> copy;
 		{
 			// Lock for this scope, won't lock again till unlocked(finished)
-			std::scoped_lock<std::mutex> lock(m_MainThreadMutex);
-			copy = m_MainThread;
-			m_MainThread.clear();
+			std::scoped_lock<std::mutex> lock(p_MainThreadMutex);
+			copy = p_MainThread;
+			p_MainThread.clear();
 		}
 
 		for (auto& func : copy)
 			func();
 	}
+
+#pragma endregion
+
+#pragma region Event Handling
 
 	void Application::OnEvent(Event& e)
 	{
@@ -162,10 +172,10 @@ namespace GE
 		dispatcher.Dispatch<WindowCloseEvent>(BIND_EVENT_FN(OnWindowClose));
 		dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(OnWindowResize));
 
-		for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
+		for (auto it = p_LayerStack.end(); it != p_LayerStack.begin(); )
 		{
 			(*--it)->OnEvent(e);
-			if (e.Handled)
+			if (e.IsHandled())
 				break;
 		}
 
@@ -183,14 +193,72 @@ namespace GE
 
 		if (e.GetWidth() == 0 || e.GetHeight() == 0)
 		{
-			m_Minimized = true;
+			p_Minimized = true;
 			return false;
 		}
 
 		RenderCommand::SetViewport(0, 0, e.GetWidth(), e.GetHeight());
+		Project::SetViewport(e.GetWidth(), e.GetHeight());
 
-		m_Minimized = false;
+		p_Minimized = false;
 		return false;
 	}
+
+#pragma endregion
+
+#pragma region Project Handling
+	bool Application::LoadProject() const
+	{
+		if (p_Config.Args.Count < 1)
+		{
+			GE_CORE_WARN("Application::LoadProject - Project file path not found at index 1. \n\tTrying Load from File Dialog.");
+			return LoadProjectFileDialog();
+		}
+
+		return LoadProject(p_Config.Args[1]);
+	}
+
+	bool Application::LoadProject(const std::filesystem::path& path) const
+	{
+		return Project::Load(path);
+	}
+
+	bool Application::LoadProjectFileDialog() const
+	{
+		std::string filePath = FileSystem::LoadFromFileDialog("GAME Project(*.gproj)\0*.gproj\0");
+		if (filePath.empty())
+			return false;
+
+		return LoadProject(filePath);
+	}
+
+	bool Application::SaveProject() const
+	{
+		const std::filesystem::path& path = Project::GetProjectPath() / std::filesystem::path(Project::GetConfig().Name + ".gproj");
+		if (!path.empty())
+		{
+			return SaveProject(path);
+		}
+		else
+			return SaveProjectFileDialog();
+	}
+
+	bool Application::SaveProject(const std::filesystem::path& path) const
+	{
+		path.extension() = ".gproj";
+		return Project::Save(path);
+	}
+
+	bool Application::SaveProjectFileDialog() const
+	{
+		std::string filePath = FileSystem::SaveFromFileDialog("GAME Project(*.gproj)\0 * .gproj\0");
+		if (filePath.empty())
+			return false;
+
+		return SaveProject(filePath);
+	}
+
+#pragma endregion
+
 
 }
