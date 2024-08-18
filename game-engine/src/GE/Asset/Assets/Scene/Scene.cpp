@@ -42,88 +42,11 @@ namespace GE
 		if (m_Scene == nullptr)
 			m_Scene = Project::GetAsset<Scene>(Project::GetConfig().SceneHandle).get();
 	}
+	
 	Entity::~Entity()
 	{
 		m_Scene = nullptr;
 		ClearEntityID();
-	}
-
-	uint64_t Entity::GetByteArray(void* buffer /*= nullptr*/, uint64_t bufferSize /*= 0*/)
-	{
-		/*
-		* Contains
-		* - Offset : Offset of UUID relative to Parent Scene
-		* - Size : Packed Data Size
-		* ~ Data : Packed Data
-		* * ~ Components : Components on Entity
-		* * * - ID : UUID
-		* * * - Tag : Name
-		* * * ~ Transform :
-		* * * * - Translation :
-		* * * * - Rotation :
-		* * * * - Scale :
-		* * * ~ Camera :
-		* * * * ~ SceneCamera :
-		* * * * * - Fov : float
-		* * * * * - NearClip : float
-		* * * * * - FarClip : float
-		* * * * - Primary : bool
-		* * * * - FixedAspectRatio : bool
-		* * * ~ AudioSource :
-		* * * * - Asset Handle :
-		* * * * - Loop : bool
-		* * * * - Pitch : float
-		* * * * - Gain : float
-		* * * ~ AudioListener :
-		* * * * -
-		* * * ~ SpriteRenderer :
-		* * * * - Asset Handle :
-		* * * * - Color : vec4
-		* * * * - TilingFactor : float
-		* * * ~ CircleRenderer :
-		* * * * - Asset Handle :
-		* * * * - Color : vec4
-		* * * * - TilingFactor : float
-		* * * * - Radius : float
-		* * * * - Thickness : float
-		* * * * - Fade : float
-		* * * ~ TextRenderer :
-		* * * * - Asset Handle :
-		* * * * - TextColor : vec4
-		* * * * - BGColor : vec4
-		* * * * - KerningOffset : float
-		* * * * - LineHeightOffset : float
-		* * * * - Text : std::string
-		* * * ~ Rigidbody2D :
-		* * * * - Type : uint16_t
-		* * * * - FixedRotation : bool
-		* * * ~ BoxCollider2D :
-		* * * * - Offset : vec2
-		* * * * - Size : vec2
-		* * * * - Density : float
-		* * * * - Friction : float
-		* * * * - Restitution : float
-		* * * * - RestitutionThreshold : float
-		* * * * - Show : bool
-		* * * ~ CircleCollider2D :
-		* * * * - Offset : vec2
-		* * * * - Radius : float
-		* * * * - Density : float
-		* * * * - Friction : float
-		* * * * - Restitution : float
-		* * * * - RestitutionThreshold : float
-		* * * * - Show : bool
-		* * * ~ NativeScript :
-		* * * * -
-		* * * ~ Script :
-		* * * * - ClassName : std::string
-		* * * * ~ Fields :
-		* * * * * - Name : std::string
-		* * * * * - Type : char*
-		* * * * * - Data :
-		*/
-
-		return 0;
 	}
 
 #pragma region OnComponentAdded
@@ -216,6 +139,21 @@ namespace GE
 
 #pragma region Scene
 
+	Scene::Scene() : Asset(UUID(), Asset::Type::Scene)
+	{
+
+	}
+
+	Scene::Scene(UUID handle, const std::string& name) : Asset(handle, Scene::Type::Scene)
+	{
+		m_Config.Name = name;
+	}
+
+	Scene::~Scene()
+	{
+		m_Registry.clear();
+	}
+
 	Ref<Asset> Scene::GetCopy()
 	{
 		Ref<Scene> newScene = CreateRef<Scene>();
@@ -259,119 +197,6 @@ namespace GE
 		}
 
 		return newScene;
-	}
-
-	uint64_t Scene::GetByteArray(void* buffer, uint64_t bufferSize)
-	{
-		//      [68 + ?] SceneInfo  : Value, corressponding Key handled in SerializePack
-		//          [8] Packed Size : Size of whole Scene
-		//			[60 + ?] Data
-		//				[2] Type
-		//				[8] Name
-		//				[8] Steps
-		//				[8] Asset Map Count
-		//				[26 + ?] Asset Map			// Size based on how many Assets are loaded
-		//				    [8] Asset Handle    : Key
-		//				    [18 + ?] AssetInfo	: Value
-		//				        [8] Packed Size
-		//						[10 + ?] Packed Data
-		//							[2] Type
-		//							[8] Name
-		//				[8] Entity Map Count
-		//				[16 + ?] Entity Map			// Size based on how many Entities are loaded
-		//				    [8] Handle			: Key
-		//				    [8 + ?] EntityInfo	: Value
-		//				        [8] Packed Size
-		//						[?]	Packed Data
-
-		uint64_t retSize = 0;
-
-		{
-			//sceneInfo.p_Size += Aligned(sizeof(uint64_t)); // sizeof(packedSize)
-			//sceneInfo.p_Size += Aligned(sizeof(uint64_t)) // sizeof(nameLength)
-			//	+ Aligned(scene->m_Config.Name.size() * sizeof(char)); //sizeof(name)
-
-			//// Assets
-			//{
-			//	sceneInfo.p_Size += Aligned(sizeof(uint64_t)); //sizeof(assetMapCount), how many assets to load
-			//	for (const auto& [uuid, sceneAsset] : Project::GetAssetManager()->GetLoadedAssets())
-			//	{
-			//		AssetInfo ai;
-			//		if (SerializeAsset(sceneAsset, ai)) // sets all AssetInfo using Loaded Asset
-			//		{
-			//			sceneInfo.p_Size += Aligned(sizeof(ai.p_Size)); // ai.Size set in SerializeAsset
-			//			sceneInfo.m_Assets.at(uuid) = ai;
-			//		}
-			//	}
-			//}
-
-			//sceneInfo.p_Data = new uint8_t[sceneInfo.p_Size];
-			//if (sceneInfo.p_Data)
-			//{
-			//	// Start at beginning of buffer
-			//	uint8_t* destination = sceneInfo.p_Data;
-			//	uint8_t* end = destination + sceneInfo.p_Size;
-
-			//	// Clear requiredSize from destination
-			//	memset(destination, 0, sceneInfo.p_Size);
-
-			//	// Fill out buffer/data
-
-			//	*(uint64_t*)destination = sceneInfo.p_Size;
-
-			//	uint64_t stringSize = scene->m_Config.Name.size();
-			//	*(uint64_t*)destination = stringSize;
-			//	destination += Aligned(sizeof(stringSize));
-			//	memcpy(destination, scene->m_Config.Name.c_str(), stringSize * sizeof(char));
-			//	destination += Aligned(scene->m_Config.Name.size() * sizeof(char));
-
-			//	// Assets
-			//	{
-			//		uint64_t assetCount = sceneInfo.m_Assets.size();
-			//		*(uint64_t*)destination = assetCount;
-			//		destination += Aligned(sizeof(assetCount));
-			//
-			//		for (const auto& [uuid, sceneAsset] : Project::GetAssetManager()->GetLoadedAssets())
-			//		{
-			//			uint64_t size = sceneAsset->GetByteArray(destination, end - destination);
-			//			if (size)
-			//			{
-			//				destination += size;
-			//			}
-			//		}
-			//
-			//	}
-			//
-			//	if (destination - sceneInfo.p_Data == sceneInfo.p_Size)
-			//	{
-			//		return true;
-			//	}
-			//	else
-			//	{
-			//		GE_CORE_ASSERT(false, "Buffer overflow.");
-			//		return false;
-			//	}
-			//}
-
-		}
-
-		return bufferSize;
-	}
-
-	Scene::Scene() : Asset()
-	{
-		p_Type = Asset::Type::Scene;
-	}
-
-	Scene::Scene(UUID handle, const std::string& name) : Asset(handle)
-	{
-		p_Type = Scene::Type::Scene;
-		m_Config.Name = name;
-	}
-
-	Scene::~Scene()
-	{
-		m_Registry.clear();
 	}
 
 #pragma region Entity Control
@@ -433,6 +258,27 @@ namespace GE
 	{
 		std::string name = entity.GetComponent<TagComponent>().Tag;
 		Entity newEntity = CreateEntity(name);
+
+		CopyComponentIfExists<TransformComponent>(newEntity, entity);
+		CopyComponentIfExists<SpriteRendererComponent>(newEntity, entity);
+		CopyComponentIfExists<CircleRendererComponent>(newEntity, entity);
+		CopyComponentIfExists<TextRendererComponent>(newEntity, entity);
+		CopyComponentIfExists<AudioSourceComponent>(newEntity, entity);
+		CopyComponentIfExists<AudioListenerComponent>(newEntity, entity);
+		CopyComponentIfExists<CameraComponent>(newEntity, entity);
+		CopyComponentIfExists<NativeScriptComponent>(newEntity, entity);
+		CopyComponentIfExists<ScriptComponent>(newEntity, entity);
+		CopyComponentIfExists<Rigidbody2DComponent>(newEntity, entity);
+		CopyComponentIfExists<BoxCollider2DComponent>(newEntity, entity);
+		CopyComponentIfExists<CircleCollider2DComponent>(newEntity, entity);
+
+		return newEntity;
+	}
+
+	Entity Scene::CopyEntity(Entity entity)
+	{
+		std::string name = entity.GetComponent<TagComponent>().Tag;
+		Entity newEntity = CreateEntityWithUUID(entity.GetComponent<IDComponent>().ID, name);
 
 		CopyComponentIfExists<TransformComponent>(newEntity, entity);
 		CopyComponentIfExists<SpriteRendererComponent>(newEntity, entity);

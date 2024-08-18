@@ -1,7 +1,7 @@
 #pragma once
 
 #include "GE/Asset/AssetManager.h"
-
+#include "GE/Asset/RuntimeAssetManager.h"
 #include "GE/Core/Core.h"
 
 #include <filesystem>
@@ -17,11 +17,12 @@ namespace GE
 			std::string Name = "New Project";
 			uint32_t Width = 1280, Height = 720;
 
-			std::filesystem::path ProjectPath;
-			std::filesystem::path AssetPath;
-			std::filesystem::path ScriptPath;
-
 			UUID SceneHandle = 0;
+			
+			// TODO : EditorProject(?)
+			std::filesystem::path ProjectPath = std::filesystem::path();
+			std::filesystem::path AssetPath = std::filesystem::path();
+			std::filesystem::path ScriptPath = std::filesystem::path();
 		};
 
 		/*
@@ -51,13 +52,6 @@ namespace GE
 		}
 		
 		template<typename T>
-		inline static Ref<T> GetAsset(const std::filesystem::path& filePath)
-		{
-			Ref<Asset> asset = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
-			return static_ref_cast<T, Asset>(asset);
-		}
-
-		template<typename T>
 		inline static Ref<T> GetAssetAs(Ref<Asset> asset)
 		{
 			return static_ref_cast<T, Asset>(asset);
@@ -74,6 +68,12 @@ namespace GE
 		inline static Ref<T> GetCopy(Ref<Asset> asset)
 		{
 			return static_ref_cast<T, Asset>(asset->GetCopy());
+		}
+
+		inline static const std::filesystem::path GetProjectPath()
+		{
+			GE_CORE_ASSERT(s_ActiveProject, "Cannot get Project Asset Path. No Active Project.");
+			return std::filesystem::path(s_ActiveProject->m_Config.ProjectPath);
 		}
 
 		/*
@@ -111,12 +111,6 @@ namespace GE
 			return std::filesystem::path(GetPathToAsset("scripts/Source") / path);
 		}
 
-		inline static const std::filesystem::path GetProjectPath()
-		{
-			GE_CORE_ASSERT(s_ActiveProject, "Cannot get Project Asset Path. No Active Project.");
-			return std::filesystem::path(s_ActiveProject->m_Config.ProjectPath);
-		}
-
 		inline static void SetViewport(uint32_t width, uint32_t height) { s_ActiveProject->m_Config.Width = width; s_ActiveProject->m_Config.Height = height; }
 		inline static const Config& GetConfig() { return s_ActiveProject->m_Config; }
 		inline static const uint32_t& GetWidth() { return s_ActiveProject->m_Config.Width; }
@@ -130,6 +124,7 @@ namespace GE
 
 		static bool Load(const std::filesystem::path& path);
 		static bool Save(const std::filesystem::path& path);
+
 	private: 
 		Config m_Config = Config();
 		Ref<AssetManager> m_AssetManager;

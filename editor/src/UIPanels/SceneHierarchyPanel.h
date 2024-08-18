@@ -17,7 +17,7 @@ namespace GE
 
 		void OnImGuiRender();
 	private:
-		void SetScene(Scene* scene);
+		void SetScene(Scene* scene, UUID selectedEntity = 0);
 
 		void DrawEntity(Entity entity);
 		void DrawComponents(Entity entity);

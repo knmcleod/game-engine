@@ -19,6 +19,8 @@ namespace GE
 		{
 			Ref<Texture2D> Texture = nullptr;
 
+			// Remove. Use AssetMetadata.FilePath.Name instead
+			std::string Name = std::string("NewFont");
 			uint32_t Width = 1;
 			uint32_t Height = 1;
 			float Scale = 1.0;
@@ -34,22 +36,11 @@ namespace GE
 			msdf_atlas::FontGeometry FontGeometry;
 		};
 
-		Ref<Asset> GetCopy() override;
-
 		Font();
 		Font(UUID handle);
 		~Font() override;
 
-		/*
-		*	Returns size required to fill buffer
-		*
-		*	param: buffer = buffer to be filled
-		*	param: bufferSize = size of buffer
-		*
-		*	If failed or default, returns 0.
-		*	Implement per inherited Asset.
-		*/
-		uint64_t GetByteArray(void* buffer = nullptr, uint64_t bufferSize = 0) override;
+		Ref<Asset> GetCopy() override;
 
 		Ref<MSDFData> GetMSDFData() const { GE_CORE_ASSERT(m_MSDFData, "Font Data does not exist."); return m_MSDFData; }
 		const AtlasConfig& GetAtlasConfig() const { return m_AtlasConfig; }

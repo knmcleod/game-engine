@@ -17,7 +17,8 @@ Start by cloning the repository with `git clone --recursive https://github.com/k
 Locate Win-GenerateProjects.bat in scripts, and run.
 Next, locate game-engine.sln in main directory, and build.
 
-To use Game Editor Application, navigate to bin/%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}/editor/editor.exe
+To use Game Editor Application, 
+    navigate to `bin/%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}/editor/editor.exe`
     NOTE: %{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture} is specified by premake5.lua
 
 ## Features 
@@ -40,6 +41,7 @@ Features are subject to change.
 - More Editor application Tools
 - Binary Asset Pack for Asset Management
 - Audio system
+- Project Exportation
 - 3D Physics
 - 2D Animation
 - Lighting

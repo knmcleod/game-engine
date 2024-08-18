@@ -7,8 +7,6 @@
 
 #include "GE/Core/Debug/ImGui/ImGuiLayer.h"
 
-#include "GE/Project/Project.h"
-
 namespace GE
 {
 	class Application
@@ -35,6 +33,7 @@ namespace GE
 			CommandLineArgs Args;
 		};
 
+		inline static void SetFullscreen(bool fs) { return s_Instance->SetFullscreen(fs); }
 		inline static const Application& GetApp() { return *s_Instance; };
 		inline static void CloseApp() { s_Instance->Close(); }
 
@@ -49,18 +48,18 @@ namespace GE
 		inline static const uint32_t GetActiveWidgetID() { return s_Instance->p_ImGuiLayer->GetActiveWidgetID(); }
 
 		/*
-		* Creates Window, debug Layer and Project.
-		* Project Asset Manager still needs to be initialized
+		* Creates Window, debug Layer and Project with RuntimeAssetManager
 		*/
 		Application(const Config& config);
 		virtual ~Application();
 
 		inline const Config& GetConfig() const { return p_Config; };
-		inline const uint32_t& GetWidth() const { return Project::GetWidth(); }
-		inline const uint32_t& GetHeight() const { return Project::GetHeight(); }
 
-		inline const Window& GetWindow() const { return *m_Window; };
+		inline const Window& GetWindow() const { return *p_Window; };
 		inline const ImGuiLayer& GetImGuiLayer() const { return *p_ImGuiLayer; }
+
+		const uint32_t& GetWidth() const;
+		const uint32_t& GetHeight() const;
 
 		// Runs Window - Updates Layers and Timestep
 		void Run();
@@ -105,7 +104,7 @@ namespace GE
 		std::vector<std::function<void()>> p_MainThread;
 		std::mutex p_MainThreadMutex;
 
-		Scope<Window> m_Window;
+		Scope<Window> p_Window;
 		LayerStack p_LayerStack;
 		ImGuiLayer* p_ImGuiLayer = nullptr;
 

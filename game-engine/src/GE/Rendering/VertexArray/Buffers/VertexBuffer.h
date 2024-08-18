@@ -59,7 +59,7 @@ namespace GE
 		{
 			friend class VertexBuffer;
 		public:
-			Layout() {}
+			Layout() = default;
 
 			Layout(const std::initializer_list<Elements>& elements) : m_Elements(elements)
 			{
@@ -93,7 +93,7 @@ namespace GE
 		static Ref<VertexBuffer> Create(uint32_t size);
 		static Ref<VertexBuffer> Create(uint32_t size, float* vertices);
 
-		virtual ~VertexBuffer() {}
+		virtual ~VertexBuffer() = default;
 
 		virtual inline Layout& GetLayout() = 0;
 		virtual inline void SetLayout(const Layout& layout) = 0;

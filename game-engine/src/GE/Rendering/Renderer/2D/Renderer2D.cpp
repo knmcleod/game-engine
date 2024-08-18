@@ -80,12 +80,12 @@ namespace GE
 			VertexBuffer::Layout layout =
 			{
 				{ GE::Shader::DataType::Float3, "a_GlobalPosition"	},
-				{ GE::Shader::DataType::Float3, "a_LocalPosition"		},
-				{ GE::Shader::DataType::Float4, "a_Color"				},
-				{ GE::Shader::DataType::Float, "a_Radius"				},
-				{ GE::Shader::DataType::Float, "a_Thickness"			},
+				{ GE::Shader::DataType::Float3, "a_LocalPosition"	},
+				{ GE::Shader::DataType::Float4, "a_Color"			},
+				{ GE::Shader::DataType::Float, "a_Radius"			},
+				{ GE::Shader::DataType::Float, "a_Thickness"		},
 				{ GE::Shader::DataType::Float, "a_Fade"				},
-				{ GE::Shader::DataType::Int, "a_EntityID"				}
+				{ GE::Shader::DataType::Int,   "a_EntityID"			}
 			};
 			s_Data.circleData.VertexBuffer->SetLayout(layout);
 
@@ -138,7 +138,7 @@ namespace GE
 				{ GE::Shader::DataType::Float4,	"a_TextColor"	 },
 				{ GE::Shader::DataType::Float4,	"a_BGColor"		 },
 				{ GE::Shader::DataType::Float2,	"a_TextureCoord" },
-				{ GE::Shader::DataType::Int,		"a_EntityID"	 }
+				{ GE::Shader::DataType::Int,	"a_EntityID"	 }
 			};
 			s_Data.textData.VertexBuffer->SetLayout(layout);
 
@@ -495,6 +495,11 @@ namespace GE
 			Flush();
 
 		SetLineData(initialPosition, finalPosition, color, entityID);
+	}
+
+	void Renderer2D::DrawLine(const glm::vec3& initialPosition, const glm::vec3& finalPosition, const glm::vec4& color, const int entityID)
+	{
+		FillLine(initialPosition, finalPosition, color, entityID);
 	}
 
 	void Renderer2D::FillRectangle(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color, const int entityID)

@@ -1,7 +1,6 @@
 #include "GE/GEpch.h"
 
 #include "RuntimeAssetManager.h"
-
 #include "Serializer/AssetSerializer.h"
 
 namespace GE
@@ -9,11 +8,12 @@ namespace GE
 	RuntimeAssetManager::RuntimeAssetManager()
 	{
 		m_AssetPack = CreateRef<AssetPack>();
+		m_LoadedAssets = AssetMap();
 	}
 
 	RuntimeAssetManager::~RuntimeAssetManager()
 	{
-		SerializeAssets();
+		m_AssetPack->ClearAllFileData();
 	}
 
 	Ref<Asset> RuntimeAssetManager::GetAsset(UUID handle)
@@ -31,7 +31,9 @@ namespace GE
 		}
 		else
 		{
-			asset = m_AssetPack->GetAsset<Asset>(handle);
+			const AssetInfo& assetInfo = m_AssetPack->GetAssetInfo(handle);
+
+			asset = AssetSerializer::DeserializeAsset(assetInfo);
 			if (asset)
 				m_LoadedAssets.at(handle) = asset;
 		}
@@ -58,17 +60,20 @@ namespace GE
 	{
 		if (HandleExists(handle) || !AssetLoaded(handle))
 			return false;
-		return m_AssetPack->AddAsset(m_LoadedAssets.at(handle));
+		return m_AssetPack->AddAsset(m_LoadedAssets.at(handle), AssetInfo());
 	}
 
 	bool RuntimeAssetManager::AddAsset(Ref<Asset> asset)
 	{
 		if (HandleExists(asset->GetHandle()) || AssetLoaded(asset->GetHandle()))
 		{
-			GE_WARN("Cannot add Asset to Loaded. Asset already in Loaded.");
+			GE_CORE_WARN("Cannot add Asset to Loaded. Asset already in Loaded.");
 			return false;
 		}
-		m_LoadedAssets.at(asset->GetHandle()) = asset;
+
+		UUID handle = asset->GetHandle();
+		m_LoadedAssets.emplace(handle, asset);
+
 		return true;
 	}
 

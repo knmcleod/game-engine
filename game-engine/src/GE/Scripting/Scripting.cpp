@@ -9,7 +9,6 @@
 #include "GE/Core/Input/Input.h"
 
 #include "GE/Physics/Physics.h"
-
 #include "GE/Project/Project.h"
 
 #include <mono/jit/jit.h>
@@ -592,6 +591,8 @@ namespace GE
 
 	void Scripting::Init()
 	{
+		GE_CORE_INFO("Scripting Init Start");
+
 		InitMono();
 		ScriptGlue::RegisterFunctions();
 
@@ -604,6 +605,7 @@ namespace GE
 
 		s_Data->EntityClass = ScriptClass("GE", "Entity", true);
 
+		GE_CORE_INFO("Scripting Init Complete");
 	}
 
 	void Scripting::Shutdown()
@@ -617,6 +619,7 @@ namespace GE
 
 	void Scripting::InitMono()
 	{
+		GE_CORE_INFO("Mono Init Start");
 		mono_set_assemblies_path("mono/lib");
 
 		MonoDomain* rootDomain = mono_jit_init("GEJITRuntime");
@@ -625,17 +628,26 @@ namespace GE
 		s_Data->RootDomain = rootDomain;
 
 		mono_thread_set_main(mono_thread_current());
+		GE_CORE_INFO("Mono Init Complete");
 	}
 
 	void Scripting::ShutdownMono()
 	{
+		GE_CORE_INFO("Mono Shutdown Start");
 		mono_domain_set(mono_get_root_domain(), false);
+		
+		if (s_Data->AppDomain)
+		{
+			mono_domain_unload(s_Data->AppDomain);
+			s_Data->AppDomain = nullptr;
+		}
 
-		mono_domain_unload(s_Data->AppDomain);
-		s_Data->AppDomain = nullptr;
-
-		mono_jit_cleanup(s_Data->RootDomain);
-		s_Data->RootDomain = nullptr;
+		if (s_Data->RootDomain)
+		{
+			mono_jit_cleanup(s_Data->RootDomain);
+			s_Data->RootDomain = nullptr;
+		}
+		GE_CORE_INFO("Mono Shutdown Complete");
 
 	}
 

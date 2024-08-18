@@ -136,6 +136,7 @@ namespace GE
 		// Line/Rectangle
 		static const float& GetLineWidth() { return s_Data.lineData.Width; }
 		static void DrawRectangle(const glm::mat4& transform, const glm::vec4& color, const int entityID = -1);
+		static void DrawLine(const glm::vec3& initialPosition, const glm::vec3& finalPosition, const glm::vec4& color, const int entityID = 0);
 	
 		// Text
 		static void DrawString(const glm::mat4& transform, 

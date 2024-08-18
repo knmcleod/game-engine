@@ -74,17 +74,7 @@ namespace GE
 		virtual ~Entity();
 
 		const uint32_t GetEntityID() const { return (uint32_t)m_EntityID; }
-		
-		/*
-		*	Returns size required to fill buffer
-		*
-		*	param: buffer = buffer to be filled
-		*	param: bufferSize = size of buffer
-		*
-		*	If failed or default, returns 0.
-		*/
-		uint64_t GetByteArray(void* buffer = nullptr, uint64_t bufferSize = 0);
-
+		const Scene* GetScene() { return m_Scene; }
 	protected:
 		void ClearEntityID() { m_EntityID = entt::null; }
 	protected:
@@ -137,9 +127,10 @@ namespace GE
 
 		struct Config
 		{
+			// Remove. Use AssetMetadata.FilePath.Name instead
+			std::string Name = "NewScene";
 			uint32_t ViewportWidth = 1280, ViewportHeight = 720;
 			State State = State::Stop;
-			std::string Name = "New Scene";
 			int StepFrames = 0;
 		};
 
@@ -204,18 +195,6 @@ namespace GE
 		*	Implement per inherited Asset
 		*/
 		Ref<Asset> GetCopy() override;
-
-		/*
-		*	Returns size required to fill buffer
-		*
-		*	param: buffer = buffer to be filled
-		*	param: bufferSize = size of buffer
-		*
-		*	If failed or default, returns 0.
-		*	Implement per inherited Asset.
-		*/
-		 uint64_t GetByteArray(void* buffer = nullptr, uint64_t bufferSize = 0) override;
-
 		
 		// Returns true if the scenes state is Run. Does not account for Simulation
 		bool IsRunning() const { return m_Config.State == State::Run; }
@@ -234,7 +213,16 @@ namespace GE
 
 		Entity CreateEntity(const std::string& name);
 		Entity CreateEntityWithUUID(UUID uuid, const std::string& name);
+		/*
+		* returns duplicated Entity.
+		* Will not share UUID
+		*/
 		Entity DuplicateEntity(Entity entity);
+		/*
+		* returns copied Entity.
+		* Will share UUID
+		*/
+		Entity CopyEntity(Entity entity);
 		void DestroyEntity(Entity entity);
 
 		void OnStart(State state, uint32_t viewportWidth = 0, uint32_t viewportHeight = 0);

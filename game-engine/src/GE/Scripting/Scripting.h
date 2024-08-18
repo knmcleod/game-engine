@@ -46,7 +46,7 @@ namespace GE
 
 		static Data* s_Data;
 
-		inline static void SetScene(Scene* scene) { s_Data->ActiveScene = scene; }
+		inline static void SetScene(const Scene* scene) { s_Data->ActiveScene = (Scene*)scene; }
 		inline static Scene* GetScene() { return s_Data->ActiveScene; }
 
 		static Ref<ScriptInstance> GetScriptInstance(UUID uuid);

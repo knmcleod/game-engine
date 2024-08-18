@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../AssetManager/EditorAssetManager.h"
 #include "../../Camera/EditorCamera.h"
 #include "../../UIPanels/SceneHierarchyPanel.h"
 #include "../../UIPanels/AssetPanel.h"
@@ -51,12 +52,12 @@ namespace GE
 		bool m_ViewportHovered = false;
 		glm::vec2 m_ViewportBounds[2];
 
-		Ref<Framebuffer> m_Framebuffer;
-		Ref<SceneHierarchyPanel> m_ScenePanel;
-		Ref<AssetPanel> m_AssetPanel;
+		Ref<Framebuffer> m_Framebuffer = nullptr;
+		Ref<SceneHierarchyPanel> m_ScenePanel = nullptr;
+		Ref<AssetPanel> m_AssetPanel = nullptr;
 
-		Ref<Scene> m_EditorScene;
-		Ref<Scene> m_RuntimeScene;
+		Ref<Scene> m_EditorScene = nullptr;
+		Ref<Scene> m_RuntimeScene = nullptr;
 
 		UUID m_PlayButtonHandle, m_SimulateButtonHandle, m_PauseButtonHandle, m_StepButtonHandle, m_StopButtonHandle;
 		

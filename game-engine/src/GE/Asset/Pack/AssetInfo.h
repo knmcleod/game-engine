@@ -6,39 +6,54 @@ namespace GE
 {
 	/*
 	* Contains
-	* - Size : Packed Data Size
-	* ~ Data : Packed Data
-	* * - Type : Asset Type - Texture2D, Font, AudioClip.
+	* - Type : Asset Type - Texture2D, Font, AudioClip.
+	* ~ DataBuffer : Allocated only for Serialize/Deserialize
+	* * - Size
+	* * ~ Data : Set in corresponding AssetSerializer::SerializeAsset(asset, assetInfo)
+	* * * - Handle
+	* * * - Type
+	* * * ~ Asset Specific Data
+	* * * * ...
 	*/
-	class AssetInfo
+	struct AssetInfo
 	{
 		friend class AssetPack;
 		friend class AssetSerializer;
 	public:
-		bool operator==(AssetInfo other) const
+		virtual bool operator==(AssetInfo other) const
 		{
-			if (other.p_Type == this->p_Type && other.p_Data == this->p_Data)
+			if (other.Type == this->Type)
 				return true;
+			return false;
 		}
 
-	protected:
-		uint16_t p_Type = 0;	// Asset Type: Texture2D, Font, AudioClip
+		void InitializeData(uint64_t size)
+		{
+			DataBuffer = Buffer(size);
+		}
 
-		uint64_t p_Size = 0;	// Packed Data Size
-		uint8_t* p_Data = nullptr;
+		uint16_t Type = 0;	// Asset Type: Scene, Texture2D, Font, AudioClip
+
+		Buffer DataBuffer = 0;
 	};
 
 	/*
 	* Special case for Scene Assets
 	* Comparable to .scene + .gar file
 	* Contains
-	* - Size : Total Scene size, excluding Offset
-	* ~ Data : Packed Data
-	* * - Type : Asset Type - Scene
-	* * - Assets : map<UUID, AssetInfo>
-	* * - Entities : map<UUID, EntityInfo>
+	* - Type : Asset Type - Scene
+	* - Assets : map<UUID, AssetInfo>
+	* - Entities : map<UUID, EntityInfo>
+	* ~ DataBuffer : Allocated only for Serialize/Deserialize
+	* * - Size : Size of Data
+	* * ~ Data : Set in corresponding AssetSerializer::SerializeAsset(asset, assetInfo)
+	* * * - Handle
+	* * * - Type
+	* * * ~ Scene Data
+	* * * * - Assets : map<UUID, AssetInfo>
+	* * * * - Entities : map<UUID, EntityInfo>
 	*/
-	class SceneInfo : public AssetInfo
+	struct SceneInfo : public AssetInfo
 	{
 		friend class AssetPack;
 		friend class AssetSerializer;
@@ -116,13 +131,23 @@ namespace GE
 		*/
 		struct EntityInfo
 		{
-			uint64_t Size = 0;	// Packed Data Size
-			uint8_t* Data = nullptr;
+			Buffer DataBuffer = 0;
 		};
-	private:
 
-		// Set using Data
-		std::map<uint64_t, AssetInfo> m_Assets; // UUID, AssetInfo
-		std::map<uint64_t, EntityInfo> m_Entities; // UUID, EntityInfo
+		SceneInfo()
+		{
+			Type = 1; // See Asset::Type
+		}
+
+		SceneInfo(const AssetInfo& assetInfo) : SceneInfo()
+		{
+			if(assetInfo.Type == Type)
+				DataBuffer = assetInfo.DataBuffer;
+		}
+
+	private:
+		// Set using AssetInfo::Data
+		std::map<uint64_t, AssetInfo> m_Assets = std::map<uint64_t, AssetInfo>(); // UUID, AssetInfo
+		std::map<uint64_t, EntityInfo> m_Entities = std::map<uint64_t, EntityInfo>(); // UUID, EntityInfo
 	};
 }

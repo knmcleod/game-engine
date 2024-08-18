@@ -36,7 +36,11 @@ namespace GE
 		TransformComponent(const TransformComponent&) = default;
 		TransformComponent(const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale)
 			: Translation(translation), Rotation(rotation), Scale(scale) {}
-	
+		
+		/*
+		* param translationOffset : added with Translation using glm::translate()
+		* param scaleOffset : multiplied with Scale using glm::scale()
+		*/
 		const glm::mat4 GetTransform(glm::vec3& translationOffset = glm::vec3(0.0f), glm::vec3& scaleOffset = glm::vec3(1.0f)) const
 		{
 			glm::mat4 identityMat4 = glm::mat4(1.0f);
@@ -83,8 +87,8 @@ namespace GE
 	struct SpriteRendererComponent
 	{
 		UUID AssetHandle = 0;
-		glm::vec4 Color = glm::vec4(1.0f);
 		float TilingFactor = 1.0f;
+		glm::vec4 Color = glm::vec4(1.0f);
 
 		SpriteRendererComponent() = default;
 		SpriteRendererComponent(const SpriteRendererComponent&) = default;
@@ -94,11 +98,11 @@ namespace GE
 	struct CircleRendererComponent
 	{
 		UUID AssetHandle = 0;
-		glm::vec4 Color = glm::vec4(1.0f);
 		float TilingFactor = 1.0f;
 		float Radius = 0.5f; // Game Engine is 1x1, thus radius = 1/2;
 		float Thickness = 1.0f; // 1: Full, 0: Empty
 		float Fade = 0.0; // Blurs Circle 1: Full Fade 0: No Fade
+		glm::vec4 Color = glm::vec4(1.0f);
 
 		CircleRendererComponent() = default;
 		CircleRendererComponent(const CircleRendererComponent&) = default;
@@ -106,13 +110,12 @@ namespace GE
 
 	struct TextRendererComponent
 	{
-		glm::vec4 TextColor = glm::vec4(0.0, 0.0, 0.0, 1.0);
-		glm::vec4 BGColor = glm::vec4(0.0);
+		UUID AssetHandle = 0;
 		float KerningOffset = 0.0f; // Adjusts the spacing between characters proportionally
 		float LineHeightOffset = 0.0f;
 		std::string Text = "Text";
-
-		UUID AssetHandle = 0;
+		glm::vec4 TextColor = glm::vec4(0.0, 0.0, 0.0, 1.0);
+		glm::vec4 BGColor = glm::vec4(0.0);
 
 		TextRendererComponent() = default;
 		TextRendererComponent(const TextRendererComponent&) = default;
@@ -123,7 +126,6 @@ namespace GE
 	{
 		enum class BodyType { Static = 0, Dynamic, Kinematic };
 		BodyType Type = BodyType::Static;
-
 		bool FixedRotation = false;
 
 		void* RuntimeBody = nullptr;
@@ -134,14 +136,13 @@ namespace GE
 
 	struct BoxCollider2DComponent
 	{
-		glm::vec2 Offset = { 0.0f, 0.0f };
-		glm::vec2 Size = { 0.5f, 0.5f };
-
+		bool Show = true;
 		float Density = 1.0f;
 		float Friction = 0.5f;
 		float Restitution = 0.0f; // For bounciness
 		float RestitutionThreshold = 0.5f;
-		bool Show = true;
+		glm::vec2 Offset = { 0.0f, 0.0f };
+		glm::vec2 Size = { 0.5f, 0.5f };
 
 		void* RuntimeFixture = nullptr;
 
@@ -151,14 +152,13 @@ namespace GE
 
 	struct CircleCollider2DComponent
 	{
-		glm::vec2 Offset = { 0.0f, 0.0f };
-		float Radius = 0.5f;
-
+		bool Show = true;
+		float Radius = 0.5f; // GE is 1x1
 		float Density = 1.0f;
 		float Friction = 0.5f;
 		float Restitution = 0.0f; // For bounciness
 		float RestitutionThreshold = 0.5f;
-		bool Show = true;
+		glm::vec2 Offset = { 0.0f, 0.0f };
 
 		void* RuntimeFixture = nullptr;
 

@@ -35,7 +35,7 @@ namespace GE
 
 		static Scope<Window> Create(const Config& config);
 
-		virtual ~Window() {}
+		virtual ~Window() = default;
 
 		virtual void* GetNativeWindow() const = 0;
 

@@ -72,7 +72,6 @@ namespace GE
 	class ScriptClass
 	{
 		friend class Scripting;
-	
 	public:
 		ScriptClass() = default;
 		ScriptClass(const std::string& classNamespace, const std::string& className, bool isCore = false);
@@ -97,6 +96,7 @@ namespace GE
 
 	class ScriptInstance
 	{
+		friend class Scripting;
 	public:
 		ScriptInstance(Ref<ScriptClass> scriptClass, UUID uuid);
 
@@ -132,6 +132,5 @@ namespace GE
 
 		inline static char s_FieldValueBuffer[16];
 
-		friend class Scripting;
 	};
 }

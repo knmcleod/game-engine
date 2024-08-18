@@ -45,6 +45,7 @@ namespace GE
 		GE_CORE_ASSERT(textureConfig.InternalFormat != ImageFormat::None, "No Internal Format Specified.");
 
 		p_Type = Asset:: Type::Texture2D;
+		m_Config.Name = textureConfig.Name;
 		m_Config.Width = textureConfig.Width;
 		m_Config.Height = textureConfig.Height;
 		m_Config.GenerateMips = textureConfig.GenerateMips;
@@ -71,29 +72,10 @@ namespace GE
 		return nullptr;
 	}
 
-	uint64_t OpenGLTexture2D::GetByteArray(void* buffer, uint64_t bufferSize)
-	{
-		/*
-		* - Type
-		* - Name
-		* ~ Config
-		* * - Width
-		* * - Height
-		* * - InternalFormat
-		* * - Format
-		* * - GenerateMips
-		* ~ Buffer
-		* * - Size
-		* * - Data
-		*/
-
-		return 0;
-	}
-
 	void OpenGLTexture2D::SetData(Buffer data)
 	{
 		GE_PROFILE_FUNCTION();
-		this->buffer = data;
+		this->m_TextureBuffer = data;
 
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);

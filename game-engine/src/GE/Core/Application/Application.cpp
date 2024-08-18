@@ -5,6 +5,8 @@
 #include "GE/Core/FileSystem/FileSystem.h"
 #include "GE/Core/Time/Timestep.h"
 
+#include "GE/Project/Project.h"
+
 #include "GE/Rendering/RenderCommand.h"
 
 #include "GE/Scripting/Scripting.h"
@@ -32,9 +34,11 @@ namespace GE
 			return;
 		}
 
+		Project::NewAssetManager<RuntimeAssetManager>();
+
 		// Creates Window and Binds Events
-		m_Window = Window::Create(Window::Config(p_Config.Name, Project::GetWidth(), Project::GetHeight(), true, nullptr));
-		m_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));
+		p_Window = Window::Create(Window::Config(p_Config.Name, Project::GetWidth(), Project::GetHeight(), true, nullptr));
+		p_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));
 		
 		RenderCommand::Init();
 
@@ -50,7 +54,18 @@ namespace GE
 		
 		Scripting::Shutdown();
 		RenderCommand::ShutDown();
+		
 		GE_CORE_INFO("Core Application Destructor Complete.");
+	}
+
+	const uint32_t& Application::GetWidth() const
+	{
+		return Project::GetWidth();
+	}
+
+	const uint32_t& Application::GetHeight() const
+	{
+		return Project::GetHeight();
 	}
 
 	void Application::Run()
@@ -61,7 +76,7 @@ namespace GE
 		{
 			{
 				GE_PROFILE_SCOPE("Time Compilation - Application::Run()");
-				float time = m_Window->GetTime();
+				float time = p_Window->GetTime();
 				p_TS = time - p_LastFrameTime;
 				p_LastFrameTime = time;
 			}
@@ -90,7 +105,7 @@ namespace GE
 
 			{ //	Updates Window
 				GE_PROFILE_SCOPE("Window - Application::Run()");
-				m_Window->OnUpdate();
+				p_Window->OnUpdate();
 			}
 		}
 	}
@@ -183,7 +198,7 @@ namespace GE
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)
 	{
-		this->Close();
+		Close();
 		return true;
 	}
 
@@ -197,7 +212,7 @@ namespace GE
 			return false;
 		}
 
-		RenderCommand::SetViewport(0, 0, e.GetWidth(), e.GetHeight());
+		//RenderCommand::SetViewport(0, 0, e.GetWidth(), e.GetHeight());
 		Project::SetViewport(e.GetWidth(), e.GetHeight());
 
 		p_Minimized = false;

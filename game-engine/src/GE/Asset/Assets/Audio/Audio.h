@@ -19,12 +19,9 @@ namespace GE
 
 		const static uint8_t NUM_BUFFERS = 4;
 		uint32_t Buffers[NUM_BUFFERS];
-		uint64_t Cursor = Size * NUM_BUFFERS;
+		uint64_t Cursor = 0;
 
-		// Size of Data read from .wav file
-		uint32_t Size = 0;
-		// Data read from .wav file
-		uint8_t* Data = nullptr;
+		Buffer Buff;
 	};
 
 	class AudioClip : public Asset
@@ -33,6 +30,8 @@ namespace GE
 	public:
 		struct Config
 		{
+			// Remove. Use AssetMetadata.FilePath.Name instead
+			std::string Name = std::string("NewAudioClip");
 			uint32_t SourceID = 0;
 			bool Loop = false;
 			float Pitch = 1.0f;
@@ -40,11 +39,10 @@ namespace GE
 		};
 
 		AudioClip();
-		AudioClip(const Config& config, const glm::vec3& position = glm::vec3(0), const glm::vec3& velocity = glm::vec3(0));
+		AudioClip(UUID handle);
 		~AudioClip() override;
 
 		Ref<Asset> GetCopy() override;
-		uint64_t GetByteArray(void* buffer = nullptr, uint64_t bufferSize = 0) override;
 
 		void SetSourceValues();
 

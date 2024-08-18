@@ -5,19 +5,9 @@ namespace GE
 {
 	class OpenGLFramebuffer : public Framebuffer
 	{
-	private:
-		uint32_t m_RendererID = 0;
-
-		std::vector<uint32_t> m_ColorAttachmentsID;
-		uint32_t m_DepthAttachmentID = 0;
-
-		Config p_Config;
-		std::vector<TextureSpecification> m_ColorAttachmentSpecs;
-		TextureSpecification m_DepthAttachmentSpec;
-
 	public:
 		OpenGLFramebuffer(const Config& spec);
-		~OpenGLFramebuffer();
+		~OpenGLFramebuffer() override;
 
 		inline const Config& GetConfig() override { return p_Config; }
 		inline const uint32_t& GetWidth() override { return p_Config.Width; }
@@ -38,6 +28,14 @@ namespace GE
 		void ClearAttachment(uint32_t attachmentIndex, int value) override;
 
 		int ReadPixel(uint32_t attachmentIndex, int x, int y) override;
+	private:
+		uint32_t m_RendererID = 0;
 
+		std::vector<uint32_t> m_ColorAttachmentsID;
+		uint32_t m_DepthAttachmentID = 0;
+
+		Config p_Config;
+		std::vector<TextureSpecification> m_ColorAttachmentSpecs;
+		TextureSpecification m_DepthAttachmentSpec;
 	};
 }

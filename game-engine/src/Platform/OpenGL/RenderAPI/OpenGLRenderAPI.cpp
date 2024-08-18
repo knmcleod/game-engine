@@ -30,7 +30,7 @@ namespace GE
 		glClearColor(color.r, color.g, color.b, color.a);
 	}
 
-	void OpenGLRenderAPI::DrawIndices(const Ref<VertexArray>& vertexArray, uint32_t indexCount)
+	void OpenGLRenderAPI::DrawIndices(Ref<VertexArray> vertexArray, uint32_t indexCount)
 	{
 		vertexArray->Bind();
 		glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);
@@ -38,7 +38,7 @@ namespace GE
 		
 	}
 
-	void OpenGLRenderAPI::DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount)
+	void OpenGLRenderAPI::DrawLines(Ref<VertexArray> vertexArray, uint32_t vertexCount)
 	{
 		vertexArray->Bind();
 		glDrawArrays(GL_LINES, 0, vertexCount);

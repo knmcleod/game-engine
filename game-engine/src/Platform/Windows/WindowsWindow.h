@@ -11,7 +11,7 @@ namespace GE
 	{
 	public:
 		WindowsWindow(const Config& config);
-		virtual ~WindowsWindow();
+		~WindowsWindow() override;
 
 		void OnUpdate() override;
 

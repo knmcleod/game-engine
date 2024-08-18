@@ -53,7 +53,7 @@ namespace GE
 			const std::string& vertexSrc, const std::string& fragmentSrc);
 		static Ref<Shader> Create(const std::string& path);
 
-		virtual ~Shader() {}
+		virtual ~Shader() = default;
 
 		virtual const std::string& GetName() const = 0;
 
@@ -76,8 +76,8 @@ namespace GE
 	class ShaderLibrary
 	{
 	public:
-		void Add(Ref<Shader> shader, const std::string& name = "Shader");
-		Ref<Shader> Load(const std::string& path, const std::string& name = "Shader");
+		void Add(Ref<Shader> shader, const std::string& name = "New Shader");
+		Ref<Shader> Load(const std::string& path, const std::string& name = "New Shader");
 
 		Ref<Shader> Get(const std::string& name);
 

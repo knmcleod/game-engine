@@ -2,11 +2,17 @@
 
 #include "Audio.h"
 
+#include "GE/Project/Project.h"
+
 namespace GE
 {
-    AudioClip::AudioClip() : Asset()
+    AudioClip::AudioClip() : AudioClip(UUID())
     {
-        p_Type = Asset::Type::AudioClip;
+
+    }
+
+    AudioClip::AudioClip(UUID handle) : Asset(handle, Asset::Type::AudioClip)
+    {
         alGenSources(1, &m_Config.SourceID);
         m_AudioBuffer = CreateRef<AudioBuffer>();
     }
@@ -26,28 +32,6 @@ namespace GE
     {
         GE_CORE_WARN("Could not copy AudioClip Asset. Returning nullptr.");
         return nullptr;
-    }
-
-    uint64_t AudioClip::GetByteArray(void* buffer, uint64_t bufferSize)
-    {
-        /*
-        * ~ Config
-        * * - SourceID : uint32_t
-	    * * - Loop : bool 
-		* * - Pitch : float
-		* * - Gain : float
-        * - Position
-        * - Velocity
-        * ~ Audio Data
-        * * - BPS : uint8_t
-        * * - Channels : uint8_t
-        * * - SampleRate : int32_t
-        * * - Format : int32_t
-        * * - Size : uint32_t
-        * * - Data : uint_8_t*
-        */
-
-        return 0;
     }
 
     void AudioClip::SetSourceValues()
@@ -96,26 +80,26 @@ namespace GE
                     AudioBuffer buffer; // Holds unqueued audio buffer
                     alSourceUnqueueBuffers(m_Config.SourceID, 1, buffer.Buffers);
 
-                    ALsizei dataSize = buffer.Size;
+                    ALsizei dataSize = buffer.Buff.Size;
 
                     char* data = new char[dataSize];
                     std::memset(data, 0, dataSize);
 
-                    std::size_t dataSizeToCopy = buffer.Size;
-                    if (buffer.Cursor + buffer.Size > sizeof(buffer.Data))
-                        dataSizeToCopy = sizeof(buffer.Data) - buffer.Cursor;
+                    std::size_t dataSizeToCopy = buffer.Buff.Size;
+                    if (buffer.Cursor + buffer.Buff.Size > sizeof(buffer.Buff.Data))
+                        dataSizeToCopy = sizeof(buffer.Buff.Data) - buffer.Cursor;
 
-                    std::memcpy(&data[0], &buffer.Data[buffer.Cursor], dataSizeToCopy);
+                    std::memcpy(&data[0], &buffer.Buff.Data[buffer.Cursor], dataSizeToCopy);
                     buffer.Cursor += dataSizeToCopy;
 
-                    if (dataSizeToCopy < buffer.Size)
+                    if (dataSizeToCopy < buffer.Buff.Size)
                     {
                         buffer.Cursor = 0;
-                        std::memcpy(&data[dataSizeToCopy], &buffer.Data[buffer.Cursor], buffer.Size - dataSizeToCopy);
-                        buffer.Cursor = buffer.Size - dataSizeToCopy;
+                        std::memcpy(&data[dataSizeToCopy], &buffer.Buff.Data[buffer.Cursor], buffer.Buff.Size - dataSizeToCopy);
+                        buffer.Cursor = buffer.Buff.Size - dataSizeToCopy;
                     }
 
-                    alBufferData(*buffer.Buffers, buffer.Format, data, buffer.Size, buffer.SampleRate);
+                    alBufferData(*buffer.Buffers, buffer.Format, data, buffer.Buff.Size, buffer.SampleRate);
                     alSourceQueueBuffers(m_Config.SourceID, 1, buffer.Buffers);
 
                     delete[] data;

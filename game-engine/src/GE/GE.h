@@ -12,7 +12,7 @@
 #include "GE/Asset/Registry/AssetRegistry.h"
 
 #include "GE/Asset/AssetManager.h"
-
+#include "GE/Asset/RuntimeAssetManager.h"
 #pragma endregion
 
 #pragma region Core

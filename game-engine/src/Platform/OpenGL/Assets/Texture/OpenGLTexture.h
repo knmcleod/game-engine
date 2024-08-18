@@ -6,6 +6,7 @@ namespace GE
 {
 	class OpenGLTexture2D : public Texture2D
 	{
+		friend class AssetSerializer;
 	public:
 		bool operator==(const Texture& other) const override { return this->GetID() == ((Texture&)other).GetID(); };
 
@@ -14,7 +15,6 @@ namespace GE
 
 		// Asset overrides
 		Ref<Asset> GetCopy() override;
-		uint64_t GetByteArray(void* buffer = nullptr, uint64_t bufferSize = 0) override;
 
 		// Texture2D overrides
 		Config GetConfig() const override { return m_Config; }
@@ -22,6 +22,7 @@ namespace GE
 		uint32_t GetHeight() const override { return m_Config.Height; }
 		uint32_t GetID() const override { return m_RendererID; }
 
+		const Buffer GetData() const override { return m_TextureBuffer; }
 		void SetData(Buffer data) override;
 
 		void Bind(uint32_t slot = 0) const override;
@@ -31,6 +32,7 @@ namespace GE
 		uint32_t m_RendererID = 0;
 
 		Config m_Config;
-		Buffer buffer;
+		// Holds texture data
+		Buffer m_TextureBuffer;
 	};
 }

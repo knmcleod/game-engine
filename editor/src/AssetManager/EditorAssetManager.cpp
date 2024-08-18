@@ -101,6 +101,9 @@ namespace GE
 
 	Ref<Asset> EditorAssetManager::LoadAsset(const AssetMetadata& metadata)
 	{
+		if (AssetLoaded(metadata.Handle))
+			return m_LoadedAssets.at(metadata.Handle);
+
 		Ref<Asset> asset = nullptr;
 		if (asset = AssetSerializer::DeserializeAsset(m_AssetRegistry->GetAssetMetadata(metadata.Handle)))
 		{

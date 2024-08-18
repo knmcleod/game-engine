@@ -9,16 +9,16 @@ namespace GE
 	public:
 		// Created on construct using OpenGL
 		OpenGLVertexArray();
-		virtual ~OpenGLVertexArray();
+		~OpenGLVertexArray() override;
 
-		virtual void Bind() const override;
-		virtual void Unbind() const override;
+		void Bind() const override;
+		void Unbind() const override;
 
-		virtual void AddVertexBuffer(Ref<VertexBuffer> vertexBuffer) override;
-		virtual void AddIndexBuffer(Ref<IndexBuffer> indexBuffer) override;
-	
-		virtual inline const std::vector<Ref<VertexBuffer>>& GetVertexBuffers() override { return m_VertexBuffers; }
-		virtual inline const Ref<IndexBuffer> GetIndexBuffer() override { return m_IndexBuffer; }
+		void AddVertexBuffer(Ref<VertexBuffer> vertexBuffer) override;
+		void AddIndexBuffer(Ref<IndexBuffer> indexBuffer) override;
+		
+		inline const std::vector<Ref<VertexBuffer>>& GetVertexBuffers() override { return m_VertexBuffers; }
+		inline const Ref<IndexBuffer> GetIndexBuffer() override { return m_IndexBuffer; }
 	private:
 		std::vector<Ref<VertexBuffer>> m_VertexBuffers;
 		Ref<IndexBuffer> m_IndexBuffer;

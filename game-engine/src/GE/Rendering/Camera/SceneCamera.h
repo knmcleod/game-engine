@@ -36,8 +36,8 @@ namespace GE
 		glm::mat4 m_ViewProjection = glm::mat4();
 		glm::mat4 m_ViewTransform = glm::mat4();
 		uint32_t m_ViewportWidth = 1280, m_ViewportHeight = 720;
+		float m_AspectRatio = 1.0f;
 
-		float m_FOV = 45.0f, m_AspectRatio = 1.0f;
-		float m_NearClip = -1.0f, m_FarClip = 1.0f;
+		float m_FOV = 45.0f, m_NearClip = -1.0f, m_FarClip = 1.0f;
 	};
 }

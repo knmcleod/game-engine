@@ -56,18 +56,7 @@ namespace GE
 		*/
 		virtual bool DeserializeAssets() override;
 
-		bool AssetInfoExists(const AssetInfo& assetInfo)
-		{
-			return m_AssetPack->AssetInfoExists(assetInfo);
-		}
-		template<typename T>
-		T* GetAssetInfo(const AssetInfo& assetInfo)
-		{
-			if (!AssetInfoExists(assetInfo))
-				return nullptr;
-
-			return m_AssetPack->GetAssetInfo<T>(assetInfo);
-		}
+		Ref<AssetPack> GetPack() { return m_AssetPack; }
 
 	private:
 		Ref<AssetPack> m_AssetPack;

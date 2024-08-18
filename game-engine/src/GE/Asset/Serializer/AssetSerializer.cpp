@@ -154,10 +154,15 @@ namespace GE
 
 	std::map<Asset::Type, AssetPackSerializeFunction> AssetSerializer::s_AssetPackSerializeFuncs =
 	{
-		{ Asset::Type::Scene, AssetSerializer::SerializeSceneToPack }
+		{ Asset::Type::Scene, AssetSerializer::SerializeSceneForPack },
+		{ Asset::Type::Texture2D, AssetSerializer::SerializeTexture2DForPack },
+		{ Asset::Type::Font, AssetSerializer::SerializeFontForPack },
+		{ Asset::Type::AudioClip, AssetSerializer::SerializeAudioForPack }
 	};
-	
-	static void SerializeEntity(YAML::Emitter& out, Entity entity)
+
+#pragma region Entity
+
+	static void SerializeEntity(YAML::Emitter& out, const Entity& entity)
 	{
 		GE_CORE_ASSERT(entity.HasComponent<IDComponent>(), "Cannot serialize Entity without ID.");
 
@@ -405,6 +410,858 @@ namespace GE
 		out << YAML::EndMap; // Entity
 	}
 
+	static bool DeserializeEntity(const YAML::detail::iterator_value& eDetails, Entity& entity)
+	{
+		// TransformComponent
+		auto transformComponent = eDetails["TransformComponent"];
+		if (transformComponent)
+		{
+			auto& tc = entity.GetOrAddComponent<TransformComponent>();
+			tc.Translation = transformComponent["Translation"].as<glm::vec3>();
+			tc.Rotation = transformComponent["Rotation"].as<glm::vec3>();
+			tc.Scale = transformComponent["Scale"].as<glm::vec3>();
+		}
+
+		// CameraComponent
+		auto cameraComponent = eDetails["CameraComponent"];
+		if (cameraComponent)
+		{
+			auto& cc = entity.GetOrAddComponent<CameraComponent>();
+			auto& cameraProps = cameraComponent["Camera"];
+
+			cc.ActiveCamera.SetProjectionType((SceneCamera::ProjectionType)cameraProps["Type"].as<int>());
+			cc.ActiveCamera.SetFOV(cameraProps["FOV"].as<float>());
+			cc.ActiveCamera.SetNearClip(cameraProps["Near"].as<float>());
+			cc.ActiveCamera.SetFarClip(cameraProps["Far"].as<float>());
+
+			cc.Primary = cameraComponent["Primary"].as<bool>();
+			cc.FixedAspectRatio = cameraComponent["FixedAspectRatio"].as<bool>();
+		}
+
+		// AudioSourceComponent
+		auto audioSourceComponent = eDetails["AudioSourceComponent"];
+		if (audioSourceComponent)
+		{
+			auto& cc = entity.GetOrAddComponent<AudioSourceComponent>();
+			cc.AssetHandle = audioSourceComponent["AssetHandle"].as<UUID>();
+			cc.Gain = audioSourceComponent["Gain"].as<float>();
+			cc.Pitch = audioSourceComponent["Pitch"].as<float>();
+			cc.Loop = audioSourceComponent["Loop"].as<bool>();
+		}
+
+		// AudioListenerComponent
+		auto audioListenerComponent = eDetails["AudioListenerComponent"];
+		if (audioListenerComponent)
+		{
+			auto& cc = entity.GetOrAddComponent<AudioListenerComponent>();
+
+		}
+
+		// SpriteRendererComponent
+		auto spriteRendererComponent = eDetails["SpriteRendererComponent"];
+		if (spriteRendererComponent)
+		{
+			auto& src = entity.GetOrAddComponent<SpriteRendererComponent>();
+			src.Color = spriteRendererComponent["Color"].as<glm::vec4>();
+			if (spriteRendererComponent["AssetHandle"])
+			{
+				src.AssetHandle = spriteRendererComponent["AssetHandle"].as<UUID>();
+			}
+
+			if (spriteRendererComponent["TilingFactor"])
+			{
+				src.TilingFactor = spriteRendererComponent["TilingFactor"].as<float>();
+			}
+		}
+
+		// CircleRendererComponent
+		auto circleRendererComponent = eDetails["CircleRendererComponent"];
+		if (circleRendererComponent)
+		{
+			auto& src = entity.GetOrAddComponent<CircleRendererComponent>();
+			src.Color = circleRendererComponent["Color"].as<glm::vec4>();
+			src.Radius = circleRendererComponent["Radius"].as<float>();
+			src.Thickness = circleRendererComponent["Thickness"].as<float>();
+			src.Fade = circleRendererComponent["Fade"].as<float>();
+		}
+
+		// TextRendererComponent
+		auto textRendererComponent = eDetails["TextRendererComponent"];
+		if (textRendererComponent)
+		{
+			auto& src = entity.GetOrAddComponent<TextRendererComponent>();
+			src.TextColor = textRendererComponent["TextColor"].as<glm::vec4>();
+			src.BGColor = textRendererComponent["BGColor"].as<glm::vec4>();
+
+			src.KerningOffset = textRendererComponent["KerningOffset"].as<float>();
+			src.LineHeightOffset = textRendererComponent["LineHeightOffset"].as<float>();
+			src.Text = textRendererComponent["Text"].as<std::string>();
+
+			src.AssetHandle = textRendererComponent["AssetHandle"].as<UUID>();
+		}
+
+		// NativeScriptComponent
+		auto nativeScriptComponent = eDetails["NativeScriptComponent"];
+		if (nativeScriptComponent)
+		{
+			auto& src = entity.GetOrAddComponent<NativeScriptComponent>();
+		}
+
+		// ScriptComponent
+		auto scriptComponent = eDetails["ScriptComponent"];
+		if (scriptComponent)
+		{
+			Scripting::SetScene(entity.GetScene());
+
+			auto& src = entity.GetOrAddComponent<ScriptComponent>();
+			src.ClassName = scriptComponent["ClassName"].as<std::string>();
+
+			// Fields
+			auto fields = scriptComponent["ScriptFields"];
+			if (fields)
+			{
+				Ref<ScriptClass> scriptClass = Scripting::GetScriptClass(src.ClassName);
+				GE_CORE_ASSERT(scriptClass, "Script Class does not exist.");
+				const auto& scriptClassFields = scriptClass->GetFields();
+				auto& scriptFieldMap = Scripting::GetScriptFieldMap(entity);
+
+				for (auto field : fields)
+				{
+					std::string scriptFieldName = field["Name"].as<std::string>();
+
+					if (scriptClassFields.find(scriptFieldName) == scriptClassFields.end())
+					{
+						GE_CORE_WARN("Cannot deserialize Entity Script Field.\n\tScript Field Name: {0} not found.", scriptFieldName);
+						continue;
+					}
+
+					std::string scriptFieldTypeString = field["Type"].as<std::string>();
+					ScriptField::Type scriptFieldType = Scripting::StringToScriptFieldType(scriptFieldTypeString);
+
+					ScriptField& scriptField = scriptFieldMap[scriptFieldName];
+
+					switch (scriptFieldType)
+					{
+					case GE::ScriptField::Type::None:
+						break;
+					case GE::ScriptField::Type::Char:
+					{
+						char data = field["Data"].as<char>();
+						scriptField.SetValue<char>(data);
+						break;
+					}
+					case GE::ScriptField::Type::Int:
+					{
+						int32_t data = field["Data"].as<int32_t>();
+						scriptField.SetValue<int32_t>(data);
+						break;
+					}
+					case GE::ScriptField::Type::UInt:
+					{
+						uint32_t data = field["Data"].as<uint32_t>();
+						scriptField.SetValue<uint32_t>(data);
+						break;
+					}
+					case GE::ScriptField::Type::Float:
+					{
+						float data = field["Data"].as<float>();
+						scriptField.SetValue<float>(data);
+						break;
+					}
+					case GE::ScriptField::Type::Byte:
+					{
+						int8_t data = field["Data"].as<int8_t>();
+						scriptField.SetValue<int8_t>(data);
+						break;
+					}
+					case GE::ScriptField::Type::Bool:
+					{
+						bool data = field["Data"].as<bool>();
+						scriptField.SetValue<bool>(data);
+						break;
+					}
+					case GE::ScriptField::Type::Vector2:
+					{
+						glm::vec2 data = field["Data"].as<glm::vec2>();
+						scriptField.SetValue<glm::vec2>(data);
+						break;
+					}
+					case GE::ScriptField::Type::Vector3:
+					{
+						glm::vec3 data = field["Data"].as<glm::vec3>();
+						scriptField.SetValue<glm::vec3>(data);
+						break;
+					}
+					case GE::ScriptField::Type::Vector4:
+					{
+						glm::vec4 data = field["Data"].as<glm::vec4>();
+						scriptField.SetValue<glm::vec4>(data);
+						break;
+					}
+					case GE::ScriptField::Type::Entity:
+					{
+						UUID data = field["Data"].as<UUID>();
+						scriptField.SetValue<UUID>(data);
+						break;
+					}
+					}
+
+				}
+			}
+
+		}
+
+		// RigidBody2DComponent
+		auto rigidBody2DComponent = eDetails["Rigidbody2DComponent"];
+		if (rigidBody2DComponent)
+		{
+			auto& src = entity.GetOrAddComponent<Rigidbody2DComponent>();
+			src.FixedRotation = rigidBody2DComponent["FixedRotation"].as<bool>();
+			src.Type = ComponentUtils::GetRigidBody2DTypeFromString(rigidBody2DComponent["Type"].as<std::string>());
+		}
+
+		// BoxCollider2DComponent
+		auto boxCollider2DComponent = eDetails["BoxCollider2DComponent"];
+		if (boxCollider2DComponent)
+		{
+			auto& src = entity.GetOrAddComponent<BoxCollider2DComponent>();
+			src.Offset = boxCollider2DComponent["Offset"].as<glm::vec2>();
+			src.Size = boxCollider2DComponent["Size"].as<glm::vec2>();
+			src.Density = boxCollider2DComponent["Density"].as<float>();
+			src.Friction = boxCollider2DComponent["Friction"].as<float>();
+			src.Restitution = boxCollider2DComponent["Restitution"].as<float>();
+			src.RestitutionThreshold = boxCollider2DComponent["RestitutionThreshold"].as<float>();
+
+			src.Show = boxCollider2DComponent["Show"].as<bool>();
+		}
+
+		// CircleCollider2DComponent
+		auto circleCollider2DComponent = eDetails["CircleCollider2DComponent"];
+		if (circleCollider2DComponent)
+		{
+			auto& src = entity.GetOrAddComponent<CircleCollider2DComponent>();
+			src.Offset = circleCollider2DComponent["Offset"].as<glm::vec2>();
+			src.Radius = circleCollider2DComponent["Radius"].as<float>();
+			src.Density = circleCollider2DComponent["Density"].as<float>();
+			src.Friction = circleCollider2DComponent["Friction"].as<float>();
+			src.Restitution = circleCollider2DComponent["Restitution"].as<float>();
+			src.RestitutionThreshold = circleCollider2DComponent["RestitutionThreshold"].as<float>();
+
+			src.Show = circleCollider2DComponent["Show"].as<bool>();
+		}
+
+		return true;
+	}
+
+	static bool SerializeEntity(SceneInfo::EntityInfo& entityInfo, const Entity& entity)
+	{
+		/*
+		* Contains
+		* - Offset : Offset of UUID relative to Parent Scene
+		* - Size : Packed Data Size
+		* ~ Data : Packed Data
+		* * ~ Components : Components on Entity
+		* * * - ID : UUID
+		* * * - Tag : Name
+		* * * ~ Transform :
+		* * * * - Translation :
+		* * * * - Rotation :
+		* * * * - Scale :
+		* * * ~ Camera :
+		* * * * ~ SceneCamera :
+		* * * * * - Fov : float
+		* * * * * - NearClip : float
+		* * * * * - FarClip : float
+		* * * * - Primary : bool
+		* * * * - FixedAspectRatio : bool
+		* * * ~ AudioSource :
+		* * * * - Asset Handle :
+		* * * * - Loop : bool
+		* * * * - Pitch : float
+		* * * * - Gain : float
+		* * * ~ AudioListener :
+		* * * * -
+		* * * ~ SpriteRenderer :
+		* * * * - Asset Handle :
+		* * * * - Color : vec4
+		* * * * - TilingFactor : float
+		* * * ~ CircleRenderer :
+		* * * * - Asset Handle :
+		* * * * - Color : vec4
+		* * * * - TilingFactor : float
+		* * * * - Radius : float
+		* * * * - Thickness : float
+		* * * * - Fade : float
+		* * * ~ TextRenderer :
+		* * * * - Asset Handle :
+		* * * * - TextColor : vec4
+		* * * * - BGColor : vec4
+		* * * * - KerningOffset : float
+		* * * * - LineHeightOffset : float
+		* * * * - Text : std::string
+		* * * ~ Rigidbody2D :
+		* * * * - Type : uint16_t
+		* * * * - FixedRotation : bool
+		* * * ~ BoxCollider2D :
+		* * * * - Show : bool
+		* * * * - Density : float
+		* * * * - Friction : float
+		* * * * - Restitution : float
+		* * * * - RestitutionThreshold : float
+		* * * * - Offset : vec2
+		* * * * - Size : vec2
+		* * * ~ CircleCollider2D :
+		* * * * - Show : bool
+		* * * * - Radius : float
+		* * * * - Density : float
+		* * * * - Friction : float
+		* * * * - Restitution : float
+		* * * * - RestitutionThreshold : float
+		* * * * - Offset : vec2
+		* * * ~ NativeScript :
+		* * * * -
+		* * * ~ Script :
+		* * * * - ClassName : std::string
+		* * * * ~ Fields :
+		* * * * * - Name : std::string
+		* * * * * - Type : char*
+		* * * * * - Data :
+		*/
+		
+		uint64_t requiredSize = 0;
+
+		// Get Size
+		{
+			// ID Component
+			requiredSize += Aligned(sizeof(uint64_t)); // UUID
+
+			// Tag Component 
+			if (entity.HasComponent<TagComponent>())
+			{
+				TagComponent tc = entity.GetComponent<TagComponent>();
+				requiredSize += Aligned(sizeof(uint64_t)); // Name Length
+				requiredSize += Aligned(tc.Tag.size() * sizeof(char)); // Name String
+			}
+
+			// Transform
+			if (entity.HasComponent<TransformComponent>())
+			{
+				// Translation
+				requiredSize += Aligned(sizeof(float))		// x position : float
+					+ Aligned(sizeof(float))				// y position : float
+					+ Aligned(sizeof(float));				// z position : float
+
+				// Rotation
+				requiredSize += Aligned(sizeof(float))		// x rotation : float
+					+ Aligned(sizeof(float))				// y rotation : float
+					+ Aligned(sizeof(float));				// z rotation : float
+
+				// Scale
+				requiredSize += Aligned(sizeof(float))		// x scale : float
+					+ Aligned(sizeof(float))				// y scale : float
+					+ Aligned(sizeof(float));				// z scale : float
+			}
+
+			// Camera
+			if (entity.HasComponent<CameraComponent>())
+			{
+				requiredSize += Aligned(sizeof(bool))	// Primary
+					+ Aligned(sizeof(bool));			// FixedAspectRatio
+
+				// SceneCamera Variables
+				requiredSize += Aligned(sizeof(float))	// FOV
+					+ Aligned(sizeof(float))			// NearCip
+					+ Aligned(sizeof(float));			// FarCip
+			}
+
+			// AudioSource
+			if (entity.HasComponent<AudioSourceComponent>())
+			{
+				requiredSize += Aligned(sizeof(uint64_t))	// Audio Asset UUID, See Assets(UUID)
+					+ Aligned(sizeof(bool))					// Loop
+					+ Aligned(sizeof(float))				// Pitch
+					+ Aligned(sizeof(float));				//Gain
+
+			}
+
+			// AudioListener
+			if (entity.HasComponent<AudioListenerComponent>())
+			{
+
+			}
+
+			// SpriteRenderer
+			if (entity.HasComponent<SpriteRendererComponent>())
+			{
+				SpriteRendererComponent src = entity.GetComponent<SpriteRendererComponent>();
+
+				requiredSize += Aligned(sizeof(uint64_t))	// Texture Asset UUID
+					+ Aligned(sizeof(float));				// TilingFactor
+
+				// Color
+				requiredSize += Aligned(sizeof(float))	// r
+					+ Aligned(sizeof(float))			// g
+					+ Aligned(sizeof(float))			// b
+					+ Aligned(sizeof(float));			// a
+			}
+
+			// CircleRenderer
+			if (entity.HasComponent<CircleRendererComponent>())
+			{
+				CircleRendererComponent crc = entity.GetComponent<CircleRendererComponent>();
+
+				requiredSize += Aligned(sizeof(uint64_t))	// Texture Asset UUID
+					+ Aligned(sizeof(float))				// TilingFactor
+					+ Aligned(sizeof(float))				// Radius
+					+ Aligned(sizeof(float))				// Thickness
+					+ Aligned(sizeof(float));				// Fade
+
+				// Color
+				requiredSize += Aligned(sizeof(float))	// r
+					+ Aligned(sizeof(float))			// g
+					+ Aligned(sizeof(float))			// b
+					+ Aligned(sizeof(float));			// a
+			}
+
+			// TextRenderer
+			if (entity.HasComponent<TextRendererComponent>())
+			{
+				TextRendererComponent trc = entity.GetComponent<TextRendererComponent>();
+
+				requiredSize += Aligned(sizeof(uint64_t)) // Texture Asset UUID
+					+ Aligned(sizeof(trc.KerningOffset))
+					+ Aligned(sizeof(trc.LineHeightOffset))
+					+ Aligned(sizeof(uint64_t))		// size of Text String
+					+ Aligned(trc.Text.size() * sizeof(char));	// Text String
+
+				// Color
+				requiredSize += Aligned(sizeof(trc.TextColor.r))
+					+ Aligned(sizeof(trc.TextColor.g))
+					+ Aligned(sizeof(trc.TextColor.b))
+					+ Aligned(sizeof(trc.TextColor.a));
+
+				requiredSize += Aligned(sizeof(trc.BGColor.r))
+					+ Aligned(sizeof(trc.BGColor.g))
+					+ Aligned(sizeof(trc.BGColor.b))
+					+ Aligned(sizeof(trc.BGColor.a));
+			}
+
+			// Rigidbody2D
+			if (entity.HasComponent<Rigidbody2DComponent>())
+			{
+				requiredSize += Aligned(sizeof(uint16_t))	// Type
+					+ Aligned(sizeof(bool));				// FixedRotation
+			}
+
+			// BoxCollider2D
+			if (entity.HasComponent<BoxCollider2DComponent>())
+			{
+				requiredSize += Aligned(sizeof(bool))	// Show
+					+ Aligned(sizeof(float))			// Density
+					+ Aligned(sizeof(float))			// Friction
+					+ Aligned(sizeof(float))			// Restitution
+					+ Aligned(sizeof(float));			// RestitutionThreshold
+
+				// Offset
+				requiredSize += Aligned(sizeof(float))	// Offset.x
+					+ Aligned(sizeof(float));			// Offset.y
+
+				// Size
+				requiredSize += Aligned(sizeof(float))	// Size.x
+					+ Aligned(sizeof(float));			// Size.Y
+
+			}
+
+			// CircleCollider2D
+			if (entity.HasComponent<CircleCollider2DComponent>())
+			{
+				requiredSize += Aligned(sizeof(bool))	// Show
+					+ Aligned(sizeof(float))				// Radius
+					+ Aligned(sizeof(float))				// Density
+					+ Aligned(sizeof(float))				// Friction
+					+ Aligned(sizeof(float))				// Restitution
+					+ Aligned(sizeof(float));				// RestitutionThreshold
+
+				// Offset
+				requiredSize += Aligned(sizeof(float))		// Offset.x
+					+ Aligned(sizeof(float));				// Offset.y
+			}
+
+			// NativeScript
+			if (entity.HasComponent<NativeScriptComponent>())
+			{
+
+			}
+
+			// Script
+			if (entity.HasComponent<ScriptComponent>())
+			{
+				ScriptComponent sc = entity.GetComponent<ScriptComponent>();
+
+				requiredSize += Aligned(sizeof(uint64_t))		// Size of Class Name String
+					+ Aligned(sc.ClassName.size() * sizeof(char));	// Class Name String
+			}
+		}
+
+		// Allocate Size for Data
+		entityInfo.DataBuffer.Allocate(requiredSize);
+
+		// Set Data
+		{
+			if (entityInfo.DataBuffer.Data)
+			{
+				if (entityInfo.DataBuffer.Size >= requiredSize)
+				{
+					// Start at beginning of buffer
+					uint8_t* destination = entityInfo.DataBuffer.Data;
+					uint8_t* end = destination + requiredSize;
+
+					// Clear requiredSize from destination
+					memset(destination, 0, requiredSize);
+
+					// Fill out buffer in order. Based on Size step.
+
+					uint64_t uuid = entity.GetComponent<IDComponent>().ID;
+					*(uint64_t*)destination = uuid;
+					destination += Aligned(sizeof(uuid));
+
+					// All Components
+					{
+						// Tag
+						if (entity.HasComponent<TagComponent>())
+						{
+							TagComponent tc = entity.GetComponent<TagComponent>();
+							size_t stringSize = tc.Tag.size();
+							*(size_t*)destination = stringSize;
+							destination += Aligned(sizeof(stringSize));
+							memcpy(destination, tc.Tag.c_str(), stringSize * sizeof(char));
+							destination += Aligned(tc.Tag.size() * sizeof(char));
+						}
+
+						// Transform
+						if (entity.HasComponent<TransformComponent>())
+						{
+							TransformComponent trsc = entity.GetComponent<TransformComponent>();
+
+							// Translation
+							*(float*)destination = trsc.Translation.x;
+							destination += Aligned(sizeof(trsc.Translation.x));
+
+							*(float*)destination = trsc.Translation.y;
+							destination += Aligned(sizeof(trsc.Translation.y));
+
+							*(float*)destination = trsc.Translation.z;
+							destination += Aligned(sizeof(trsc.Translation.z));
+
+							// Rotation
+							*(float*)destination = trsc.Rotation.x;
+							destination += Aligned(sizeof(trsc.Rotation.x));
+
+							*(float*)destination = trsc.Rotation.y;
+							destination += Aligned(sizeof(trsc.Rotation.y));
+
+							*(float*)destination = trsc.Rotation.z;
+							destination += Aligned(sizeof(trsc.Rotation.z));
+
+							// Scale
+							*(float*)destination = trsc.Scale.x;
+							destination += Aligned(sizeof(trsc.Scale.x));
+
+							*(float*)destination = trsc.Scale.y;
+							destination += Aligned(sizeof(trsc.Scale.y));
+
+							*(float*)destination = trsc.Scale.z;
+							destination += Aligned(sizeof(trsc.Scale.z));
+
+						}
+
+						// Camera
+						if (entity.HasComponent<CameraComponent>())
+						{
+							CameraComponent cc = entity.GetComponent<CameraComponent>();
+
+							*(bool*)destination = cc.Primary;
+							destination += Aligned(sizeof(bool));
+
+							*(bool*)destination = cc.FixedAspectRatio;
+							destination += Aligned(sizeof(bool));
+
+							// SceneCamera Variables
+							*(float*)destination = cc.ActiveCamera.GetFOV();
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = cc.ActiveCamera.GetNearClip();
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = cc.ActiveCamera.GetFarClip();
+							destination += Aligned(sizeof(float));
+
+						}
+
+						// AudioSource
+						if (entity.HasComponent<AudioSourceComponent>())
+						{
+							AudioSourceComponent asc = entity.GetComponent<AudioSourceComponent>();
+
+							*(uint64_t*)destination = asc.AssetHandle;
+							destination += Aligned(sizeof(uint64_t));
+
+							*(bool*)destination = asc.Loop;
+							destination += Aligned(sizeof(bool));
+
+							*(float*)destination = asc.Pitch;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = asc.Gain;
+							destination += Aligned(sizeof(float));
+
+						}
+
+						// AudioListener
+						if (entity.HasComponent<AudioListenerComponent>())
+						{
+							AudioListenerComponent alc = entity.GetComponent<AudioListenerComponent>();
+
+						}
+
+						// SpriteRenderer
+						if (entity.HasComponent<SpriteRendererComponent>())
+						{
+							SpriteRendererComponent src = entity.GetComponent<SpriteRendererComponent>();
+
+							*(uint64_t*)destination = src.AssetHandle;
+							destination += Aligned(sizeof(uint64_t));
+
+							*(float*)destination = src.TilingFactor;
+							destination += Aligned(sizeof(float));
+
+							// Color
+							*(float*)destination = src.Color.r;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = src.Color.g;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = src.Color.b;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = src.Color.a;
+							destination += Aligned(sizeof(float));
+
+						}
+
+						// CircleRenderer
+						if (entity.HasComponent<CircleRendererComponent>())
+						{
+							CircleRendererComponent crc = entity.GetComponent<CircleRendererComponent>();
+
+							*(uint64_t*)destination = crc.AssetHandle;
+							destination += Aligned(sizeof(uint64_t));
+
+							*(float*)destination = crc.TilingFactor;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = crc.Radius;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = crc.Thickness;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = crc.Fade;
+							destination += Aligned(sizeof(float));
+
+							// Color
+							*(float*)destination = crc.Color.r;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = crc.Color.g;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = crc.Color.b;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = crc.Color.a;
+							destination += Aligned(sizeof(float));
+						}
+
+						// TextRenderer
+						if (entity.HasComponent<TextRendererComponent>())
+						{
+							TextRendererComponent trc = entity.GetComponent<TextRendererComponent>();
+
+							*(uint64_t*)destination = trc.AssetHandle;
+							destination += Aligned(sizeof(uint64_t));
+
+							*(float*)destination = trc.KerningOffset;
+							destination += Aligned(sizeof(float));
+							*(float*)destination = trc.LineHeightOffset;
+							destination += Aligned(sizeof(float));
+
+							size_t stringSize = trc.Text.size();
+							*(size_t*)destination = stringSize;
+							destination += Aligned(sizeof(stringSize));
+							memcpy(destination, trc.Text.c_str(), stringSize * sizeof(char));
+							destination += Aligned(trc.Text.size() * sizeof(char));
+
+							// Color
+							*(float*)destination = trc.TextColor.r;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = trc.TextColor.g;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = trc.TextColor.b;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = trc.TextColor.a;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = trc.BGColor.r;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = trc.BGColor.g;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = trc.BGColor.b;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = trc.BGColor.a;
+							destination += Aligned(sizeof(float));
+						}
+
+						// Rigidbody2D
+						if (entity.HasComponent<Rigidbody2DComponent>())
+						{
+							Rigidbody2DComponent rb2D = entity.GetComponent<Rigidbody2DComponent>();
+
+							*(uint16_t*)destination = (uint16_t)rb2D.Type;
+							destination += Aligned(sizeof(uint16_t));
+
+							*(bool*)destination = rb2D.FixedRotation;
+							destination += Aligned(sizeof(bool));
+						}
+
+						// BoxCollider2D
+						if (entity.HasComponent<BoxCollider2DComponent>())
+						{
+							BoxCollider2DComponent bc2d = entity.GetComponent<BoxCollider2DComponent>();
+
+							*(bool*)destination = bc2d.Show;
+							destination += Aligned(sizeof(bool));
+
+							*(float*)destination = bc2d.Density;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = bc2d.Friction;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = bc2d.Restitution;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = bc2d.RestitutionThreshold;
+							destination += Aligned(sizeof(float));
+
+							// Offset
+							*(float*)destination = bc2d.Offset.x;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = bc2d.Offset.y;
+							destination += Aligned(sizeof(float));
+
+							// Size
+							*(float*)destination = bc2d.Size.x;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = bc2d.Size.y;
+							destination += Aligned(sizeof(float));
+
+						}
+
+						// CircleCollider2D
+						if (entity.HasComponent<CircleCollider2DComponent>())
+						{
+							CircleCollider2DComponent cc2d = entity.GetComponent<CircleCollider2DComponent>();
+
+							*(bool*)destination = cc2d.Show;
+							destination += Aligned(sizeof(bool));
+
+							*(float*)destination = cc2d.Radius;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = cc2d.Density;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = cc2d.Friction;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = cc2d.Restitution;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = cc2d.RestitutionThreshold;
+							destination += Aligned(sizeof(float));
+
+							// Offset
+							*(float*)destination = cc2d.Offset.x;
+							destination += Aligned(sizeof(float));
+
+							*(float*)destination = cc2d.Offset.y;
+							destination += Aligned(sizeof(float));
+						}
+
+						// NativeScript
+						if (entity.HasComponent<NativeScriptComponent>())
+						{
+
+						}
+
+						// Script
+						if (entity.HasComponent<ScriptComponent>())
+						{
+							ScriptComponent sc = entity.GetComponent<ScriptComponent>();
+
+							size_t stringSize = sc.ClassName.size();
+							*(size_t*)destination = stringSize;
+							destination += Aligned(sizeof(stringSize));
+							memcpy(destination, sc.ClassName.c_str(), stringSize * sizeof(char));
+							destination += Aligned(sc.ClassName.size() * sizeof(char));
+						}
+
+
+					}
+
+					if (destination - (uint8_t*)entityInfo.DataBuffer.Data == requiredSize)
+					{
+						GE_CORE_INFO("AssetSerializer::SerializeEntity(entity, info) Successful.");
+						return true;
+					}
+					else
+					{
+						GE_CORE_ASSERT(false, "Buffer overflow.");
+					}
+				}
+				else
+				{
+					GE_CORE_ERROR("AssetSerializer::SerializeEntity(entity, info) : Required size is larger than given buffer size.");
+				}
+			}
+		}
+		return false;
+	}
+
+	static bool DeserializeEntity(const SceneInfo::EntityInfo& eInfo, Entity& entity)
+	{
+		if (!eInfo.DataBuffer.Data)
+			return false;
+
+		// Read Data & Assign
+
+		return true;
+	}
+
+#pragma endregion
+
+#pragma region Font
+
 	template<typename T, typename S, int N, msdf_atlas::GeneratorFunction<S, N> func>
 	static Ref<Texture2D> CreateAndCacheFontAtlas(const AssetMetadata& metadata, const std::string& atlasName,
 		Font::AtlasConfig& atlasConfig, Ref<Font::MSDFData> msdfData)
@@ -419,6 +1276,7 @@ namespace GE
 		std::filesystem::path path = Project::GetPathToAsset(metadata.FilePath);
 		std::string fontString = path.string();
 		msdfgen::FontHandle* font = msdfgen::loadFont(ft, fontString.c_str());
+
 		if (!font)
 		{
 			GE_CORE_ERROR("Failed to load Font Atlas.");
@@ -510,13 +1368,9 @@ namespace GE
 		return texture;
 	}
 
-#pragma region Audio
+#pragma endregion
 
-	template<typename T, typename U>
-	static Ref<T> GetAudioBuffer(Ref<U> audioBuffer)
-	{
-		return static_ref_cast<T, U>(audioBuffer);
-	}
+#pragma region Audio
 
 	static std::int32_t convert_to_int(char* audioClip, std::size_t len)
 	{
@@ -525,7 +1379,7 @@ namespace GE
 		return a;
 	}
 
-	static  bool LoadWavFile(std::ifstream& file, std::uint8_t& channels, std::int32_t& sampleRate, std::uint8_t& bitsPerSample, uint32_t& size)
+	static  bool LoadWavFile(std::ifstream& file, std::uint8_t& channels, std::int32_t& sampleRate, std::uint8_t& bitsPerSample, uint64_t& size)
 	{
 		char audioClip[4];
 		if (!file.is_open())
@@ -664,7 +1518,7 @@ namespace GE
 			GE_CORE_ERROR("Could not open WAV file {0}", filePath.string().c_str());
 			return false;
 		}
-		if (!LoadWavFile(stream, audioBuffer->Channels, audioBuffer->SampleRate, audioBuffer->BPS, audioBuffer->Size))
+		if (!LoadWavFile(stream, audioBuffer->Channels, audioBuffer->SampleRate, audioBuffer->BPS, audioBuffer->Buff.Size))
 		{
 			GE_CORE_ERROR("Could not load WAV file {0}", filePath.string().c_str());
 			return false;
@@ -686,9 +1540,9 @@ namespace GE
 
 		for (uint32_t i = 0; i < audioBuffer->NUM_BUFFERS; i++)
 		{
-			uint8_t* soundData = new uint8_t[audioBuffer->Size];
-			stream.read((char*)soundData, audioBuffer->Size);
-			audioBuffer->Data += *soundData;
+			uint8_t* soundData = new uint8_t[audioBuffer->Buff.Size];
+			stream.read((char*)soundData, audioBuffer->Buff.Size);
+			audioBuffer->Buff.Data += *soundData;
 		}
 
 		stream.close();
@@ -778,7 +1632,6 @@ namespace GE
 		return true;
 	}
 
-	// TODO:
 	bool AssetSerializer::SerializePack(Ref<AssetPack> pack)
 	{
 		// gap(Game Asset Pack) file
@@ -815,46 +1668,19 @@ namespace GE
 		//				        [8] Packed Size
 		//						[?]	Packed Data
 
-		std::ofstream stream(Project::GetPathToAsset(pack->m_File.Path), std::ios::out | std::ios::binary | std::ios::app);
+		GE_CORE_TRACE("Asset Pack Serialization Started");
+		std::ofstream stream(Project::GetPathToAsset(pack->m_File.Path), std::ios::out | std::ios::binary);
 		if (!stream)
 		{
 			GE_CORE_ERROR("Could not open Asset Pack file to write.");
 			return false;
 		}
 
-		// MOVE: For Assets & Entities, use inside SerializeScene
-		{
-			size_t testSize = ToByteArray();
-			if (testSize != 0)
-			{
-				//Reserve Memory
-				uint8_t* mem = new uint8_t[testSize];
-
-				if (ToByteArray(mem, testSize) == testSize)
-				{
-					GE_CORE_TRACE("Serialized Asset Pack");
-				}
-				else
-				{
-					GE_CORE_ASSERT(false, "");
-				}
-
-				delete[] mem;
-				mem = nullptr;
-			}
-			else
-			{
-				GE_CORE_ASSERT(false, "");
-			}
-		}
-
 		// Header
 		{
-			stream.write(pack->m_File.FileHeader.HEADER, sizeof(pack->m_File.FileHeader.HEADER));
+			stream.write(reinterpret_cast<const char*>(pack->m_File.FileHeader.HEADER), sizeof(pack->m_File.FileHeader.HEADER));
 			stream.write(reinterpret_cast<const char*>(&pack->m_File.FileHeader.Version),
 				sizeof(pack->m_File.FileHeader.Version));
-
-			pack->m_File.FileHeader.BuildVersion = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 			stream.write(reinterpret_cast<const char*>(&pack->m_File.FileHeader.BuildVersion),
 				sizeof(pack->m_File.FileHeader.BuildVersion));
 		}
@@ -865,36 +1691,40 @@ namespace GE
 			pack->m_File.Index.Offset = pack->GetHeaderSize();
 			stream.write(reinterpret_cast<const char*>(&pack->m_File.Index.Offset), sizeof(pack->m_File.Index.Offset));
 
-			for (const auto& [uuid, asset] : Project::GetAssetManager()->GetLoadedAssets())
+			for (const auto& [uuid, asset] : Project::GetAssetManager<RuntimeAssetManager>()->GetLoadedAssets())
 			{
 				if (asset->GetType() == Asset::Type::Scene)
 				{
-					if (SerializeAsset(asset, pack->m_File.Index.Scenes.at(uuid)))
+					if (SerializeAsset(asset, pack->m_File.Index.Scenes[uuid]))
 					{
 						// Scene and its children have been populated into pack->m_File.Index.Scenes.at(uuid)
 						// Scene.Size should represent the total scene size and be aligned
 						// Add to Index.Size for each Scene Asset
-						pack->m_File.Index.Size += pack->m_File.Index.Scenes.at(uuid).p_Size;
+						pack->m_File.Index.Size += pack->m_File.Index.Scenes.at(uuid).DataBuffer.Size;
 					}
 				}
 			}
 
+			// Index.Size contains
+			// - Scene Count
+			// - All Scenes
 			pack->m_File.Index.Size += Aligned(sizeof(pack->m_File.Index.Scenes.size()));
 			stream.write(reinterpret_cast<const char*>(&pack->m_File.Index.Size), sizeof(pack->m_File.Index.Size));
-			stream.write(reinterpret_cast<const char*>(pack->m_File.Index.Scenes.size()), sizeof(pack->m_File.Index.Scenes.size()));
+
+			uint64_t allScenesCount = pack->m_File.Index.Scenes.size();
+			stream.write(reinterpret_cast<const char*>(&allScenesCount), sizeof(uint64_t));
 			for (const auto& [sceneHandle, sceneInfo] : pack->m_File.Index.Scenes)
 			{
 				// Write all data
-				stream.write(reinterpret_cast<const char*>(sceneHandle), sizeof(sceneHandle));
-
-				stream.write(reinterpret_cast<const char*>(&sceneInfo.p_Size), sizeof(sceneInfo.p_Size));
-				stream.write(reinterpret_cast<const char*>(sceneInfo.p_Data), sceneInfo.p_Size);
+				// SceneInfo.Data contains all AssetInfo & EntityInfo
+				stream.write(reinterpret_cast<const char*>(&sceneInfo.DataBuffer.Size), sizeof(sceneInfo.DataBuffer.Size));
+				stream.write(reinterpret_cast<const char*>(sceneInfo.DataBuffer.Data), sceneInfo.DataBuffer.Size);
 
 			}
 		}
 		
 		stream.close();
-
+		GE_CORE_TRACE("Asset Pack Serialization Complete");
 		return stream.good();
 	}
 
@@ -909,7 +1739,7 @@ namespace GE
 		//  [4] Version // File Format Version
 		//  [8] Build Version // Date/Time Built
 
-		//	[100 + ?] index, data. Size depends on Assets.
+		//	[100 + ?] index, data. Size depends on Assets & Entities.
 		//  [8] Offset	// Start of index relative to SOF(start of file), header Size
 		//  [8] Size	// Size of all Scenes, Count & Map
 		//	[8] Scene Map Count
@@ -935,7 +1765,7 @@ namespace GE
 		//				        [8] Packed Size
 		//						[?]	Packed Data
 
-		std::ifstream stream(Project::GetPathToAsset(pack->m_File.Path), std::ios::out | std::ios::binary);
+		std::ifstream stream(Project::GetPathToAsset(pack->m_File.Path), std::ios::in | std::ios::binary);
 		if (!stream)
 		{
 			GE_CORE_ERROR("Could not open Asset Pack file to read.");
@@ -953,27 +1783,38 @@ namespace GE
 		{
 			stream.read((char*)&pack->m_File.Index.Offset, sizeof(pack->m_File.Index.Offset));
 			stream.read((char*)&pack->m_File.Index.Size, sizeof(pack->m_File.Index.Size));
-			int sceneCount = 0;
+			uint64_t sceneCount = 0;
 			stream.read((char*)&sceneCount, sizeof(sceneCount));
-			for (int i = 0; i < sceneCount; i++)
+			for (uint64_t i = 0; i < sceneCount; i++)
 			{
-				uint64_t sceneHandle = 0;
-				stream.read((char*)&sceneHandle, sizeof(sceneHandle));
-				SceneInfo sceneInfo;
-				stream.read((char*)&sceneInfo.p_Size, sizeof(sceneInfo.p_Size));
-				stream.read((char*)&sceneInfo.p_Data, sceneInfo.p_Size);
+				SceneInfo sceneInfo = SceneInfo();
+				stream.read((char*)&sceneInfo.DataBuffer.Size, sizeof(sceneInfo.DataBuffer.Size));
+				stream.read((char*)&sceneInfo.DataBuffer.Data, sceneInfo.DataBuffer.Size);
 
 				if (Ref<Asset> sceneAsset = DeserializeAsset(sceneInfo))
 				{
 					Project::GetAssetManager()->AddAsset(sceneAsset);
-					pack->AddAsset(sceneAsset, &sceneInfo);
+					pack->AddAsset(sceneAsset, sceneInfo);
 
-					for (const auto& [uuid, childAsset] : sceneInfo.m_Assets)
+					// Assets & Entities
 					{
-						if (Ref<Asset> asset = DeserializeAsset(childAsset))
+						for (const auto& [uuid, childAssetInfo] : sceneInfo.m_Assets)
 						{
-							Project::GetAssetManager()->AddAsset(asset);
-							pack->AddAsset(asset, &childAsset);
+							if (Ref<Asset> childAsset = DeserializeAsset(childAssetInfo))
+							{
+								Project::GetAssetManager()->AddAsset(childAsset);
+								pack->AddAsset(childAsset, childAssetInfo);
+							}
+						}
+
+						Ref<Scene> scene = Project::GetAsset<Scene>(sceneAsset->GetHandle());
+						for (const auto& [uuid, entityInfo] : sceneInfo.m_Entities)
+						{
+							Entity entity = Entity();
+							if (DeserializeEntity(entityInfo, entity))
+							{
+								scene->CopyEntity(entity);
+							}
 						}
 					}
 
@@ -998,7 +1839,7 @@ namespace GE
 
 	Ref<Asset> AssetSerializer::DeserializeAsset(const AssetInfo& assetInfo)
 	{
-		Asset::Type assetType = (Asset::Type)assetInfo.p_Type;
+		Asset::Type assetType = (Asset::Type)assetInfo.Type;
 		if (s_AssetPackDeserializeFuncs.find(assetType) == s_AssetPackDeserializeFuncs.end())
 		{
 			GE_CORE_ERROR("Deserialize function not found for Type: " + AssetUtils::AssetTypeToString(assetType));
@@ -1017,7 +1858,7 @@ namespace GE
 		return s_AssetSerializeFuncs.at(metadata.Type)(asset, metadata);
 	}
 
-	bool AssetSerializer::SerializeAsset(Ref<Asset> asset, const AssetInfo& assetInfo)
+	bool AssetSerializer::SerializeAsset(Ref<Asset> asset, AssetInfo& assetInfo)
 	{
 		if (s_AssetPackSerializeFuncs.find(asset->GetType()) == s_AssetPackSerializeFuncs.end())
 		{
@@ -1065,10 +1906,11 @@ namespace GE
 		{
 			for (auto entity : entities)
 			{
-				uint64_t uuid = entity["Entity"].as<uint64_t>(); // ID Component UUID
+				// ID Component 
+				uint64_t uuid = entity["Entity"].as<uint64_t>(); // UUID
 
 				// TagComponent
-				std::string name;
+				std::string name = std::string();
 				auto tagComponent = entity["TagComponent"];
 				if (tagComponent)
 					name = tagComponent["Tag"].as<std::string>();
@@ -1076,244 +1918,8 @@ namespace GE
 				GE_CORE_TRACE("Deserializing entity\n\tUUID : {0},\n\tName : {1}", uuid, name);
 
 				Entity deserializedEntity = scene->CreateEntityWithUUID(uuid, name);
-
-				// TransformComponent
-				auto transformComponent = entity["TransformComponent"];
-				if (transformComponent)
-				{
-					auto& tc = scene->GetOrAddComponent<TransformComponent>(deserializedEntity);
-					tc.Translation = transformComponent["Translation"].as<glm::vec3>();
-					tc.Rotation = transformComponent["Rotation"].as<glm::vec3>();
-					tc.Scale = transformComponent["Scale"].as<glm::vec3>();
-				}
-
-				// CameraComponent
-				auto cameraComponent = entity["CameraComponent"];
-				if (cameraComponent)
-				{
-					auto& cc = scene->GetOrAddComponent<CameraComponent>(deserializedEntity);
-					auto& cameraProps = cameraComponent["Camera"];
-					
-					cc.ActiveCamera.SetProjectionType((SceneCamera::ProjectionType)cameraProps["Type"].as<int>());
-					cc.ActiveCamera.SetFOV(cameraProps["FOV"].as<float>());
-					cc.ActiveCamera.SetNearClip(cameraProps["Near"].as<float>());
-					cc.ActiveCamera.SetFarClip(cameraProps["Far"].as<float>());
-
-					cc.Primary = cameraComponent["Primary"].as<bool>();
-					cc.FixedAspectRatio = cameraComponent["FixedAspectRatio"].as<bool>();
-				}
-
-				// AudioSourceComponent
-				auto audioSourceComponent = entity["AudioSourceComponent"];
-				if (audioSourceComponent)
-				{
-					auto& cc = scene->GetOrAddComponent<AudioSourceComponent>(deserializedEntity);
-					cc.AssetHandle = audioSourceComponent["AssetHandle"].as<UUID>();
-					cc.Gain = audioSourceComponent["Gain"].as<float>();
-					cc.Pitch = audioSourceComponent["Pitch"].as<float>();
-					cc.Loop = audioSourceComponent["Loop"].as<bool>();
-				}
-
-				// AudioListenerComponent
-				auto audioListenerComponent = entity["AudioListenerComponent"];
-				if (audioListenerComponent)
-				{
-					auto& cc = scene->GetOrAddComponent<AudioListenerComponent>(deserializedEntity);
-
-				}
-
-				// SpriteRendererComponent
-				auto spriteRendererComponent = entity["SpriteRendererComponent"];
-				if (spriteRendererComponent)
-				{
-					auto& src = scene->GetOrAddComponent<SpriteRendererComponent>(deserializedEntity);
-					src.Color = spriteRendererComponent["Color"].as<glm::vec4>();
-					if (spriteRendererComponent["AssetHandle"])
-					{
-						src.AssetHandle = spriteRendererComponent["AssetHandle"].as<UUID>();
-					}
-
-					if (spriteRendererComponent["TilingFactor"])
-					{
-						src.TilingFactor = spriteRendererComponent["TilingFactor"].as<float>();
-					}
-				}
-
-				// CircleRendererComponent
-				auto circleRendererComponent = entity["CircleRendererComponent"];
-				if (circleRendererComponent)
-				{
-					auto& src = scene->GetOrAddComponent<CircleRendererComponent>(deserializedEntity);
-					src.Color = circleRendererComponent["Color"].as<glm::vec4>();
-					src.Radius = circleRendererComponent["Radius"].as<float>();
-					src.Thickness = circleRendererComponent["Thickness"].as<float>();
-					src.Fade = circleRendererComponent["Fade"].as<float>();
-				}
-
-				// TextRendererComponent
-				auto textRendererComponent = entity["TextRendererComponent"];
-				if (textRendererComponent)
-				{
-					auto& src = scene->GetOrAddComponent<TextRendererComponent>(deserializedEntity);
-					src.TextColor = textRendererComponent["TextColor"].as<glm::vec4>();
-					src.BGColor = textRendererComponent["BGColor"].as<glm::vec4>();
-
-					src.KerningOffset = textRendererComponent["KerningOffset"].as<float>();
-					src.LineHeightOffset = textRendererComponent["LineHeightOffset"].as<float>();
-					src.Text = textRendererComponent["Text"].as<std::string>();
-
-					src.AssetHandle = textRendererComponent["AssetHandle"].as<UUID>();
-				}
-
-				// NativeScriptComponent
-				auto nativeScriptComponent = entity["NativeScriptComponent"];
-				if (nativeScriptComponent)
-				{
-					auto& src = scene->GetOrAddComponent<NativeScriptComponent>(deserializedEntity);
-				}
-
-				// ScriptComponent
-				auto scriptComponent = entity["ScriptComponent"];
-				if (scriptComponent)
-				{
-					Scripting::SetScene(scene.get());
-
-					auto& src = scene->GetOrAddComponent<ScriptComponent>(deserializedEntity);
-					src.ClassName = scriptComponent["ClassName"].as<std::string>();
-
-					// Fields
-					auto fields = scriptComponent["ScriptFields"];
-					if (fields)
-					{
-						Ref<ScriptClass> scriptClass = Scripting::GetScriptClass(src.ClassName);
-						GE_CORE_ASSERT(scriptClass, "Script Class does not exist.");
-						const auto& scriptClassFields = scriptClass->GetFields();
-						auto& scriptFieldMap = Scripting::GetScriptFieldMap(deserializedEntity);
-
-						for (auto field : fields)
-						{
-							std::string scriptFieldName = field["Name"].as<std::string>();
-
-							if (scriptClassFields.find(scriptFieldName) == scriptClassFields.end())
-							{
-								GE_CORE_WARN("Cannot deserialize Entity Script Field.\n\tScript Field Name: {0} not found.", scriptFieldName);
-								continue;
-							}
-
-							std::string scriptFieldTypeString = field["Type"].as<std::string>();
-							ScriptField::Type scriptFieldType = Scripting::StringToScriptFieldType(scriptFieldTypeString);
-
-							ScriptField& scriptField = scriptFieldMap[scriptFieldName];
-							
-							switch (scriptFieldType)
-							{
-							case GE::ScriptField::Type::None:
-								break;
-							case GE::ScriptField::Type::Char:
-							{
-								char data = field["Data"].as<char>();
-								scriptField.SetValue<char>(data);
-								break;
-							}
-							case GE::ScriptField::Type::Int:
-							{
-								int32_t data = field["Data"].as<int32_t>();
-								scriptField.SetValue<int32_t>(data);
-								break;
-							}
-							case GE::ScriptField::Type::UInt:
-							{
-								uint32_t data = field["Data"].as<uint32_t>();
-								scriptField.SetValue<uint32_t>(data);
-								break;
-							}
-							case GE::ScriptField::Type::Float:
-							{
-								float data = field["Data"].as<float>();
-								scriptField.SetValue<float>(data);
-								break;
-							}
-							case GE::ScriptField::Type::Byte:
-							{
-								int8_t data = field["Data"].as<int8_t>();
-								scriptField.SetValue<int8_t>(data);
-								break;
-							}
-							case GE::ScriptField::Type::Bool:
-							{
-								bool data = field["Data"].as<bool>();
-								scriptField.SetValue<bool>(data);
-								break;
-							}
-							case GE::ScriptField::Type::Vector2:
-							{
-								glm::vec2 data = field["Data"].as<glm::vec2>();
-								scriptField.SetValue<glm::vec2>(data);
-								break;
-							}
-							case GE::ScriptField::Type::Vector3:
-							{
-								glm::vec3 data = field["Data"].as<glm::vec3>();
-								scriptField.SetValue<glm::vec3>(data);
-								break;
-							}
-							case GE::ScriptField::Type::Vector4:
-							{
-								glm::vec4 data = field["Data"].as<glm::vec4>();
-								scriptField.SetValue<glm::vec4>(data);
-								break;
-							}
-							case GE::ScriptField::Type::Entity:
-							{
-								UUID data = field["Data"].as<UUID>();
-								scriptField.SetValue<UUID>(data);
-								break;
-							}
-							}
-
-						}
-					}
-
-				}
-
-				// RigidBody2DComponent
-				auto rigidBody2DComponent = entity["Rigidbody2DComponent"];
-				if (rigidBody2DComponent)
-				{
-					auto& src = scene->GetOrAddComponent<Rigidbody2DComponent>(deserializedEntity);
-					src.FixedRotation = rigidBody2DComponent["FixedRotation"].as<bool>();
-					src.Type = ComponentUtils::GetRigidBody2DTypeFromString(rigidBody2DComponent["Type"].as<std::string>());
-				}
-
-				// BoxCollider2DComponent
-				auto boxCollider2DComponent = entity["BoxCollider2DComponent"];
-				if (boxCollider2DComponent)
-				{
-					auto& src = scene->GetOrAddComponent<BoxCollider2DComponent>(deserializedEntity);
-					src.Offset = boxCollider2DComponent["Offset"].as<glm::vec2>();
-					src.Size = boxCollider2DComponent["Size"].as<glm::vec2>();
-					src.Density = boxCollider2DComponent["Density"].as<float>();
-					src.Friction = boxCollider2DComponent["Friction"].as<float>();
-					src.Restitution = boxCollider2DComponent["Restitution"].as<float>();
-					src.RestitutionThreshold = boxCollider2DComponent["RestitutionThreshold"].as<float>();
-
-					src.Show = boxCollider2DComponent["Show"].as<bool>();
-				}
-
-				// CircleCollider2DComponent
-				auto circleCollider2DComponent = entity["CircleCollider2DComponent"];
-				if (circleCollider2DComponent)
-				{
-					auto& src = scene->GetOrAddComponent<CircleCollider2DComponent>(deserializedEntity);
-					src.Offset = circleCollider2DComponent["Offset"].as<glm::vec2>();
-					src.Radius = circleCollider2DComponent["Radius"].as<float>();
-					src.Density = circleCollider2DComponent["Density"].as<float>();
-					src.Friction = circleCollider2DComponent["Friction"].as<float>();
-					src.Restitution = circleCollider2DComponent["Restitution"].as<float>();
-					src.RestitutionThreshold = circleCollider2DComponent["RestitutionThreshold"].as<float>();
-
-					src.Show = circleCollider2DComponent["Show"].as<bool>();
-				}
+				if (DeserializeEntity(entity, deserializedEntity))
+					GE_CORE_INFO("Entity Deserialization Successful.");
 			}
 		}
 		
@@ -1324,8 +1930,17 @@ namespace GE
 	// TODO:
 	Ref<Asset> AssetSerializer::DeserializeSceneFromPack(const AssetInfo& assetInfo)
 	{
-		GE_CORE_ERROR("Cannot import Scene from AssetPack");
-		return nullptr;
+		if (assetInfo.DataBuffer.Size == 0 || !assetInfo.DataBuffer.Data)
+		{
+			GE_CORE_ERROR("Cannot import Scene from AssetPack.\n\tAssetInfo has no Data");
+			return nullptr;
+		}
+
+		Ref<Scene> scene = CreateRef<Scene>();
+		
+		// Read Data & Assign
+
+		return scene;
 	}
 
 	Ref<Asset> AssetSerializer::DeserializeTexture2D(const AssetMetadata& metadata)
@@ -1359,6 +1974,7 @@ namespace GE
 
 		Ref<Texture2D> texture = Texture2D::Create(config, data);
 		texture->p_Handle = metadata.Handle;
+		texture->GetConfig().Name = metadata.FilePath.filename().string();
 
 		data.Release();
 		return texture;
@@ -1412,7 +2028,7 @@ namespace GE
 			{
 				alBufferData(audioSource->m_AudioBuffer->Buffers[i], 
 					audioSource->m_AudioBuffer->Format, 
-					&audioSource->m_AudioBuffer->Data[i], audioSource->m_AudioBuffer->Size,
+					&audioSource->m_AudioBuffer->Buff.Data[i], audioSource->m_AudioBuffer->Buff.Size,
 					audioSource->m_AudioBuffer->SampleRate);
 
 				ALenum error = alGetError();
@@ -1471,52 +2087,593 @@ namespace GE
 		return false;
 	}
 
-	bool AssetSerializer::SerializeSceneToPack(Ref<Asset> asset, const AssetInfo& assetInfo)
+	bool AssetSerializer::SerializeSceneForPack(Ref<Asset> asset, AssetInfo& assetInfo)
 	{
-		//      [68 + ?] SceneInfo  : Value, corressponding Key handled in SerializePack
-		//          [8] Packed Size : Size of whole Scene
-		//			[60 + ?] Data
+		//		[68 + ?] SceneInfo  : Value, corresponding Key handled in SerializePack
+		//          [8] Packed Size : Size of Scene Buffer(bufferSize)
+		//			[60 + ?] Data	: Scene Buffer
+		//				[8] Handle
 		//				[2] Type
-		//				[8] Name
+		//				[8] Name Length
+		//				[8] Name String
+		//				[8] Steps
 		//				[8] Asset Map Count
 		//				[26 + ?] Asset Map			// Size based on how many Assets are loaded
-		//				    [8] Asset Handle    : Key
-		//				    [18 + ?] AssetInfo	: Value
+		//						[8] Handle			: Key
+		//						[18 + ?] AssetInfo	: Value
 		//				        [8] Packed Size
 		//						[10 + ?] Packed Data
+		//							[8] Handle
 		//							[2] Type
 		//							[8] Name
+		//							[?] Asset Specific Data
 		//				[8] Entity Map Count
 		//				[16 + ?] Entity Map			// Size based on how many Entities are loaded
 		//				    [8] Handle			: Key
 		//				    [8 + ?] EntityInfo	: Value
 		//				        [8] Packed Size
 		//						[?]	Packed Data
+		//							[8] Handle
+		//							[8] Name
+		//							[?] Components
 		
 		Ref<Scene> scene = Project::GetAssetAs<Scene>(asset);
-		SceneInfo* sceneInfo = Project::GetAssetManager<RuntimeAssetManager>()->GetAssetInfo<SceneInfo>(assetInfo);
-		
-		sceneInfo->p_Size = scene->GetByteArray(); // Get requiredSize
-		if (sceneInfo->p_Size != 0)
-		{
-			//Reserve Memory using requiredSize
-			sceneInfo->p_Data = new uint8_t[sceneInfo->p_Size];
+		if (!scene)
+			return false;
+		SceneInfo sceneInfo = assetInfo;
+		uint64_t requiredSize = 0;
 
-			// Set & Verify data
-			if (scene->GetByteArray(sceneInfo->p_Data, sceneInfo->p_Size) == sceneInfo->p_Size)
+		// Calculate Size
+		{
+			requiredSize += Aligned(sizeof(scene->p_Handle)) // sizeof(uint64_t)
+				+ Aligned(sizeof(scene->p_Type))	// sizeof(uint16_t)
+				+ Aligned(sizeof(uint64_t)) // sizeof(stringLength)
+				+ Aligned(scene->m_Config.Name.size() * sizeof(char)) //sizeof(string)
+				+ Aligned(sizeof(scene->m_Config.StepFrames)); // sizeof(uint64_t)
+
+			// For Assets
 			{
-				GE_CORE_TRACE("Serialized Scene to Pack.");
-				return true;
+				AssetMap assetMap = Project::GetAssetManager<RuntimeAssetManager>()->GetLoadedAssets();
+				requiredSize += Aligned(sizeof(assetMap.size())); //sizeof(assetCount)
+				for (const auto& [uuid, asset] : assetMap)
+				{
+					if (uuid == scene->p_Handle || asset->GetType() == Asset::Type::Scene)
+						continue;
+
+					if (SerializeAsset(asset, sceneInfo.m_Assets[uuid]))
+					{
+						requiredSize += Aligned(sizeof(uint64_t)) + Aligned(sceneInfo.m_Assets.at(uuid).DataBuffer.Size * sizeof(uint8_t));
+					}
+				}
+			}
+
+			// For Entities
+			{
+				requiredSize += Aligned(sizeof(uint64_t)); //sizeof(entityCount)
+				{
+					// Every Entity needs an ID
+					auto idView = scene->GetRegistry().view<IDComponent>();
+					for (auto e : idView)
+					{
+						Entity entity(e, scene.get());
+						UUID uuid = entity.GetComponent<IDComponent>().ID;
+						if (SerializeEntity(sceneInfo.m_Entities[uuid], entity))
+						{
+							requiredSize += Aligned(sizeof(uint64_t)) + Aligned(sceneInfo.m_Entities.at(uuid).DataBuffer.Size * sizeof(uint8_t));
+						}
+
+					}
+
+				}
+
+			}
+		}
+
+		// Allocate Size for Data
+		assetInfo.InitializeData(requiredSize);
+
+		// Set Data
+		{
+				if (assetInfo.DataBuffer.Data)
+				{
+					if (assetInfo.DataBuffer.Size >= requiredSize)
+					{
+						// Start at beginning of buffer
+						uint8_t* destination = assetInfo.DataBuffer.Data;
+						uint8_t* end = destination + requiredSize;
+
+						// Clear requiredSize from destination
+						memset(destination, 0, requiredSize);
+
+						// Fill out buffer
+						{
+							*(uint64_t*)destination = scene->p_Handle;
+							destination += Aligned(sizeof(uint64_t));
+
+							*(uint16_t*)destination = (uint16_t)scene->p_Type;
+							destination += Aligned(sizeof(uint16_t));
+
+							// string
+							size_t stringSize = scene->m_Config.Name.size();
+							*(size_t*)destination = stringSize;
+							destination += Aligned(sizeof(stringSize));
+							memcpy(destination, scene->m_Config.Name.c_str(), stringSize * sizeof(char));
+							destination += Aligned(scene->m_Config.Name.size() * sizeof(char));
+
+							*(uint64_t*)destination = (uint64_t)scene->m_Config.StepFrames;
+							destination += Aligned(sizeof(uint64_t));
+
+							// For Assets
+							{
+								*(uint64_t*)destination = sceneInfo.m_Assets.size();
+								destination += Aligned(sizeof(uint64_t));
+
+								for (const auto& [uuid, assetInfo] : sceneInfo.m_Assets)
+								{
+									// size of asset data
+									*(uint64_t*)destination = assetInfo.DataBuffer.Size;
+									destination += Aligned(sizeof(uint64_t));
+
+									// asset data
+									memcpy(destination, assetInfo.DataBuffer.Data, assetInfo.DataBuffer.Size * sizeof(uint8_t));
+									destination += Aligned(assetInfo.DataBuffer.Size * sizeof(uint8_t));
+
+								}
+
+							}
+
+							// For Entities
+							{
+								*(size_t*)destination = sceneInfo.m_Entities.size();
+								destination += Aligned(sizeof(size_t));
+
+								for (const auto& [uuid, entityInfo] : sceneInfo.m_Entities)
+								{
+									// size of asset data
+									*(uint64_t*)destination = entityInfo.DataBuffer.Size;
+									destination += Aligned(sizeof(uint64_t));
+
+									// asset data
+									memcpy(destination, entityInfo.DataBuffer.Data, entityInfo.DataBuffer.Size * sizeof(uint8_t));
+									destination += Aligned(entityInfo.DataBuffer.Size * sizeof(uint8_t));
+								}
+							}
+						}
+
+						if (destination - assetInfo.DataBuffer.Data == requiredSize)
+						{
+							GE_CORE_INFO("AssetSerializer::SerializeSceneForPack Successful.");
+						}
+						else
+						{
+							GE_CORE_ASSERT(false, "Buffer overflow.");
+						}
+					}
+					else
+					{
+						GE_CORE_ERROR("Required size is larger than given buffer size.");
+						return 0;
+					}
 			}
 
 		}
-		else
-		{
-			GE_CORE_ASSERT(false, "");
-		}
 
-		return false;
+		return true;
 
 	}
 
+	bool AssetSerializer::SerializeTexture2DForPack(Ref<Asset> asset, AssetInfo& assetInfo)
+	{
+		/*
+		* - Handle
+		* - Type
+		* - Name
+		* ~ Config
+		* * - Width
+		* * - Height
+		* * - InternalFormat
+		* * - Format
+		* * - GenerateMips
+		* ~ Buffer
+		* * - Size
+		* * - Data
+		*/
+
+		Ref<Texture2D> texture = Project::GetAssetAs<Texture2D>(asset);
+		assetInfo.Type = 2; // See Asset::Type
+		uint64_t requiredSize = 0;
+
+		// Size
+		{
+			requiredSize = Aligned(sizeof(uint64_t)) // Handle
+				+ Aligned(sizeof(uint16_t))	// Type
+				+ Aligned(sizeof(size_t)) // sizeof(stringLength)
+				+ Aligned(texture->GetConfig().Name.size() * sizeof(char)); //sizeof(string)
+
+			// Config
+			requiredSize += Aligned(sizeof(uint32_t)) // Width
+				+ Aligned(sizeof(uint32_t))  // Height
+				+ Aligned(sizeof(uint16_t)) // InternalFormat
+				+ Aligned(sizeof(uint16_t))	// Format
+				+ Aligned(sizeof(bool)); // GenerateMips
+
+			// Buffer Size & Data
+			requiredSize += Aligned(sizeof(uint64_t)) + Aligned(texture->GetData().Size * sizeof(uint8_t));
+		}
+
+		// Allocate Size for Data
+		assetInfo.InitializeData(requiredSize);
+
+		// Data
+		if (assetInfo.DataBuffer.Data)
+		{
+			if (assetInfo.DataBuffer.Size >= requiredSize)
+			{
+				// Start at beginning of buffer
+				uint8_t* destination = assetInfo.DataBuffer.Data;
+				uint8_t* end = destination + requiredSize;
+
+				// Clear requiredSize from destination
+				memset(destination, 0, requiredSize);
+
+				// Fill out buffer
+				{
+					*(uint64_t*)destination = texture->p_Handle;
+					destination += Aligned(sizeof(uint64_t));
+
+					*(uint16_t*)destination = (uint16_t)texture->p_Type;
+					destination += Aligned(sizeof(uint16_t));
+
+					size_t stringSize = texture->GetConfig().Name.size();
+					*(size_t*)destination = stringSize;
+					destination += Aligned(sizeof(stringSize));
+					memcpy(destination, texture->GetConfig().Name.c_str(), stringSize * sizeof(char));
+					destination += Aligned(stringSize * sizeof(char));
+
+					// Texture::Config
+
+					*(uint32_t*)destination = texture->GetConfig().Width;
+					destination += Aligned(sizeof(uint32_t));
+
+					*(uint32_t*)destination = texture->GetConfig().Height;
+					destination += Aligned(sizeof(uint32_t));
+
+					*(uint16_t*)destination = (uint16_t)texture->GetConfig().InternalFormat;
+					destination += Aligned(sizeof(uint16_t));
+
+					*(uint16_t*)destination = (uint16_t)texture->GetConfig().Format;
+					destination += Aligned(sizeof(uint16_t));
+
+					*(bool*)destination = texture->GetConfig().GenerateMips;
+					destination += Aligned(sizeof(bool));
+
+					// Texture Buffer Size & Data
+
+					*(uint64_t*)destination = texture->GetData().Size;
+					destination += Aligned(sizeof(uint64_t));
+
+					memcpy(destination, texture->GetData().Data, texture->GetData().Size * sizeof(uint8_t));
+					destination += Aligned(texture->GetData().Size * sizeof(uint8_t));
+				}
+
+				if (destination - assetInfo.DataBuffer.Data == requiredSize)
+				{
+					GE_CORE_INFO("AssetSerializer::SerializeTexture2DForPack() Successful.");
+					return true;
+				}
+				else
+				{
+					GE_CORE_ASSERT(false, "Buffer overflow.");
+				}
+			}
+			else
+			{
+				GE_CORE_ERROR("Required size is larger than given buffer size.");
+				return 0;
+			}
+		}
+		return false;
+	}
+
+	bool AssetSerializer::SerializeFontForPack(Ref<Asset> asset, AssetInfo& assetInfo)
+	{
+		/*
+		* - Handle
+		* - Type
+		* - Name
+		* ~ Config
+		* * ~ Texture
+		* * * - Type
+		* * * - Name
+		* * * ~ Config
+		* * * * - Width
+		* * * * - Height
+		* * * * - InternalFormat
+		* * * * - Format
+		* * * * - GenerateMips
+		* * * ~ Buffer
+		* * * * - Size
+		* * * * - Data
+		* * - Width : uint32_t
+		* * - Height : uint32_t
+		* * - Scale : float
+		* * - Seed : uint64_t
+		* * - ThreadCount : int32_t
+		* * - ExpensiveColoring : bool
+		* - MSDFData
+		* * - Glyphs : std::vector<msdf_atlas::GlyphGeometry>
+		* * - Geometry : msdf_atlas::FontGeometry
+		*/
+
+		Ref<Font> font = Project::GetAssetAs<Font>(asset);
+		assetInfo.Type = 3; // See Asset::Type
+		AssetInfo atlasTextureInfo = AssetInfo();
+
+		uint64_t requiredSize = 0;
+
+		// Size
+		{
+			requiredSize = Aligned(sizeof(uint64_t))					// Handle
+				+ Aligned(sizeof(uint16_t))									// Type
+				+ Aligned(sizeof(uint64_t))									// Name string length
+				+ Aligned(font->m_AtlasConfig.Name.size() * sizeof(char));	// Name string
+
+			// Font Config
+			requiredSize += Aligned(sizeof(uint32_t))	// Width
+				+ Aligned(sizeof(uint32_t))				// Height
+				+ Aligned(sizeof(float))				// Scale
+				+ Aligned(sizeof(uint64_t))				// Seed
+				+ Aligned(sizeof(uint32_t))				// Thread Count
+				+ Aligned(sizeof(bool));				// ExpensiveColoring
+
+			/*if (font->GetAtlasTexture())
+			{
+				if (SerializeAsset(font->GetAtlasTexture(), atlasTextureInfo))
+					requiredSize += Aligned(sizeof(uint64_t)) + Aligned(atlasTextureInfo.DataBuffer.Size * sizeof(uint8_t));
+			}*/
+
+			// TODO
+			// MSDFData
+			//requiredSize += 0;
+		}
+
+		// Allocate Size for Data
+		assetInfo.InitializeData(requiredSize);
+
+		// Data
+		if (assetInfo.DataBuffer.Data)
+		{
+			if (assetInfo.DataBuffer.Size >= requiredSize)
+			{
+
+				// Start at beginning of buffer
+				uint8_t* destination = assetInfo.DataBuffer.Data;
+				uint8_t* end = destination + requiredSize;
+
+				// Clear requiredSize from destination
+				memset(destination, 0, requiredSize);
+
+				// Fill out buffer
+
+				*(uint64_t*)destination = font->p_Handle;
+				destination += Aligned(sizeof(uint64_t));
+
+				*(uint16_t*)destination = (uint16_t)font->p_Type;
+				destination += Aligned(sizeof(uint16_t));
+
+				// Font Name
+				uint64_t stringSize = font->m_AtlasConfig.Name.size();
+				*(uint64_t*)destination = stringSize;
+				destination += Aligned(sizeof(stringSize));
+				memcpy(destination, font->m_AtlasConfig.Name.c_str(), stringSize * sizeof(char));
+				destination += Aligned(font->m_AtlasConfig.Name.size() * sizeof(char));
+
+				// Config
+				{
+
+					// Width
+					*(uint32_t*)destination = font->m_AtlasConfig.Width;
+					destination += Aligned(sizeof(uint32_t));
+
+					// Height
+					*(uint32_t*)destination = font->m_AtlasConfig.Height;
+					destination += Aligned(sizeof(uint32_t));
+
+					// Scale
+					*(float*)destination = font->m_AtlasConfig.Scale;
+					destination += Aligned(sizeof(float));
+
+					// Seed
+					*(uint64_t*)destination = font->m_AtlasConfig.Seed;
+					destination += Aligned(sizeof(uint64_t));
+
+					// ThreadCount
+					*(int32_t*)destination = font->m_AtlasConfig.ThreadCount;
+					destination += Aligned(sizeof(int32_t));
+
+					// ExpensiveColoring
+					*(bool*)destination = font->m_AtlasConfig.ExpensiveColoring;
+					destination += Aligned(sizeof(bool));
+
+					// Texture
+					//if (font->GetAtlasTexture())
+					//{
+					//	// size of asset data
+					//	*(uint64_t*)destination = atlasTextureInfo.DataBuffer.Size;
+					//	destination += Aligned(sizeof(uint64_t));
+
+					//	// asset data
+					//	memcpy(destination, atlasTextureInfo.DataBuffer.Data, atlasTextureInfo.DataBuffer.Size * sizeof(uint8_t));
+					//	destination += Aligned(atlasTextureInfo.DataBuffer.Size * sizeof(uint8_t));
+					//}
+
+				}
+
+				// MSDFData
+				{
+					// TODO
+					//msdf_atlas::GlyphGeometry gg = m_MSDFData->Glyphs.at(0);
+					//msdfgen::FontHandle* font = msdfgen::loadFontData();
+				}
+
+
+				if (destination - assetInfo.DataBuffer.Data == requiredSize)
+				{
+					GE_CORE_INFO("AssetSerializer::SerializeFontForPack() Successful.");
+					return true;
+				}
+				else
+				{
+					GE_CORE_ASSERT(false, "Buffer overflow.");
+				}
+			}
+			else
+			{
+				GE_CORE_ERROR("Required size is larger than given buffer size.");
+				return 0;
+			}
+		}
+		return false;
+	}
+
+	bool AssetSerializer::SerializeAudioForPack(Ref<Asset> asset, AssetInfo& assetInfo)
+	{
+		/*
+	   * - Handle
+	   * - Type
+	   * - Name
+	   * ~ Config
+	   * * - SourceID : not included
+	   * * - Loop : bool
+	   * * - Pitch : float
+	   * * - Gain : float
+	   * - Position : not included
+	   * - Velocity : not included
+	   * ~ Audio Buffer Data
+	   * * - BPS : uint8_t
+	   * * - Channels : uint8_t
+	   * * - SampleRate : int32_t
+	   * * - Format : int32_t
+	   * * - Size : uint32_t
+	   * * - Data : uint_8_t*
+	   */
+
+		Ref<AudioClip> audioClip = Project::GetAssetAs<AudioClip>(asset);
+		assetInfo.Type = 4; // See Asset::Type
+		uint64_t requiredSize = 0;
+
+		// Size
+		{
+			requiredSize = Aligned(sizeof(uint64_t)) // Handle
+				+ Aligned(sizeof(uint16_t))	// Type
+				+ Aligned(sizeof(size_t)) // sizeof(stringLength)
+				+ Aligned(audioClip->m_Config.Name.size() * sizeof(char)); //sizeof(string)
+
+			// Config
+			requiredSize += Aligned(sizeof(bool))       // Loop
+				+ Aligned(sizeof(float))                // Pitch
+				+ Aligned(sizeof(float));               // Gain
+
+			// Audio Buffer Data
+			requiredSize += Aligned(sizeof(uint8_t))                    // BPS
+				+ Aligned(sizeof(uint8_t))                              // Channels
+				+ Aligned(sizeof(int32_t))                              // SampleRate
+				+ Aligned(sizeof(int32_t));                              // Format
+
+			//if (&m_AudioBuffer->Data != nullptr)
+			//{
+			//    requiredSize += Aligned(sizeof(uint32_t))   // Size of data
+			//        + this->m_AudioBuffer->Size;            // Data
+			//}
+
+		}
+
+		// Allocate Size for Data
+		assetInfo.InitializeData(requiredSize);
+
+		// Data
+		if (assetInfo.DataBuffer.Data)
+		{
+			if (assetInfo.DataBuffer.Size >= requiredSize)
+			{
+
+				// Start at beginning of buffer
+				uint8_t* destination = assetInfo.DataBuffer.Data;
+				uint8_t* end = destination + requiredSize;
+
+				// Clear requiredSize from destination
+				memset(destination, 0, requiredSize);
+
+				// Fill out buffer
+				{
+					*(uint64_t*)destination = audioClip->p_Handle;
+					destination += Aligned(sizeof(uint64_t));
+
+					*(uint16_t*)destination = (uint16_t)audioClip->p_Type;
+					destination += Aligned(sizeof(uint16_t));
+
+					size_t stringSize = audioClip->m_Config.Name.size();
+					*(size_t*)destination = stringSize;
+					destination += Aligned(sizeof(stringSize));
+					memcpy(destination, audioClip->m_Config.Name.c_str(), stringSize * sizeof(char));
+					destination += Aligned(stringSize * sizeof(char));
+
+					// Config
+					*(bool*)destination = audioClip->m_Config.Loop;
+					destination += Aligned(sizeof(bool));
+
+					*(float*)destination = audioClip->m_Config.Pitch;
+					destination += Aligned(sizeof(float));
+
+					*(float*)destination = audioClip->m_Config.Gain;
+					destination += Aligned(sizeof(float));
+
+					// Audio Buffer Data
+
+					*(uint8_t*)destination = audioClip->m_AudioBuffer->BPS;
+					destination += Aligned(sizeof(uint8_t));
+
+					*(uint8_t*)destination = audioClip->m_AudioBuffer->Channels;
+					destination += Aligned(sizeof(uint8_t));
+
+					*(uint32_t*)destination = audioClip->m_AudioBuffer->SampleRate;
+					destination += Aligned(sizeof(uint32_t));
+
+					*(uint32_t*)destination = audioClip->m_AudioBuffer->Format;
+					destination += Aligned(sizeof(uint32_t));
+
+
+					/*if (&m_AudioBuffer->Data != nullptr)
+					{
+						*(uint32_t*)destination = m_AudioBuffer->Size;
+						destination += Aligned(sizeof(uint32_t));
+
+						*(uint8_t*)destination = *m_AudioBuffer->Data;
+						destination += this->m_AudioBuffer->Size;
+					}*/
+
+				}
+
+				if (destination - assetInfo.DataBuffer.Data == requiredSize)
+				{
+					GE_CORE_INFO("AssetSerializer::SerializeAudioForPack() Successful.");
+					return true;
+				}
+				else
+				{
+					GE_CORE_ASSERT(false, "Buffer overflow.");
+				}
+			}
+			else
+			{
+				GE_CORE_ERROR("Required size is larger than given buffer size.");
+				return 0;
+			}
+		}
+
+		return false;
+	}
+
 }
+
+		

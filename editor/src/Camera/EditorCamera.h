@@ -30,6 +30,9 @@ namespace GE
 		inline const glm::vec3& GetPosition() const { return m_Position; }
 		
 	private:
+		void UpdateProjection() override;
+		void UpdateView() override;
+
 		inline void SetViewMatrix(const glm::mat4& transform) override { m_ViewMatrix = transform; UpdateView(); }
 		inline void SetViewport(uint32_t width, uint32_t height) override;
 		inline void SetNearClip(float value) override { m_NearClip = value;  UpdateProjection(); }
@@ -41,14 +44,11 @@ namespace GE
 		glm::vec3 GetHorizontal() const;
 		glm::vec3 GetDepth() const;
 
-		inline glm::vec3 CalculatePosition() const { return m_FocalPoint - GetDepth() * m_Distance; }
-		
-		void UpdateProjection() override;
-		void UpdateView() override;
-
 		std::pair<float, float> GetPanSpeed() const;
 		float GetRotationSpeed() const { return m_RotationSpeed; }
 		float GetZoomSpeed() const;
+
+		inline glm::vec3 CalculatePosition() const { return m_FocalPoint - GetDepth() * m_Distance; }
 
 		void MousePan(const glm::vec2& delta);
 		void MouseOrbit(const glm::vec2& delta);

@@ -22,8 +22,8 @@ namespace GE
 		virtual void SetClearColor(const glm::vec4& color) = 0;
 		virtual void SetLineWidth(float thickness) = 0;
 
-		virtual void DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount) = 0;
-		virtual void DrawIndices(const Ref<VertexArray>& vertexArray, uint32_t indexCount = 0) = 0;
+		virtual void DrawLines(Ref<VertexArray> vertexArray, uint32_t vertexCount) = 0;
+		virtual void DrawIndices(Ref<VertexArray> vertexArray, uint32_t indexCount = 0) = 0;
 	
 		inline static void SetAPI(API api) { s_API = api; }
 	private:

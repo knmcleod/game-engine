@@ -92,7 +92,6 @@ namespace GE
 				MouseOrbit(delta);
 			else if (Input::IsMouseButtonPressed(Input::MOUSE_BUTTON_RIGHT))
 				MouseZoom(delta.y);
-
 		}
 
 		UpdateView();

@@ -4,8 +4,6 @@
 
 #include "GE/Project/Project.h"
 
-#include "GE/Asset/Serializer/AssetSerializer.h"
-
 namespace GE
 {
     AssetPack::AssetPack(const std::filesystem::path& filePath /*= "assetPack.gap"*/)
@@ -18,13 +16,31 @@ namespace GE
         ClearAllFileData();
     }
 
-    template<typename T>
-    Ref<T> AssetPack::GetAsset(UUID handle)
+    void AssetPack::ClearAllFileData()
     {
-        const AssetInfo* assetInfo = nullptr;
+        for (auto& [uuid, sceneInfo] : m_File.Index.Scenes)
+        {
+            sceneInfo.DataBuffer.Release();
+            sceneInfo.DataBuffer = 0;
 
+            for (auto& [uuid, assetInfo] : sceneInfo.m_Assets)
+            {
+                assetInfo.DataBuffer.Release();
+                assetInfo.DataBuffer = 0;
+            }
+
+            for (auto& [uuid, entityInfo] : sceneInfo.m_Entities)
+            {
+                entityInfo.DataBuffer.Release();
+                entityInfo.DataBuffer = 0;
+            }
+        }
+    }
+
+    const AssetInfo AssetPack::GetAssetInfo(UUID handle)
+    {
         bool found = false;
-		UUID sceneHandle = Project::GetConfig().SceneHandle;
+        UUID sceneHandle = Project::GetConfig().SceneHandle;
 
         if (sceneHandle)
         {
@@ -36,7 +52,7 @@ namespace GE
                 if (assetIt != sceneInfo.m_Assets.end())
                 {
                     found = true;
-                    assetInfo = &assetIt->second;
+                    return assetIt->second;
                 }
             }
         }
@@ -48,17 +64,15 @@ namespace GE
                 auto assetIt = sceneInfo.m_Assets.find(handle);
                 if (assetIt != sceneInfo.m_Assets.end())
                 {
-                    assetInfo = &assetIt->second;
+                    return assetIt->second;
                     break;
                 }
             }
 
-            if (!assetInfo)
-                return nullptr;
         }
 
-        
-        return AssetSerializer::DeserializeAsset(assetInfo);
+        GE_CORE_WARN("Could not get AssetInfo. Returning nullptr.");
+        return AssetInfo();
     }
 
     bool AssetPack::HandleExists(UUID handle)
@@ -66,7 +80,7 @@ namespace GE
         return m_HandleIndex.find(handle) != m_HandleIndex.end();
     }
 
-    bool AssetPack::AddAsset(Ref<Asset> asset, const AssetInfo* assetInfo)
+    bool AssetPack::AddAsset(Ref<Asset> asset, const AssetInfo& assetInfo)
     {
         if (HandleExists(asset->GetHandle()))
         {
@@ -76,7 +90,7 @@ namespace GE
 
         if (asset->GetType() == Asset::Type::Scene)
         {
-            m_File.Index.Scenes.at(asset->GetHandle()) = (SceneInfo&)*assetInfo;
+            m_File.Index.Scenes[asset->GetHandle()] = (SceneInfo&)assetInfo;
 
             m_HandleIndex.emplace(asset->GetHandle());
         }
@@ -85,7 +99,7 @@ namespace GE
             UUID sceneHandle = Project::GetConfig().SceneHandle;
             if (HandleExists(sceneHandle))
             {
-                m_File.Index.Scenes.at(sceneHandle).m_Assets.at(asset->GetHandle()) = *assetInfo;
+                m_File.Index.Scenes.at(sceneHandle).m_Assets[asset->GetHandle()] = assetInfo;
 
                 m_HandleIndex.emplace(asset->GetHandle());
             }

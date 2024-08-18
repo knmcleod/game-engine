@@ -8,7 +8,7 @@ namespace GE
 	public:
 		static Ref<IndexBuffer> Create(uint32_t size);
 
-		virtual ~IndexBuffer() {}
+		virtual ~IndexBuffer() = default;
 
 		virtual const uint32_t& GetCount() const = 0;
 

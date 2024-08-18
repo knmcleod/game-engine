@@ -30,6 +30,8 @@ namespace GE
 
 		/*
 		* Contains
+		* - Name : std::string, name of file
+		* - RendererID : ID of texture
 		* - Width : uint32_t
 		* - Height : uint32_t
 		* - InternalFormat : ImageFormat default RGBA8/4 channels
@@ -38,6 +40,7 @@ namespace GE
 		*/
 		struct Config
 		{
+			std::string Name = std::string("NewTexture");
 			uint32_t Width = 1;
 			uint32_t Height = 1;
 			ImageFormat InternalFormat = ImageFormat::RGBA8;
@@ -52,6 +55,7 @@ namespace GE
 		virtual uint32_t GetHeight() const = 0;
 		virtual uint32_t GetID() const = 0;
 
+		virtual const Buffer GetData() const = 0;
 		virtual void SetData(Buffer data) = 0;
 
 		virtual void Bind(uint32_t slot = 0) const = 0;

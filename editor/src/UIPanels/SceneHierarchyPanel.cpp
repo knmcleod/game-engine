@@ -84,13 +84,16 @@ namespace GE
 	SceneHierarchyPanel::SceneHierarchyPanel(Scene* scene)
 	{
 		SetScene(scene);
+		
 	}
 
-	void SceneHierarchyPanel::SetScene(Scene* scene)
+	void SceneHierarchyPanel::SetScene(Scene* scene, UUID selectedEntity /*= 0*/)
 	{
 		m_Scene = scene;
 		if (m_SelectedEntity != Entity() && m_SelectedEntity.HasComponent<IDComponent>())
 			m_SelectedEntity = m_Scene->GetEntityByUUID(m_SelectedEntity.GetComponent<IDComponent>().ID);
+		else if (selectedEntity != 0)
+			m_SelectedEntity = m_Scene->GetEntityByUUID(selectedEntity);
 	}
 
 	void SceneHierarchyPanel::OnImGuiRender()

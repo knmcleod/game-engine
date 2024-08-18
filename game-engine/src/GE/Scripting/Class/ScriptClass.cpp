@@ -9,6 +9,8 @@
 
 namespace GE
 {
+#pragma region ScriptClass
+
 	ScriptClass::ScriptClass(const std::string& classNamespace, const std::string& className, bool isCore)
 		: m_ClassNamespace(classNamespace), m_ClassName(className)
 	{
@@ -31,7 +33,9 @@ namespace GE
 		mono_thread_attach(mono_get_root_domain());
 		return mono_runtime_invoke(method, instance, params, &exception);
 	}
+#pragma endregion
 
+#pragma region ScriptInstance
 	ScriptInstance::ScriptInstance(Ref<ScriptClass> scriptClass, UUID uuid) : m_ScriptClass(scriptClass)
 	{
 		m_Instance = m_ScriptClass->Instantiate();
@@ -90,4 +94,5 @@ namespace GE
 		const ScriptField& field = instance->second;
 		mono_field_set_value(m_Instance, field.m_Data.ClassField, (void*)value);
 	}
+#pragma endregion
 }

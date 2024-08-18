@@ -54,7 +54,8 @@ namespace GE
 		glBindTexture(TextureTarget(isMultisample), id);
 	}
 
-	static void AttachColorTexture(GLenum internalFormat, GLenum format, uint32_t id, int samples, uint32_t width, uint32_t height, int index)
+	static void AttachColorTexture(GLenum internalFormat, GLenum format, uint32_t id, 
+		int samples, uint32_t width, uint32_t height, int index)
 	{
 		bool isMultisample = samples > 1;
 		if (isMultisample)
@@ -75,6 +76,7 @@ namespace GE
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, TextureTarget(isMultisample), id, 0);
 
 	}
+	
 	static void AttachDepthTexture(GLenum format, GLenum attachmentType, uint32_t id,
 		int samples, uint32_t width, uint32_t height)
 	{

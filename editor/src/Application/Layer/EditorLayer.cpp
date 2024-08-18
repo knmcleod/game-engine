@@ -15,9 +15,25 @@
 
 namespace GE
 {
+	static void InitializeRuntimeAssetManager()
+	{
+		AssetMap assetMap = Project::GetAssetManager<EditorAssetManager>()->GetLoadedAssets();
+		Ref<RuntimeAssetManager> ram = Project::NewAssetManager<RuntimeAssetManager>();
+		for (const auto& [uuid, asset] : assetMap)
+		{
+			ram->AddAsset(asset);
+		}
+
+		if (ram->SerializeAssets())
+			GE_INFO("InitializeRuntimeAssetManager Complete");
+
+		Project::NewAssetManager<EditorAssetManager>()->DeserializeAssets();
+	}
+
 	EditorLayer::EditorLayer(const std::string& name)
 		: Layer(name), m_ViewportBounds{ { glm::vec2() },{ glm::vec2() } }
 	{
+
 	}
 
 	void EditorLayer::OnAttach()
@@ -91,6 +107,7 @@ namespace GE
 
 					TransformComponent tc = m_HoveredEntity.GetComponent<TransformComponent>();
 
+					// Outline
 					Renderer2D::DrawRectangle(tc.GetTransform(), m_HoveredColor, m_HoveredEntity.GetEntityID());
 					
 					Renderer2D::End();
@@ -103,6 +120,7 @@ namespace GE
 
 					TransformComponent tc = selectedEntity.GetComponent<TransformComponent>();
 
+					// Outline
 					Renderer2D::DrawRectangle(tc.GetTransform(), m_ScenePanel->GetSelectedColor(), selectedEntity.GetEntityID());
 					
 					Renderer2D::End();
@@ -177,7 +195,7 @@ namespace GE
 				{
 					if (ImGui::MenuItem("Save Project", "Ctrl+Shift+S")) Application::SaveAppProject();
 					if (ImGui::MenuItem("Load Project", "Ctrl+Shift+O")) Application::LoadAppProjectFileDialog();
-
+					if(ImGui::MenuItem("Export", "Ctrl+Shift+E")) InitializeRuntimeAssetManager();
 					ImGui::EndMenu();
 				}
 
@@ -311,6 +329,12 @@ namespace GE
 				OnDuplicateEntity();
 			break;
 		}
+		case Input::KEY_E:
+		{
+			if(control)
+				if(shift)
+					InitializeRuntimeAssetManager();
+		}
 		case Input::KEY_F:
 		{
 			if(control)
@@ -367,7 +391,7 @@ namespace GE
 			break;
 		}
 		default:
-			GE_WARN("Editor Input::KeyPressed not bound. Keycode : {0}", e.GetKeyCode());
+			GE_WARN("Editor::OnKeyPressed Event - Input::Key not bound. Keycode : {0}", e.GetKeyCode());
 			break;
 		}
 		return true;
@@ -441,11 +465,17 @@ namespace GE
 			m_RuntimeScene->OnStop();
 		}
 		m_UseEditorCamera = true;
-		UUID selectedUUID = m_ScenePanel->GetSelectedEntity().GetComponent<IDComponent>().ID;
-		m_ScenePanel->m_SelectedEntity = Entity();
+
+		// Old SelectedEntity.UUID won't exist after setting runtimeScene=editorScene
+		// Save a copy to revert to after
+		UUID selectedUUID = 0;
+		if (m_ScenePanel->GetSelectedEntity() && m_ScenePanel->GetSelectedEntity().HasComponent<IDComponent>())
+		{
+			selectedUUID = m_ScenePanel->GetSelectedEntity().GetComponent<IDComponent>().ID;
+			m_ScenePanel->m_SelectedEntity = Entity();
+		}
 		m_RuntimeScene = m_EditorScene;
-		m_ScenePanel->SetScene(m_RuntimeScene.get());
-		m_ScenePanel->m_SelectedEntity = m_RuntimeScene->GetEntityByUUID(selectedUUID);
+		m_ScenePanel->SetScene(m_RuntimeScene.get(), selectedUUID);
 	}
 
 	void EditorLayer::LoadScene(UUID handle)
