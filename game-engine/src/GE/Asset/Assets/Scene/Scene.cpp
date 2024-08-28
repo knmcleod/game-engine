@@ -12,27 +12,27 @@
 
 namespace GE
 {
-	template<typename Component>
+	template<typename T>
 	static void CopyComponent(entt::registry& to, entt::registry& from, const std::unordered_map<UUID, entt::entity>& entityMap)
 	{
-		auto view = from.view<Component>();
+		auto view = from.view<T>();
 		for (auto e : view)
 		{
 			UUID uuid = from.get<IDComponent>(e).ID;
 			GE_CORE_ASSERT(entityMap.find(uuid) != entityMap.end(), "Could not find Entity in map.");
 			entt::entity enttID = entityMap.at(uuid);
-			auto& component = from.get<Component>(e);
-			to.emplace_or_replace<Component>(enttID, component);
+			auto& component = from.get<T>(e);
+			to.emplace_or_replace<T>(enttID, component);
 		}
 	}
 
-	template<typename Component>
+	template<typename T>
 	static void CopyComponentIfExists(Entity to, Entity from)
 	{
-		if (from.HasComponent<Component>())
+		if (from.HasComponent<T>())
 		{
-			Component component = from.GetComponent<Component>();
-			to.AddOrReplaceComponent<Component>(component);
+			T component = from.GetComponent<T>();
+			to.AddOrReplaceComponent<T>(component);
 		}
 	}
 
@@ -76,7 +76,7 @@ namespace GE
 	template<>
 	void Entity::OnComponentAdded<CameraComponent>()
 	{
-		this->GetComponent<CameraComponent>().ActiveCamera.SetViewport(this->m_Scene->GetConfig().ViewportWidth, this->m_Scene->GetConfig().ViewportWidth);
+		this->m_Scene->SetEntityCamera(&GetComponent<CameraComponent>().ActiveCamera);
 	}
 
 	template<>
@@ -110,16 +110,6 @@ namespace GE
 	}
 
 	template<>
-	void Entity::OnComponentAdded<NativeScriptComponent>()
-	{
-	}
-
-	template<>
-	void Entity::OnComponentAdded<ScriptComponent>()
-	{
-	}
-
-	template<>
 	void Entity::OnComponentAdded<Rigidbody2DComponent>()
 	{
 	}
@@ -133,6 +123,16 @@ namespace GE
 	void Entity::OnComponentAdded<CircleCollider2DComponent>()
 	{
 	}
+
+	template<>
+	void Entity::OnComponentAdded<NativeScriptComponent>()
+	{
+	}
+
+	template<>
+	void Entity::OnComponentAdded<ScriptComponent>()
+	{
+	}
 #pragma endregion
 
 #pragma endregion
@@ -144,9 +144,9 @@ namespace GE
 
 	}
 
-	Scene::Scene(UUID handle, const std::string& name) : Asset(handle, Scene::Type::Scene)
+	Scene::Scene(UUID handle, const Config& config /*= Config()*/) : Asset(handle, Scene::Type::Scene)
 	{
-		m_Config.Name = name;
+		m_Config = Config(config);
 	}
 
 	Scene::~Scene()
@@ -159,10 +159,7 @@ namespace GE
 		Ref<Scene> newScene = CreateRef<Scene>();
 
 		newScene->p_Handle = this->p_Handle;
-		newScene->m_Config.ViewportWidth = this->m_Config.ViewportWidth;
-		newScene->m_Config.ViewportHeight = this->m_Config.ViewportHeight;
-		newScene->m_Config.State = this->m_Config.State;
-		newScene->m_Config.Name = this->m_Config.Name;
+		newScene->m_Config = Config(this->m_Config);
 
 		auto& sceneRegistry = this->m_Registry;
 		auto& newSceneRegistry = newScene->m_Registry;
@@ -234,6 +231,11 @@ namespace GE
 				return Entity(entity, this);
 		}
 		return Entity{ };
+	}
+
+	void Scene::SetEntityCamera(Camera* camera)
+	{
+		camera->SetViewport(m_Config.ViewportWidth, m_Config.ViewportWidth);
 	}
 
 	Entity Scene::CreateEntity(const std::string& name)
@@ -356,7 +358,7 @@ namespace GE
 
 	void Scene::OnUpdate(Timestep ts, Camera* camera)
 	{
-		switch (m_Config.State)
+		switch (m_Config.CurrentState)
 		{
 		case State::Stop:
 			OnEditorUpdate(ts, camera);
@@ -378,7 +380,7 @@ namespace GE
 
 	void Scene::OnStop()
 	{
-		m_Config.State = State::Stop;
+		m_Config.CurrentState = State::Stop;
 		
 		DestroyPhysics2D();
 		DestroyScripting();
@@ -386,7 +388,7 @@ namespace GE
 
 	void Scene::OnRuntimeStart()
 	{
-		m_Config.State = State::Run;
+		m_Config.CurrentState = State::Run;
 
 		InitializePhysics2D();
 		InitializeScripting();
@@ -406,7 +408,7 @@ namespace GE
 
 	void Scene::OnSimulationStart()
 	{
-		m_Config.State = State::Simulate;
+		m_Config.CurrentState = State::Simulate;
 		
 		InitializePhysics2D();
 		InitializeScripting();
@@ -430,7 +432,7 @@ namespace GE
 
 	void Scene::OnPauseStart()
 	{
-		m_Config.State = State::Pause;
+		m_Config.CurrentState = State::Pause;
 
 	}
 

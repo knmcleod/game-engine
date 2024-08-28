@@ -2,6 +2,8 @@
 
 #include "Application.h"
 
+#include "GE/Asset/RuntimeAssetManager.h"
+
 #include "GE/Core/FileSystem/FileSystem.h"
 #include "GE/Core/Time/Timestep.h"
 
@@ -10,6 +12,7 @@
 #include "GE/Rendering/RenderCommand.h"
 
 #include "GE/Scripting/Scripting.h"
+
 namespace GE
 {
 #define BIND_EVENT_FN(x) std::bind(&Application::x, s_Instance, std::placeholders::_1)
@@ -26,7 +29,7 @@ namespace GE
 		//  Sets working directory
 		if (!p_Config.WorkingDirectory.empty())
 			std::filesystem::current_path(p_Config.WorkingDirectory);
-
+		
 		if (!LoadProject())
 		{
 			GE_CORE_ERROR("Could not Load Application Project.");
@@ -52,8 +55,8 @@ namespace GE
 	{
 		GE_CORE_INFO("Core Application Destructor Start.");
 		
-		Scripting::Shutdown();
 		RenderCommand::ShutDown();
+		Project::Shutdown();
 		
 		GE_CORE_INFO("Core Application Destructor Complete.");
 	}

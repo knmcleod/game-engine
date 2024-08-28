@@ -57,8 +57,7 @@ namespace demo
 
             if (m_TextRendererComponent != null)
             {
-                m_TextRendererComponent.Text = string.Format("Velocity: {0}, {1}, {2}", velocity.x, velocity.y, velocity.z);
-                Log.LogCoreInfo("Velocity Applied = ( " + velocity.x + ", " + velocity.y + ", " + velocity.z + ")");
+                m_TextRendererComponent.Text = string.Format("V: {0}, {1}, {2}", velocity.x.ToString("0.0"), velocity.y.ToString("0.0"), velocity.z.ToString("0.0"));
             }
             
             m_Rigidbody2DComponent.ApplyLinearImpulseToCenter(velocity.XY, true);

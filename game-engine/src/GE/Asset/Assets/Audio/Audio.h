@@ -21,7 +21,7 @@ namespace GE
 		uint32_t Buffers[NUM_BUFFERS];
 		uint64_t Cursor = 0;
 
-		Buffer Buff;
+		Buffer DataBuffer = 0;
 	};
 
 	class AudioClip : public Asset

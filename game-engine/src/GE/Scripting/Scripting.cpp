@@ -619,6 +619,9 @@ namespace GE
 
 	void Scripting::InitMono()
 	{
+		if (s_Data->RootDomain)
+			return;
+
 		GE_CORE_INFO("Mono Init Start");
 		mono_set_assemblies_path("mono/lib");
 
@@ -628,23 +631,21 @@ namespace GE
 		s_Data->RootDomain = rootDomain;
 
 		mono_thread_set_main(mono_thread_current());
+
 		GE_CORE_INFO("Mono Init Complete");
 	}
 
 	void Scripting::ShutdownMono()
 	{
 		GE_CORE_INFO("Mono Shutdown Start");
-		mono_domain_set(mono_get_root_domain(), false);
-		
-		if (s_Data->AppDomain)
+		if (s_Data->AppDomain && s_Data->RootDomain)
 		{
+			mono_domain_set(mono_get_root_domain(), false);
 			mono_domain_unload(s_Data->AppDomain);
 			s_Data->AppDomain = nullptr;
-		}
 
-		if (s_Data->RootDomain)
-		{
-			mono_jit_cleanup(s_Data->RootDomain);
+			// TODO : Fix
+			//mono_jit_cleanup(s_Data->RootDomain);
 			s_Data->RootDomain = nullptr;
 		}
 		GE_CORE_INFO("Mono Shutdown Complete");
@@ -706,12 +707,30 @@ namespace GE
 
 	MonoAssembly* Scripting::LoadMonoAssembly(const std::filesystem::path& assemblyPath)
 	{
-		Buffer fileData = FileSystem::ReadScriptingBinaryFile(assemblyPath);
+		std::ifstream stream(assemblyPath, std::ios::binary | std::ios::ate);
+		if (!stream)
+		{
+			GE_CORE_ASSERT(false, "Failed to open scripting file.");
+			return nullptr;
+		}
+
+		std::streampos end = stream.tellg();
+		stream.seekg(0, std::ios::beg);
+		uint64_t size = end - stream.tellg();
+		if (size == 0)
+		{
+			GE_CORE_ASSERT(false, "File is empty.");
+			return nullptr;
+		}
+
+		Buffer monoBuffer = Buffer(size);
+		stream.read(monoBuffer.As<char>(), monoBuffer.Size);
+		stream.close();
 
 		MonoImageOpenStatus monoStatus;
-		MonoImage* image = mono_image_open_from_data_full(fileData.As<char>(), 
-			(uint32_t)fileData.Size, 1, &monoStatus, 0);
-		fileData.Release();
+		MonoImage* image = mono_image_open_from_data_full(monoBuffer.As<char>(),
+			(uint32_t)monoBuffer.Size, 1, &monoStatus, 0);
+		monoBuffer.Release();
 
 		if (monoStatus != MONO_IMAGE_OK)
 		{

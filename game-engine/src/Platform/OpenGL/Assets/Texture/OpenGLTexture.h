@@ -22,7 +22,6 @@ namespace GE
 		uint32_t GetHeight() const override { return m_Config.Height; }
 		uint32_t GetID() const override { return m_RendererID; }
 
-		const Buffer GetData() const override { return m_TextureBuffer; }
 		void SetData(Buffer data) override;
 
 		void Bind(uint32_t slot = 0) const override;
@@ -32,7 +31,5 @@ namespace GE
 		uint32_t m_RendererID = 0;
 
 		Config m_Config;
-		// Holds texture data
-		Buffer m_TextureBuffer;
 	};
 }

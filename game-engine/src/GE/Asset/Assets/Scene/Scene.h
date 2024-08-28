@@ -125,13 +125,20 @@ namespace GE
 			Pause = 3 // Set during Run or Simulate
 		};
 
+		/*
+		* Contains
+		* - ViewportWidth : uint32_t
+		* - ViewportHeight : uint32_t
+		* - CurrentState : uint32_t
+		* - StepFrames : uint64_t
+		*/
 		struct Config
 		{
 			// Remove. Use AssetMetadata.FilePath.Name instead
 			std::string Name = "NewScene";
 			uint32_t ViewportWidth = 1280, ViewportHeight = 720;
-			State State = State::Stop;
-			int StepFrames = 0;
+			State CurrentState = State::Stop;
+			uint64_t StepFrames = 0;
 		};
 
 		template<typename... Components>
@@ -186,7 +193,7 @@ namespace GE
 		}
 
 		Scene();
-		Scene(UUID handle, const std::string& name = std::string());
+		Scene(UUID handle, const Config& config = Config());
 		~Scene() override;
 
 		/*
@@ -197,19 +204,24 @@ namespace GE
 		Ref<Asset> GetCopy() override;
 		
 		// Returns true if the scenes state is Run. Does not account for Simulation
-		bool IsRunning() const { return m_Config.State == State::Run; }
-		bool IsPaused() const { return m_Config.State == State::Pause; }
-		bool IsStopped() const { return m_Config.State == State::Stop; }
+		bool IsRunning() const { return m_Config.CurrentState == State::Run; }
+		bool IsPaused() const { return m_Config.CurrentState == State::Pause; }
+		bool IsStopped() const { return m_Config.CurrentState == State::Stop; }
 
 		const Config& GetConfig() const { return m_Config; }
 		const std::string& GetName() const { return m_Config.Name; }
-		const State& GetState() const { return m_Config.State; }
+		const State& GetState() const { return m_Config.CurrentState; }
 
 		const entt::registry& GetRegistry() { return m_Registry; }
 
 		Entity GetPrimaryCameraEntity();
 		Entity GetEntityByUUID(UUID uuid);
 		Entity GetEntityByTag(const std::string& tag);
+
+		/*
+		* Sets Entity Camera viewport to match Scene
+		*/
+		void SetEntityCamera(Camera* camera);
 
 		Entity CreateEntity(const std::string& name);
 		Entity CreateEntityWithUUID(UUID uuid, const std::string& name);

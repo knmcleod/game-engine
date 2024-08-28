@@ -51,6 +51,7 @@ namespace GE
 		bool m_ViewportFocused = false;
 		bool m_ViewportHovered = false;
 		glm::vec2 m_ViewportBounds[2];
+		glm::vec2 m_Viewport;
 
 		Ref<Framebuffer> m_Framebuffer = nullptr;
 		Ref<SceneHierarchyPanel> m_ScenePanel = nullptr;
@@ -59,8 +60,9 @@ namespace GE
 		Ref<Scene> m_EditorScene = nullptr;
 		Ref<Scene> m_RuntimeScene = nullptr;
 
-		UUID m_PlayButtonHandle, m_SimulateButtonHandle, m_PauseButtonHandle, m_StepButtonHandle, m_StopButtonHandle;
-		
+		UUID m_PlayButtonHandle, m_SimulateButtonHandle, m_PauseButtonHandle, m_StepButtonHandle, m_StopButtonHandle = 0;
+		UUID m_FontHandle = 0;
+
 		Entity m_HoveredEntity;
 		glm::vec4 m_HoveredColor = glm::vec4(1.0f);;
 	};

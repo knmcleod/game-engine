@@ -12,6 +12,7 @@ namespace GE
 	* * ~ Data : Set in corresponding AssetSerializer::SerializeAsset(asset, assetInfo)
 	* * * - Handle
 	* * * - Type
+	* * * - Name
 	* * * ~ Asset Specific Data
 	* * * * ...
 	*/
@@ -27,9 +28,21 @@ namespace GE
 			return false;
 		}
 
-		void InitializeData(uint64_t size)
+		AssetInfo() = default;
+
+		AssetInfo(uint16_t type) : Type(type)
 		{
-			DataBuffer = Buffer(size);
+
+		}
+
+		AssetInfo(const AssetInfo& assetInfo) : Type(assetInfo.Type)
+		{
+			InitializeData(assetInfo.DataBuffer.Size, assetInfo.DataBuffer.Data);
+		}
+
+		void InitializeData(uint64_t size, const uint8_t* data = nullptr)
+		{
+			DataBuffer = Buffer(data, size);
 		}
 
 		uint16_t Type = 0;	// Asset Type: Scene, Texture2D, Font, AudioClip
@@ -49,6 +62,7 @@ namespace GE
 	* * ~ Data : Set in corresponding AssetSerializer::SerializeAsset(asset, assetInfo)
 	* * * - Handle
 	* * * - Type
+	* * * - Name
 	* * * ~ Scene Data
 	* * * * - Assets : map<UUID, AssetInfo>
 	* * * * - Entities : map<UUID, EntityInfo>
@@ -63,12 +77,12 @@ namespace GE
 		* - Size : Packed Data Size
 		* ~ Data : Packed Data
 		* * ~ Components : Components on Entity
-		* * * - ID : UUID
-		* * * - Tag : Name
+		* * * - ID : UUID/uint64_t
+		* * * - Tag : std::string
 		* * * ~ Transform :
-		* * * * - Translation :
-		* * * * - Rotation :
-		* * * * - Scale :
+		* * * * - Translation : vec3<float>
+		* * * * - Rotation : vec3<float>
+		* * * * - Scale : vec3<float>
 		* * * ~ Camera :
 		* * * * ~ SceneCamera :
 		* * * * * - Fov : float
@@ -77,60 +91,68 @@ namespace GE
 		* * * * - Primary : bool
 		* * * * - FixedAspectRatio : bool
 		* * * ~ AudioSource :
-		* * * * - Asset Handle :
+		* * * * - Asset Handle : UUID/uint64_t
 		* * * * - Loop : bool
 		* * * * - Pitch : float
 		* * * * - Gain : float
 		* * * ~ AudioListener :
 		* * * * -
 		* * * ~ SpriteRenderer :
-		* * * * - Asset Handle :
-		* * * * - Color : vec4
+		* * * * - Asset Handle : UUID/uint64_t
 		* * * * - TilingFactor : float
+		* * * * - Color : vec4<float>
 		* * * ~ CircleRenderer :
 		* * * * - Asset Handle :
-		* * * * - Color : vec4
 		* * * * - TilingFactor : float
 		* * * * - Radius : float
 		* * * * - Thickness : float
 		* * * * - Fade : float
+		* * * * - Color : vec4<float>
 		* * * ~ TextRenderer :
 		* * * * - Asset Handle :
-		* * * * - TextColor : vec4
-		* * * * - BGColor : vec4
 		* * * * - KerningOffset : float
 		* * * * - LineHeightOffset : float
 		* * * * - Text : std::string
+		* * * * - TextColor : vec4<float>
+		* * * * - BGColor : vec4<float>
 		* * * ~ Rigidbody2D :
 		* * * * - Type : uint16_t
 		* * * * - FixedRotation : bool
 		* * * ~ BoxCollider2D :
-		* * * * - Offset : vec2
-		* * * * - Size : vec2
+		* * * * - Show : bool 
 		* * * * - Density : float 
 		* * * * - Friction : float 
 		* * * * - Restitution : float 
-		* * * * - RestitutionThreshold : float 
-		* * * * - Show : bool 
+		* * * * - RestitutionThreshold : float
+		* * * * - Offset : vec2<float>
+		* * * * - Size : vec2<float>
 		* * * ~ CircleCollider2D :
-		* * * * - Offset : vec2
+		* * * * - Show : bool 
 		* * * * - Radius : float
 		* * * * - Density : float 
 		* * * * - Friction : float 
 		* * * * - Restitution : float 
 		* * * * - RestitutionThreshold : float 
-		* * * * - Show : bool 
+		* * * * - Offset : vec2<float>
 		* * * ~ NativeScript : 
 		* * * * - 
 		* * * ~ Script :
 		* * * * - ClassName : std::string
-		* * * * ~ Fields :
-		* * * * * - Name : std::string
-		* * * * * - Type : char*
-		* * * * * - Data :
 		*/
 		struct EntityInfo
 		{
+			EntityInfo() = default;
+
+			EntityInfo(const EntityInfo& entityInfo)
+			{
+				InitializeData(entityInfo.DataBuffer.Size, entityInfo.DataBuffer.Data);
+			}
+
+			void InitializeData(uint64_t size, const uint8_t* data = nullptr)
+			{
+				DataBuffer = Buffer(data, size);
+			}
+
 			Buffer DataBuffer = 0;
 		};
 
@@ -139,10 +161,36 @@ namespace GE
 			Type = 1; // See Asset::Type
 		}
 
-		SceneInfo(const AssetInfo& assetInfo) : SceneInfo()
+		SceneInfo(const SceneInfo& sceneInfo) : AssetInfo(sceneInfo)
 		{
-			if(assetInfo.Type == Type)
-				DataBuffer = assetInfo.DataBuffer;
+			Type = 1; // See Asset::Type
+
+			for (auto& [uuid, assetInfo] : sceneInfo.m_Assets)
+			{
+				m_Assets[uuid] = AssetInfo(assetInfo);
+			}
+			for (auto& [uuid, entityInfo] : sceneInfo.m_Entities)
+			{
+				m_Entities[uuid] = EntityInfo(entityInfo);
+			}
+		}
+
+		void ClearAllData()
+		{
+			DataBuffer.Release();
+			DataBuffer = 0;
+
+			for (auto& [uuid, assetInfo] : m_Assets)
+			{
+				assetInfo.DataBuffer.Release();
+				assetInfo.DataBuffer = 0;
+			}
+
+			for (auto& [uuid, entityInfo] : m_Entities)
+			{
+				entityInfo.DataBuffer.Release();
+				entityInfo.DataBuffer = 0;
+			}
 		}
 
 	private:

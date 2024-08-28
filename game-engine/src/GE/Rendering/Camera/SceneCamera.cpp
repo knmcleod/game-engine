@@ -11,6 +11,15 @@ namespace GE
 		UpdateView();
 	}
 
+	void SceneCamera::SetInfo(float fov, float nearClip, float farClip)
+	{
+		m_FOV = fov;
+		m_NearClip = nearClip;
+		m_FarClip = farClip;
+
+		UpdateProjection();
+	}
+
 	void SceneCamera::OnUpdate(Timestep ts)
 	{
 		UpdateView();

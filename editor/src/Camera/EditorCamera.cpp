@@ -52,6 +52,15 @@ namespace GE
 		return glm::rotate(GetOrientation(), glm::vec3(0.0f, 0.0f, -1.0f));
 	}
 	
+	void EditorCamera::SetInfo(float fov, float nearClip, float farClip)
+	{
+		m_FOV = fov;
+		m_NearClip = nearClip;
+		m_FarClip = farClip;
+
+		UpdateProjection();
+	}
+
 	void EditorCamera::SetViewport(uint32_t width, uint32_t height)
 	{ 
 		if (m_ViewportWidth == width && m_ViewportHeight == height)

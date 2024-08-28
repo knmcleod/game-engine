@@ -4,9 +4,14 @@
 
 namespace GE
 {
-	EditorAssetManager::EditorAssetManager()
+	EditorAssetManager::EditorAssetManager(const AssetMap& assetMap /*= AssetMap()*/) : m_LoadedAssets(assetMap)
 	{
 		m_AssetRegistry = CreateRef<AssetRegistry>();
+	}
+
+	EditorAssetManager::~EditorAssetManager()
+	{
+		m_LoadedAssets.clear();
 	}
 
 	const AssetMetadata& EditorAssetManager::GetMetadata(UUID handle)

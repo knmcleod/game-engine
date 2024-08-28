@@ -4,14 +4,10 @@
 
 namespace GE
 {
-	Font::Font() : Font(UUID())
-	{
-
-	}
-
-	Font::Font(UUID handle) : Asset(handle, Asset::Type::Font)
+	Font::Font(UUID handle, const AtlasConfig& config) : Asset(handle, Asset::Type::Font)
 	{
 		m_MSDFData = CreateRef<MSDFData>();
+		m_AtlasConfig = config;
 	}
 
 	Font::~Font()

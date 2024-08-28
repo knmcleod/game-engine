@@ -17,6 +17,11 @@ namespace GE
 		return s_ActiveProject;
 	}
 
+	void Project::Shutdown()
+	{
+		Scripting::Shutdown();
+	}
+
 	bool Project::Load(const std::filesystem::path& path)
 	{
 		Ref<Project> project = CreateRef<Project>();

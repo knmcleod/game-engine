@@ -5,7 +5,7 @@
 
 #include "GE/Asset/Assets/Scene/Scene.h"
 
-#include "GE/Core/Buffer.h"
+#include "GE/Core/Memory/Buffer.h"
 
 // This ignores all warnings raised inside External headers
 #pragma warning(push, 0)

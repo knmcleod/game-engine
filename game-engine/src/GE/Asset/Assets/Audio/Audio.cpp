@@ -23,6 +23,8 @@ namespace GE
         {
             if(m_AudioBuffer->Buffers)
                 alDeleteBuffers(m_AudioBuffer->NUM_BUFFERS, m_AudioBuffer->Buffers);
+            
+            //m_AudioBuffer->DataBuffer.Release();
         }
 
         alDeleteSources(1, &m_Config.SourceID);
@@ -80,26 +82,26 @@ namespace GE
                     AudioBuffer buffer; // Holds unqueued audio buffer
                     alSourceUnqueueBuffers(m_Config.SourceID, 1, buffer.Buffers);
 
-                    ALsizei dataSize = buffer.Buff.Size;
+                    ALsizei dataSize = buffer.DataBuffer.Size;
 
                     char* data = new char[dataSize];
                     std::memset(data, 0, dataSize);
 
-                    std::size_t dataSizeToCopy = buffer.Buff.Size;
-                    if (buffer.Cursor + buffer.Buff.Size > sizeof(buffer.Buff.Data))
-                        dataSizeToCopy = sizeof(buffer.Buff.Data) - buffer.Cursor;
+                    std::size_t dataSizeToCopy = buffer.DataBuffer.Size;
+                    if (buffer.Cursor + buffer.DataBuffer.Size > sizeof(buffer.DataBuffer.Data))
+                        dataSizeToCopy = sizeof(buffer.DataBuffer.Data) - buffer.Cursor;
 
-                    std::memcpy(&data[0], &buffer.Buff.Data[buffer.Cursor], dataSizeToCopy);
+                    std::memcpy(&data[0], &buffer.DataBuffer.Data[buffer.Cursor], dataSizeToCopy);
                     buffer.Cursor += dataSizeToCopy;
 
-                    if (dataSizeToCopy < buffer.Buff.Size)
+                    if (dataSizeToCopy < buffer.DataBuffer.Size)
                     {
                         buffer.Cursor = 0;
-                        std::memcpy(&data[dataSizeToCopy], &buffer.Buff.Data[buffer.Cursor], buffer.Buff.Size - dataSizeToCopy);
-                        buffer.Cursor = buffer.Buff.Size - dataSizeToCopy;
+                        std::memcpy(&data[dataSizeToCopy], &buffer.DataBuffer.Data[buffer.Cursor], buffer.DataBuffer.Size - dataSizeToCopy);
+                        buffer.Cursor = buffer.DataBuffer.Size - dataSizeToCopy;
                     }
 
-                    alBufferData(*buffer.Buffers, buffer.Format, data, buffer.Buff.Size, buffer.SampleRate);
+                    alBufferData(*buffer.Buffers, buffer.Format, data, buffer.DataBuffer.Size, buffer.SampleRate);
                     alSourceQueueBuffers(m_Config.SourceID, 1, buffer.Buffers);
 
                     delete[] data;

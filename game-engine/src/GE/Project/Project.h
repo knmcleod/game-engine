@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GE/Asset/AssetManager.h"
-#include "GE/Asset/RuntimeAssetManager.h"
 #include "GE/Core/Core.h"
 
 #include <filesystem>
@@ -30,10 +29,10 @@ namespace GE
 		*	1: Runtime, read from binary file
 		*	2: Editor, read from text file
 		*/
-		template<typename T>
-		inline static Ref<T> NewAssetManager()
+		template<typename T, typename ... Args>
+		inline static Ref<T> NewAssetManager(Args&& ... args)
 		{	
-			Ref<T> assetManager = CreateRef<T>();
+			Ref<T> assetManager = CreateRef<T>(args...);
 			s_ActiveProject->m_AssetManager = assetManager;
 			return static_ref_cast<T, AssetManager>(s_ActiveProject->m_AssetManager);
 		}
@@ -120,7 +119,8 @@ namespace GE
 		inline static Ref<AssetManager> GetAssetManager() { return s_ActiveProject->m_AssetManager; }
 
 		inline static Ref<Project> GetActive() { return s_ActiveProject; }
-		inline static Ref<Project> New();
+		static Ref<Project> New();
+		static void Shutdown();
 
 		static bool Load(const std::filesystem::path& path);
 		static bool Save(const std::filesystem::path& path);

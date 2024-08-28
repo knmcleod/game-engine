@@ -35,16 +35,18 @@ namespace GE
 		virtual const float& GetFarClip() const = 0;
 		virtual const float& GetFOV() const = 0;
 
+		virtual void SetInfo(float fov, float nearClip, float farClip) = 0;
+
+		virtual void OnUpdate(Timestep ts) = 0;
+		virtual void OnEvent(Event& e) = 0;
+
+	protected:
 		virtual void SetViewMatrix(const glm::mat4& transform) = 0;
 		virtual void SetViewport(uint32_t width, uint32_t height) = 0;
 		virtual void SetNearClip(float value) = 0;
 		virtual void SetFarClip(float value) = 0;
 		virtual void SetFOV(float value) = 0;
 
-		virtual void OnUpdate(Timestep ts) = 0;
-		virtual void OnEvent(Event& e) = 0;
-
-	protected:
 		/*
 		* Call after the following changes 
 		*	Viewport/aspectRatio

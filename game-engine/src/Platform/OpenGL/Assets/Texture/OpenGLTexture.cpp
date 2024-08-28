@@ -44,7 +44,7 @@ namespace GE
 	{
 		GE_CORE_ASSERT(textureConfig.InternalFormat != ImageFormat::None, "No Internal Format Specified.");
 
-		p_Type = Asset:: Type::Texture2D;
+		p_Type = Asset::Type::Texture2D;
 		m_Config.Name = textureConfig.Name;
 		m_Config.Width = textureConfig.Width;
 		m_Config.Height = textureConfig.Height;
@@ -64,6 +64,7 @@ namespace GE
 	OpenGLTexture2D::~OpenGLTexture2D()
 	{
 		glDeleteTextures(1, &m_RendererID);
+		m_Config.TextureBuffer.Release();
 	}
 	
 	Ref<Asset> OpenGLTexture2D::GetCopy()
@@ -75,7 +76,6 @@ namespace GE
 	void OpenGLTexture2D::SetData(Buffer data)
 	{
 		GE_PROFILE_FUNCTION();
-		this->m_TextureBuffer = data;
 
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -93,6 +93,8 @@ namespace GE
 		
 		if (m_Config.GenerateMips)
 			glGenerateMipmap(GL_TEXTURE_2D);
+
+		m_Config.TextureBuffer = Buffer::Copy(data);
 	}
 
 	void OpenGLTexture2D::Bind(uint32_t slot) const

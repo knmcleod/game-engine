@@ -20,6 +20,8 @@ namespace GE
 		inline const float& GetFarClip() const override { return m_FarClip; }
 		inline const float& GetFOV() const override { return m_FOV; }
 		
+		void SetInfo(float fov, float nearClip, float farClip) override;
+
 		void OnUpdate(Timestep ts) override;
 		void OnEvent(Event& e) override;
 
@@ -30,14 +32,14 @@ namespace GE
 		inline const glm::vec3& GetPosition() const { return m_Position; }
 		
 	private:
-		void UpdateProjection() override;
-		void UpdateView() override;
-
 		inline void SetViewMatrix(const glm::mat4& transform) override { m_ViewMatrix = transform; UpdateView(); }
 		inline void SetViewport(uint32_t width, uint32_t height) override;
 		inline void SetNearClip(float value) override { m_NearClip = value;  UpdateProjection(); }
 		inline void SetFarClip(float value) override { m_FarClip = value;  UpdateProjection(); }
 		inline void SetFOV(float size) override { m_FOV = size;  UpdateProjection(); }
+		
+		void UpdateProjection() override;
+		void UpdateView() override;
 		
 		glm::quat GetOrientation() const;
 		glm::vec3 GetVertical() const;

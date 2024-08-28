@@ -17,7 +17,8 @@ namespace GE
 			Texture2D,
 			Font,
 			AudioClip
-			// Script(?)
+			// Script
+			// Prefab
 		};
 
 		enum class Status

@@ -20,7 +20,7 @@ namespace GE
 		Application::Config appConfig;
 		appConfig.Name = "Game Editor";
 		appConfig.Args = args;
-
+		// args[1]
 		//Project::New()->Save("projects/demo/demo.gproj");
 
 		return new EditorApplication(appConfig);

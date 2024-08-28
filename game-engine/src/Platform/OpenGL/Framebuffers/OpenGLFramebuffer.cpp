@@ -21,9 +21,9 @@ namespace GE
 		}
 	}
 
-	static GLenum TextureTarget(bool isMultisample)
+	static GLenum TextureTarget(bool isMultiSample)
 	{
-		return isMultisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+		return isMultiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 	}
 
 	static GLenum FBTextureFormatToGL(Framebuffer::TextureFormat format)
@@ -43,15 +43,15 @@ namespace GE
 		}
 	}
 
-	static void CreateTextures(bool isMultisample, uint32_t* outID, uint32_t count)
+	static void CreateTextures(bool isMultiSample, uint32_t* outID, uint32_t count)
 	{
-		glCreateTextures(TextureTarget(isMultisample), count, outID);
+		glCreateTextures(TextureTarget(isMultiSample), count, outID);
 		
 	}
 
-	static void BindTexture(bool isMultisample, uint32_t id)
+	static void BindTexture(bool isMultiSample, uint32_t id)
 	{
-		glBindTexture(TextureTarget(isMultisample), id);
+		glBindTexture(TextureTarget(isMultiSample), id);
 	}
 
 	static void AttachColorTexture(GLenum internalFormat, GLenum format, uint32_t id, 

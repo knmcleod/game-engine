@@ -20,13 +20,13 @@ namespace GE
 			Ref<Texture2D> Texture = nullptr;
 
 			// Remove. Use AssetMetadata.FilePath.Name instead
-			std::string Name = std::string("NewFont");
+			std::string Name = std::string("NewFontAtlas");
 			uint32_t Width = 1;
 			uint32_t Height = 1;
 			float Scale = 1.0;
 
 			uint64_t Seed = 0;
-			int32_t ThreadCount = 8;
+			uint32_t ThreadCount = 8;
 			bool ExpensiveColoring = false;
 		};
 
@@ -36,8 +36,8 @@ namespace GE
 			msdf_atlas::FontGeometry FontGeometry;
 		};
 
-		Font();
-		Font(UUID handle);
+		Font() = default;
+		Font(UUID handle, const AtlasConfig& config = AtlasConfig());
 		~Font() override;
 
 		Ref<Asset> GetCopy() override;

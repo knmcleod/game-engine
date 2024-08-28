@@ -9,9 +9,8 @@ namespace GE
 	class RuntimeAssetManager : public AssetManager
 	{
 	public:
-		RuntimeAssetManager();
+		RuntimeAssetManager(const AssetMap& assetMap = AssetMap());
 		virtual ~RuntimeAssetManager() override;
-
 		/*
 		* Returns loaded asset from Loaded Asset Map or nullptr
 		*	if Asset Pack loads asset, add to Loaded and return asset

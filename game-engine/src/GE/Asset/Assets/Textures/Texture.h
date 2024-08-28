@@ -2,8 +2,8 @@
 
 #include "GE/Asset/Assets/Asset.h"
 
-#include "GE/Core/Buffer.h"
 #include "GE/Core/Core.h"
+#include "GE/Core/Memory/Buffer.h"
 
 #include <string>
 
@@ -34,8 +34,8 @@ namespace GE
 		* - RendererID : ID of texture
 		* - Width : uint32_t
 		* - Height : uint32_t
-		* - InternalFormat : ImageFormat default RGBA8/4 channels
-		* - Format : DataFormat default RGBA/4 channels
+		* - InternalFormat : ImageFormat, default RGBA8/4 channels
+		* - Format : DataFormat, default RGBA/4 channels
 		* - GenerateMips : bool
 		*/
 		struct Config
@@ -46,6 +46,8 @@ namespace GE
 			ImageFormat InternalFormat = ImageFormat::RGBA8;
 			DataFormat Format = DataFormat::RGBA;
 			bool GenerateMips = true;
+
+			Buffer TextureBuffer = 0;
 		};
 
 		virtual bool operator==(const Texture& other) const = 0;
@@ -55,11 +57,10 @@ namespace GE
 		virtual uint32_t GetHeight() const = 0;
 		virtual uint32_t GetID() const = 0;
 
-		virtual const Buffer GetData() const = 0;
-		virtual void SetData(Buffer data) = 0;
-
 		virtual void Bind(uint32_t slot = 0) const = 0;
 		virtual void Unbind() const = 0;
+	private:
+		virtual void SetData(Buffer data) = 0;
 	};
 
 	class Texture2D : public Texture

@@ -8,8 +8,8 @@ namespace GE
 	class EditorAssetManager : public AssetManager
 	{
 	public:
-		EditorAssetManager();
-		~EditorAssetManager() override = default;
+		EditorAssetManager(const AssetMap& assetMap = AssetMap());
+		~EditorAssetManager() override;
 
 		Ref<Asset> GetAsset(UUID handle) override;
 		const AssetMap& GetLoadedAssets() override;

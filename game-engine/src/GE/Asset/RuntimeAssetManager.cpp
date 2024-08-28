@@ -5,14 +5,14 @@
 
 namespace GE
 {
-	RuntimeAssetManager::RuntimeAssetManager()
+	RuntimeAssetManager::RuntimeAssetManager(const AssetMap& assetMap /*= AssetMap()*/) : m_LoadedAssets(assetMap)
 	{
 		m_AssetPack = CreateRef<AssetPack>();
-		m_LoadedAssets = AssetMap();
 	}
 
 	RuntimeAssetManager::~RuntimeAssetManager()
 	{
+		m_LoadedAssets.clear();
 		m_AssetPack->ClearAllFileData();
 	}
 
@@ -32,7 +32,6 @@ namespace GE
 		else
 		{
 			const AssetInfo& assetInfo = m_AssetPack->GetAssetInfo(handle);
-
 			asset = AssetSerializer::DeserializeAsset(assetInfo);
 			if (asset)
 				m_LoadedAssets.at(handle) = asset;
@@ -60,12 +59,12 @@ namespace GE
 	{
 		if (HandleExists(handle) || !AssetLoaded(handle))
 			return false;
-		return m_AssetPack->AddAsset(m_LoadedAssets.at(handle), AssetInfo());
+		return m_AssetPack->AddAsset(m_LoadedAssets.at(handle), AssetInfo((uint16_t)m_LoadedAssets.at(handle)->GetType()));
 	}
 
 	bool RuntimeAssetManager::AddAsset(Ref<Asset> asset)
 	{
-		if (HandleExists(asset->GetHandle()) || AssetLoaded(asset->GetHandle()))
+		if (AssetLoaded(asset->GetHandle()))
 		{
 			GE_CORE_WARN("Cannot add Asset to Loaded. Asset already in Loaded.");
 			return false;
@@ -73,7 +72,6 @@ namespace GE
 
 		UUID handle = asset->GetHandle();
 		m_LoadedAssets.emplace(handle, asset);
-
 		return true;
 	}
 

@@ -188,6 +188,7 @@ namespace GE
 
 	struct ScriptComponent
 	{
+		// TODO : Switch to UUID from Script : Asset, store ClassName in Script(?)
 		std::string ClassName = std::string();
 
 		ScriptComponent() = default;

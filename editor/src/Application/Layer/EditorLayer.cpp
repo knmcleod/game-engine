@@ -2,6 +2,7 @@
 
 #include "../../AssetManager/EditorAssetManager.h"
 
+#include <GE/Asset/RuntimeAssetManager.h>
 #include <GE/Core/Application/Application.h>
 #include <GE/Core/Input/Input.h>
 #include <GE/Core/FileSystem/FileSystem.h>
@@ -15,23 +16,41 @@
 
 namespace GE
 {
-	static void InitializeRuntimeAssetManager()
+	/*
+	* Copies EditorAssetManager.LoadedAssets & Adds them to New RuntimeAssetManager
+	* Reinitializes & deserializes EditorAssetManager after complete
+	*/
+	static void SerializeRuntimeAssetManager()
 	{
-		AssetMap assetMap = Project::GetAssetManager<EditorAssetManager>()->GetLoadedAssets();
-		Ref<RuntimeAssetManager> ram = Project::NewAssetManager<RuntimeAssetManager>();
-		for (const auto& [uuid, asset] : assetMap)
-		{
-			ram->AddAsset(asset);
-		}
+		const AssetMap assetMap = Project::GetAssetManager<EditorAssetManager>()->GetLoadedAssets();
+		Ref<RuntimeAssetManager> ram = Project::NewAssetManager<RuntimeAssetManager>(assetMap);
 
 		if (ram->SerializeAssets())
-			GE_INFO("InitializeRuntimeAssetManager Complete");
+			GE_INFO("SerializeRuntimeAssetManager Successful");
 
+		// Revert to EditorAssetManager using full DeserializeAssets process
+		Project::NewAssetManager<EditorAssetManager>()->DeserializeAssets();
+	}
+
+	/*
+	* Deserializes New RuntimeAssetManager
+	* Reinitializes & deserializes EditorAssetManager after complete
+	*/
+	static void DeserializeRuntimeAssetManager()
+	{
+		if (Project::NewAssetManager<RuntimeAssetManager>()->DeserializeAssets())
+		{
+			GE_INFO("DeserializeRuntimeAssetManager Successful");
+			for (const auto& [uuid, asset] : Project::GetAssetManager()->GetLoadedAssets())
+				GE_TRACE("Asset : {0}, {1}", (uint64_t)uuid, AssetUtils::AssetTypeToString(asset->GetType()).c_str());
+		}
+
+		// Revert to EditorAssetManager using full DeserializeAssets process
 		Project::NewAssetManager<EditorAssetManager>()->DeserializeAssets();
 	}
 
 	EditorLayer::EditorLayer(const std::string& name)
-		: Layer(name), m_ViewportBounds{ { glm::vec2() },{ glm::vec2() } }
+		: Layer(name), m_ViewportBounds{ { 0.0, 0.0 },{ 0.0, 0.0 } }, m_Viewport({ 0.0, 0.0 })
 	{
 
 	}
@@ -57,6 +76,8 @@ namespace GE
 		m_StepButtonHandle = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Step_Button.png")->GetHandle();
 		m_StopButtonHandle = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Stop_Button.png")->GetHandle();
 
+		m_FontHandle = Project::GetAssetManager<EditorAssetManager>()->GetAsset("fonts/arial.ttf")->GetHandle();
+
 		LoadScene(Project::GetSceneHandle());
 
 		GE_INFO("EditorLayer::OnAttach Complete.");
@@ -69,6 +90,10 @@ namespace GE
 
 	void EditorLayer::OnUpdate(Timestep ts)
 	{
+		Framebuffer::Config config = m_Framebuffer->GetConfig();
+		if ((m_Viewport.x != 0 && m_Viewport.y != 0) && (m_Viewport.x != config.Width || m_Viewport.y != config.Height))
+			m_Framebuffer->Resize((uint32_t)m_Viewport.x, (uint32_t)m_Viewport.y);
+
 		Renderer2D::ResetStats();
 		m_Framebuffer->Bind();
 		RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
@@ -84,46 +109,47 @@ namespace GE
 			// if Stopped, Simulating, or Paused
 			if(!m_RuntimeScene->IsRunning())
 			{
-				auto [mx, my] = ImGui::GetMousePos();
-				mx -= m_ViewportBounds[0].x;
-				my -= m_ViewportBounds[0].y;
-				glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
-				my = viewportSize.y - my;
-
-				int mouseX = mx;
-				int mouseY = my;
-
-				if (mouseX >= 0 && mouseY >= 0 && mouseX < viewportSize.x && mouseY < viewportSize.y)
+				if (m_RuntimeScene->IsStopped())
 				{
-					int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY); // attachmentIndex = 1 - RED_INTEGER
-					m_HoveredEntity = (pixelData == -1) ? Entity() : Entity((entt::entity)pixelData, m_RuntimeScene.get());
-				}
+					auto [mx, my] = ImGui::GetMousePos();
+					mx -= m_ViewportBounds[0].x;
+					my -= m_ViewportBounds[0].y;
+					glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
+					my = viewportSize.y - my;
 
-				const Camera& currentCamera = (m_UseEditorCamera ? *m_EditorCamera : (Camera&)(m_RuntimeScene->GetPrimaryCameraEntity().GetComponent<CameraComponent>().ActiveCamera));
+					int mouseX = mx;
+					int mouseY = my;
 
-				if (m_HoveredEntity != Entity() && m_HoveredEntity.HasComponent<TransformComponent>())
-				{
-					Renderer2D::Start(currentCamera);
+					if (mouseX >= 0 && mouseY >= 0 && mouseX < viewportSize.x && mouseY < viewportSize.y)
+					{
+						int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY); // attachmentIndex = 1 - RED_INTEGER
+						m_HoveredEntity = (pixelData == -1) ? Entity() : Entity((entt::entity)pixelData, m_RuntimeScene.get());
+					}
 
-					TransformComponent tc = m_HoveredEntity.GetComponent<TransformComponent>();
+					if (m_HoveredEntity != Entity() && m_HoveredEntity.HasComponent<TransformComponent>())
+					{
+						Renderer2D::Start(*m_EditorCamera);
 
-					// Outline
-					Renderer2D::DrawRectangle(tc.GetTransform(), m_HoveredColor, m_HoveredEntity.GetEntityID());
-					
-					Renderer2D::End();
-				}
+						TransformComponent tc = m_HoveredEntity.GetComponent<TransformComponent>();
 
-				const Entity& selectedEntity = m_ScenePanel->GetSelectedEntity();
-				if (selectedEntity != Entity()  && selectedEntity.HasComponent<TransformComponent>())
-				{
-					Renderer2D::Start(currentCamera);
+						// Outline
+						Renderer2D::DrawRectangle(tc.GetTransform(), m_HoveredColor, m_HoveredEntity.GetEntityID());
 
-					TransformComponent tc = selectedEntity.GetComponent<TransformComponent>();
+						Renderer2D::End();
+					}
 
-					// Outline
-					Renderer2D::DrawRectangle(tc.GetTransform(), m_ScenePanel->GetSelectedColor(), selectedEntity.GetEntityID());
-					
-					Renderer2D::End();
+					const Entity& selectedEntity = m_ScenePanel->GetSelectedEntity();
+					if (selectedEntity != Entity() && selectedEntity.HasComponent<TransformComponent>())
+					{
+						Renderer2D::Start(*m_EditorCamera);
+
+						TransformComponent tc = selectedEntity.GetComponent<TransformComponent>();
+
+						// Outline
+						Renderer2D::DrawRectangle(tc.GetTransform(), m_ScenePanel->GetSelectedColor(), selectedEntity.GetEntityID());
+
+						Renderer2D::End();
+					}
 				}
 			}
 
@@ -134,11 +160,11 @@ namespace GE
 
 	void EditorLayer::OnEvent(Event& e)
 	{
-		m_EditorCamera->OnEvent(e);
-
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<KeyPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnKeyPressed));
 		dispatcher.Dispatch<MouseButtonPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnMousePressed));
+
+		m_EditorCamera->OnEvent(e);
 	}
 
 	void EditorLayer::OnImGuiRender()
@@ -193,9 +219,10 @@ namespace GE
 			{
 				if (ImGui::BeginMenu("Project"))
 				{
-					if (ImGui::MenuItem("Save Project", "Ctrl+Shift+S")) Application::SaveAppProject();
-					if (ImGui::MenuItem("Load Project", "Ctrl+Shift+O")) Application::LoadAppProjectFileDialog();
-					if(ImGui::MenuItem("Export", "Ctrl+Shift+E")) InitializeRuntimeAssetManager();
+					if(ImGui::MenuItem("Save Project", "Ctrl+Shift+S")) Application::SaveAppProject();
+					if(ImGui::MenuItem("Load Project", "Ctrl+Shift+O")) Application::LoadAppProjectFileDialog();
+					if(ImGui::MenuItem("Export", "Ctrl+Shift+E")) SerializeRuntimeAssetManager();
+					if(ImGui::MenuItem("Import", "Ctrl+Shift+I")) DeserializeRuntimeAssetManager();
 					ImGui::EndMenu();
 				}
 
@@ -244,6 +271,12 @@ namespace GE
 
 			ImGui::Separator();
 
+			{
+				Ref<Font> font = Project::GetAsset<Font>(m_FontHandle);
+				if(font)
+					ImGui::Image((ImTextureID)font->GetAtlasTexture()->GetID(), ImVec2(512, 512));
+			}
+
 			ImGui::End();
 		}
 
@@ -270,10 +303,10 @@ namespace GE
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			m_ViewportHovered = ImGui::IsWindowHovered();
 
-			Application::BlockAppEvents(!m_ViewportFocused && !m_ViewportHovered);
+			Application::BlockAppEvents(!m_ViewportHovered);
 			
 			ImVec2 viewportSize = ImGui::GetContentRegionAvail();			
-			m_Framebuffer->Resize((uint32_t)viewportSize.x, (uint32_t)viewportSize.y);
+			m_Viewport = { viewportSize.x, viewportSize.y };
 
 			uint32_t textureID = m_Framebuffer->GetColorAttachmentID();
 			ImGui::Image((ImTextureID)textureID, viewportSize, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
@@ -331,16 +364,27 @@ namespace GE
 		}
 		case Input::KEY_E:
 		{
-			if(control)
-				if(shift)
-					InitializeRuntimeAssetManager();
+			if (control)
+			{
+				if (shift)
+					SerializeRuntimeAssetManager();
+			}
+			break;
 		}
 		case Input::KEY_F:
 		{
-			if(control)
+			if (control)
 				Application::GetApp().GetWindow().SetFullscreen(true);
 			break;
-
+		}
+		case Input::KEY_I:
+		{
+			if (control)
+			{
+				if (shift)
+					DeserializeRuntimeAssetManager();
+			}
+			break;
 		}
 		case Input::KEY_O:
 		{
@@ -495,7 +539,7 @@ namespace GE
 		{
 			m_AssetPanel = CreateRef<AssetPanel>();
 			m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_RuntimeScene.get());
-			GE_TRACE("Editor Loaded Scene\n\tName: {0}", m_RuntimeScene->GetName());
+			GE_INFO("Editor Loaded Scene : {0}, {1}", m_RuntimeScene->GetName().c_str(), (uint64_t)m_RuntimeScene->GetHandle());
 		}
 	}
 
@@ -521,7 +565,7 @@ namespace GE
 					Ref<Texture2D> playStopButtonTexture = Project::GetAsset<Texture2D>(currentState == handledState ? m_StopButtonHandle : m_PlayButtonHandle);
 
 					ImGui::SameLine();
-					if (ImGui::ImageButton((ImTextureID)playStopButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
+					if (playStopButtonTexture && ImGui::ImageButton((ImTextureID)playStopButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
 					{
 						(currentState == handledState) ? StopScene() : StartScene(handledState);
 					}
@@ -534,10 +578,11 @@ namespace GE
 					Ref<Texture2D> simulateStopButtonTexture = Project::GetAsset<Texture2D>(currentState == handledState ? m_StopButtonHandle : m_SimulateButtonHandle);
 					
 					ImGui::SameLine();
-					if (ImGui::ImageButton((ImTextureID)simulateStopButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
+					if (simulateStopButtonTexture && ImGui::ImageButton((ImTextureID)simulateStopButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
 					{
 						(currentState == handledState) ? StopScene() : StartScene(handledState);
 					}
+
 				}
 			}
 			
@@ -554,7 +599,7 @@ namespace GE
 					Ref<Texture2D> simulatePauseButtonTexture = Project::GetAsset<Texture2D>(currentState == handledState ? m_PauseButtonHandle : m_SimulateButtonHandle);
 
 					ImGui::SameLine();
-					if (ImGui::ImageButton((ImTextureID)simulatePauseButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
+					if (simulatePauseButtonTexture && ImGui::ImageButton((ImTextureID)simulatePauseButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
 					{
 						(currentState == handledState) ? StartScene(Scene::State::Pause) : StartScene(handledState);
 					}
@@ -567,7 +612,7 @@ namespace GE
 					Ref<Texture2D> playPauseButtonTexture = Project::GetAsset<Texture2D>(currentState == handledState ? m_PauseButtonHandle : m_PlayButtonHandle);
 
 					ImGui::SameLine();
-					if (ImGui::ImageButton((ImTextureID)playPauseButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
+					if (playPauseButtonTexture && ImGui::ImageButton((ImTextureID)playPauseButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
 					{
 						(currentState == handledState) ? StartScene(Scene::State::Pause) : StartScene(handledState);
 					}
@@ -578,7 +623,7 @@ namespace GE
 				{
 					Ref<Texture2D> stepButtonTexture = Project::GetAsset<Texture2D>(m_StepButtonHandle);
 					ImGui::SameLine();
-					if (ImGui::ImageButton((ImTextureID)stepButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
+					if (stepButtonTexture && ImGui::ImageButton((ImTextureID)stepButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
 						m_RuntimeScene->OnStep(m_StepFrameMultiplier); // Adds step frames to queue. Handled in Scene::OnPauseUpdate.
 				}
 

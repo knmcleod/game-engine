@@ -25,7 +25,6 @@ namespace GE
 			{
 				const char HEADER[3] = { 'G', 'A', 'P' };
 				uint32_t Version = 1;
-				uint64_t BuildVersion = 0; // Data/Time format
 			};
 
 			/*
@@ -37,7 +36,6 @@ namespace GE
 
 			struct IndexTable
 			{
-				uint64_t Offset = 0;// Offset of IndexTable relative to SOF(start of file)
 				uint64_t Size = 0;	// Size of all Scenes, includes Scene.size()
 				std::map<uint64_t, SceneInfo> Scenes = std::map<uint64_t, SceneInfo>();  // UUID, SceneInfo
 			};
@@ -51,30 +49,10 @@ namespace GE
 			IndexTable Index;
 		};
 
-
 		AssetPack(const std::filesystem::path& filePath = "assetPack.gap");
 		~AssetPack();
 
 		void ClearAllFileData();
-
-		/*
-		* Returns Pack File Header Build Version
-		* Build Version Format = Data/Time
-		*/
-		const uint64_t& AssetPack::GetBuildVersion() const
-		{
-			return m_File.FileHeader.BuildVersion;
-		}
-
-		/*
-		* Returns sizeof entire File::Header
-		*/
-		uint64_t GetHeaderSize()
-		{
-			return sizeof(m_File.FileHeader.HEADER)
-				+ sizeof(m_File.FileHeader.Version)
-				+ sizeof(m_File.FileHeader.BuildVersion);
-		}
 
 		/*
 		* Returns true if given handle is found in all Handles across Scenes
@@ -87,7 +65,7 @@ namespace GE
 		* if not found, search all Scenes in AssetPack::File & set AssetInfo
 		* else, return empty AssetInfo
 		*/
-		const AssetInfo GetAssetInfo(UUID handle);
+		const AssetInfo& GetAssetInfo(UUID handle);
 
 		/*
 		* Adds asset by Info to Pack File for current Project Scene

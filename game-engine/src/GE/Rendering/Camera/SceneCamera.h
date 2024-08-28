@@ -6,6 +6,7 @@ namespace GE
 {
 	class SceneCamera : public Camera
 	{
+		friend struct CameraComponent;
 		friend class Scene;
 		friend class AssetSerializer;
 	public:
@@ -20,23 +21,26 @@ namespace GE
 		inline const float& GetFarClip() const override { return m_FarClip; }
 		inline const float& GetFOV() const override { return m_FOV; }
 
-		inline void SetViewMatrix(const glm::mat4& transform) override { m_ViewTransform = transform; UpdateView(); }
-		inline void SetViewport(uint32_t width, uint32_t height) override { m_ViewportWidth = width; m_ViewportHeight = height; UpdateProjection(); }
-		inline void SetNearClip(float value) override { m_NearClip = value; UpdateProjection(); }
-		inline void SetFarClip(float value) override { m_FarClip = value;  UpdateProjection(); }
-		inline void SetFOV(float size) override { m_FOV = size; UpdateProjection(); }
+		inline void SetNearClip(float value) override { m_NearClip = value; }
+		inline void SetFarClip(float value) override { m_FarClip = value; }
+		inline void SetFOV(float size) override { m_FOV = size; }
+
+		void SetInfo(float fov, float nearClip, float farClip) override;
 
 		void OnUpdate(Timestep ts) override;
 		void OnEvent(Event& e) override;
 	private:
+		inline void SetViewMatrix(const glm::mat4& transform) override { m_ViewTransform = transform; UpdateView(); }
+		inline void SetViewport(uint32_t width, uint32_t height) override { m_ViewportWidth = width; m_ViewportHeight = height; UpdateProjection(); }
+	
 		void UpdateProjection() override;
 		void UpdateView() override;
 
 	private:
 		glm::mat4 m_ViewProjection = glm::mat4();
 		glm::mat4 m_ViewTransform = glm::mat4();
-		uint32_t m_ViewportWidth = 1280, m_ViewportHeight = 720;
-		float m_AspectRatio = 1.0f;
+		uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
+		float m_AspectRatio = 0.0f;
 
 		float m_FOV = 45.0f, m_NearClip = -1.0f, m_FarClip = 1.0f;
 	};

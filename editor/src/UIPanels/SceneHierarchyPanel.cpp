@@ -353,13 +353,20 @@ namespace GE
 							const UUID handle = *(UUID*)payload->Data;
 
 							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
-							if (asset->GetType() == Asset::Type::Texture2D)
+							if (asset)
 							{
-								component.AssetHandle = asset->GetHandle();
+								if (asset->GetType() == Asset::Type::Texture2D)
+								{
+									component.AssetHandle = asset->GetHandle();
+								}
+								else
+								{
+									GE_WARN("Asset Type is not Texture2D.");
+								}
 							}
 							else
 							{
-								GE_WARN("Asset Type is not Texture2D.");
+								GE_ERROR("Cannot assign Asset. Asset not found in AssetManager.");
 							}
 						}
 						ImGui::EndDragDropTarget();
