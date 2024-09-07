@@ -11,12 +11,9 @@ AssetRegistry:
   - Handle: 10348391463159757545
     FilePath: textures/Pause_Button.png
     Type: Texture2D
-  - Handle: 11431965439572258343
-    FilePath: audio/vgmenuselect.wav
-    Type: AudioClip
-  - Handle: 15517549476448095152
-    FilePath: audio/b423b42.wav
-    Type: AudioClip
+  - Handle: 12083958930263244828
+    FilePath: audio/LittleRobotSoundFactory/8-Bit/Wav/Jump_00.wav
+    Type: Audio
   - Handle: 16203209201710611844
     FilePath: textures/Stop_Button.png
     Type: Texture2D

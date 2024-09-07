@@ -23,8 +23,8 @@ namespace GE
 			case Asset::Type::Font:
 				return "Font";
 				break;
-			case Asset::Type::AudioClip:
-				return "AudioClip";
+			case Asset::Type::Audio:
+				return "Audio";
 				break;
 			}
 			return "None";
@@ -45,9 +45,9 @@ namespace GE
 			{
 				return Asset::Type::Font;
 			}
-			if (typeString == "AudioClip")
+			if (typeString == "Audio")
 			{
-				return Asset::Type::AudioClip;
+				return Asset::Type::Audio;
 			}
 
 			return Asset::Type::None;

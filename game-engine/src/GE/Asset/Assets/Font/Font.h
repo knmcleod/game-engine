@@ -21,8 +21,6 @@ namespace GE
 
 			// Remove. Use AssetMetadata.FilePath.Name instead
 			std::string Name = std::string("NewFontAtlas");
-			uint32_t Width = 1;
-			uint32_t Height = 1;
 			float Scale = 1.0;
 
 			uint64_t Seed = 0;
@@ -44,6 +42,8 @@ namespace GE
 
 		Ref<MSDFData> GetMSDFData() const { GE_CORE_ASSERT(m_MSDFData, "Font Data does not exist."); return m_MSDFData; }
 		const AtlasConfig& GetAtlasConfig() const { return m_AtlasConfig; }
+		const uint32_t& GetWidth() { return m_AtlasConfig.Texture->GetWidth(); }
+		const uint32_t& GetHeight() { return m_AtlasConfig.Texture->GetHeight(); }
 		Ref<Texture2D> GetAtlasTexture() const { return m_AtlasConfig.Texture; }
 	private:
 		Ref<MSDFData> m_MSDFData = nullptr;

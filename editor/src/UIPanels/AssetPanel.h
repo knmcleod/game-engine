@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GE/Core/UUID/UUID.h"
+#include "GE/Asset/Assets/Asset.h"
 
 #include <filesystem>
 #include <map>
@@ -11,7 +11,7 @@ namespace GE
 	{
 	public:
 		AssetPanel();
-
+		~AssetPanel();
 		void OnImGuiRender();
 	private:
 		void RefreshAssets();
@@ -37,5 +37,13 @@ namespace GE
 		std::filesystem::path m_CurrentPath;
 
 		bool m_ViewFileSystem = true;
+
+		Ref<Asset> m_CurrentAsset = nullptr;
+
+		// Audio demoing
+		uint32_t m_AudioSourceID = 0;
+		bool m_LoopAudio = false;
+		float m_AudioPitch = 1.0f;
+		float m_AudioGain = 1.0f;
 	};
 }

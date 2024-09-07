@@ -50,16 +50,21 @@ namespace demo
             {
                 velocity.x = 1.0f * Speed;
             }
-
-            velocity *= timestep;
-            if (m_AudioSourceComponent != null && Input.IsKeyDown(KeyCode.KEY_SPACE))
-                m_AudioSourceComponent.Play();
+            
+            if(Input.IsKeyDown(KeyCode.KEY_SPACE))
+            {
+                if (m_AudioSourceComponent != null)
+                    m_AudioSourceComponent.Play();
+                velocity.y = 1.0f * Speed;
+            }
 
             if (m_TextRendererComponent != null)
             {
-                m_TextRendererComponent.Text = string.Format("V: {0}, {1}, {2}", velocity.x.ToString("0.0"), velocity.y.ToString("0.0"), velocity.z.ToString("0.0"));
+                // TODO : Add Points system. Points gained by touching platforms ingame
+                //m_TextRendererComponent.Text = string.Format("V: {0}, {1}, {2}", velocity.x.ToString("0.0"), velocity.y.ToString("0.0"), velocity.z.ToString("0.0"));
             }
-            
+
+            velocity *= timestep;
             m_Rigidbody2DComponent.ApplyLinearImpulseToCenter(velocity.XY, true);
 
             if(camera != null)

@@ -84,17 +84,19 @@ namespace GE
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		uint32_t bpp = (GLDataFormatFromDataFormat(m_Config.Format) == GL_RGBA ? 4 : 3);
-		GE_CORE_ASSERT(data.Size == m_Config.Width * m_Config.Height * bpp, "Texture size incorrect! Data must be the entire texture!");
+		GE_CORE_ASSERT(data.GetSize() == m_Config.Width * m_Config.Height * bpp, "Texture size incorrect! Data must be the entire texture!");
 
 		glTexImage2D(GL_TEXTURE_2D, 0,
 			GLInternalFormatFromImageFormat(m_Config.InternalFormat),
 			m_Config.Width, m_Config.Height, 0,
-			GLDataFormatFromDataFormat(m_Config.Format), GL_UNSIGNED_BYTE, data.Data);
+			GLDataFormatFromDataFormat(m_Config.Format), GL_UNSIGNED_BYTE, data.As<uint8_t>());
 		
 		if (m_Config.GenerateMips)
 			glGenerateMipmap(GL_TEXTURE_2D);
 
-		m_Config.TextureBuffer = Buffer::Copy(data);
+		if (m_Config.TextureBuffer)
+			m_Config.TextureBuffer.Release();
+		m_Config.TextureBuffer = Buffer(data.As<void>(), data.GetSize());
 	}
 
 	void OpenGLTexture2D::Bind(uint32_t slot) const

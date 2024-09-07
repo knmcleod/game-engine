@@ -3,8 +3,8 @@
 #include "Project.h"
 #include "Serializer/ProjectSerializer.h"
 
+#include "GE/Audio/AudioManager.h"
 #include "GE/Asset/RuntimeAssetManager.h"
-
 #include "GE/Scripting/Scripting.h"
 
 namespace GE
@@ -20,6 +20,7 @@ namespace GE
 	void Project::Shutdown()
 	{
 		Scripting::Shutdown();
+		AudioManager::Shutdown();
 	}
 
 	bool Project::Load(const std::filesystem::path& path)
@@ -31,6 +32,7 @@ namespace GE
 		{
 			s_ActiveProject = project;
 
+			AudioManager::Init();
 			Scripting::Init();
 			GE_CORE_INFO("Project Deserialization Complete");
 			return true;

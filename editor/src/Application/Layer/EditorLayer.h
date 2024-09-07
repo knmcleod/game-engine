@@ -64,6 +64,6 @@ namespace GE
 		UUID m_FontHandle = 0;
 
 		Entity m_HoveredEntity;
-		glm::vec4 m_HoveredColor = glm::vec4(1.0f);;
+		glm::vec4 m_HoveredColor = glm::vec4(1.0f);
 	};
 }

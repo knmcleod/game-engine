@@ -187,25 +187,18 @@ namespace GE
 	// Non-owning Raw Buffer
 	struct Buffer
 	{
-		size_t Size = 0;
-		uint8_t* Data = nullptr;
-
-		operator bool() const { return (bool)Data; }
+	private:
+		size_t m_Size = 0;
+		uint8_t* m_Data = nullptr;
+	
+	public:
+		operator bool() const { return (bool)m_Data; }
 		
 		template<typename T>
-		T* As() { return (T*)Data; }
-
-		static Buffer Copy(Buffer other)
-		{
-			Buffer result(other.Size);
-			memcpy(result.Data, other.Data, other.Size * sizeof(uint8_t));
-			return result;
-		}
+		T* As() const { return (T*)m_Data; }
 
 		Buffer() = default;
 		
-		Buffer(const Buffer&) = default;
-
 		Buffer(size_t size)
 		{
 			Allocate(size);
@@ -214,27 +207,30 @@ namespace GE
 		Buffer(const void* data, size_t size)
 			: Buffer(size)
 		{
-			if(data != nullptr && Size >= size)
-				memcpy(Data, data, Size * sizeof(uint8_t));
+			if(data != nullptr && m_Size >= size)
+				memcpy(m_Data, data, m_Size);
 		}
 
 		void Allocate(size_t size)
 		{
 			Release();
 
-			Data = (uint8_t*)malloc(size * sizeof(uint8_t));
-			Size = size;
+			m_Data = (uint8_t*)malloc(size * sizeof(uint8_t));
+			memset(m_Data, 0, size);
+			m_Size = size;
 		}
 
 		void Release()
 		{
-			if (Data)
+			if (m_Data)
 			{
-				free((void*)Data);
-				Data = nullptr;
-				Size = 0;
+				free((void*)m_Data);
+				m_Data = nullptr;
+				m_Size = 0;
 			}
 		}
+
+		const std::size_t& GetSize() const { return m_Size; }
 
 	};
 }

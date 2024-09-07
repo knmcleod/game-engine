@@ -52,14 +52,14 @@ namespace GE
 
 		virtual bool operator==(const Texture& other) const = 0;
 
-		virtual Config GetConfig() const = 0;
-		virtual uint32_t GetWidth() const = 0;
-		virtual uint32_t GetHeight() const = 0;
-		virtual uint32_t GetID() const = 0;
+		virtual const Config& GetConfig() const = 0;
+		virtual const uint32_t& GetWidth() const = 0;
+		virtual const uint32_t& GetHeight() const = 0;
+		virtual const uint32_t& GetID() const = 0;
 
 		virtual void Bind(uint32_t slot = 0) const = 0;
 		virtual void Unbind() const = 0;
-	private:
+	protected:
 		virtual void SetData(Buffer data) = 0;
 	};
 

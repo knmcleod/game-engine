@@ -1,71 +1,66 @@
 #pragma once
 
-#include "GE/Asset/Assets/Asset.h"
-
-#include <al.h>
-#include <alc.h>
-#include <glm/glm.hpp>
+#include "../Asset.h"
 
 namespace GE
 {
-	struct AudioBuffer
-	{
-		// Bits per Sample
-		uint8_t BPS = 0;
-		uint8_t Channels = 2;
-
-		int32_t SampleRate = 16;
-		int32_t Format = 0;
-
-		const static uint8_t NUM_BUFFERS = 4;
-		uint32_t Buffers[NUM_BUFFERS];
-		uint64_t Cursor = 0;
-
-		Buffer DataBuffer = 0;
-	};
-
-	class AudioClip : public Asset
+	class Audio : public Asset
 	{
 		friend class AssetSerializer;
 	public:
 		struct Config
 		{
 			// Remove. Use AssetMetadata.FilePath.Name instead
-			std::string Name = std::string("NewAudioClip");
-			uint32_t SourceID = 0;
-			bool Loop = false;
-			float Pitch = 1.0f;
-			float Gain = 1.0f;
+			std::string Name = std::string("NewAudio");
+			std::vector<uint32_t> BufferIDs;
+
+			uint32_t Channels = 2;
+			uint32_t SampleRate = 16;
+			uint32_t BPS = 0; // Bits per Sample
+			uint32_t Format = 0;
+
+			Buffer DataBuffer = 0;
+
+			Config() = default;
+			Config(const Config& config);
+			Config(const std::string& name, uint32_t channels, uint32_t sampleRate, uint32_t bps, const Buffer& buffer = Buffer());
+			~Config() = default;
+
+			void SetData(const Buffer buffer)
+			{
+				ReleaseData();
+				DataBuffer = Buffer(buffer.As<void>(), buffer.GetSize());
+			}
+
+			void ReleaseData()
+			{
+				if(DataBuffer)
+					DataBuffer.Release();
+			}
+
+			void CalculateFormat();
 		};
 
-		AudioClip();
-		AudioClip(UUID handle);
-		~AudioClip() override;
+		static Ref<Audio> Create(UUID handle = UUID(), const Config& config = Config(), const uint32_t& bufferCount = 1);
 
-		Ref<Asset> GetCopy() override;
+		Audio(UUID handle, Asset::Type type) : Asset(handle, type) {}
+		virtual ~Audio() override {}
 
-		void SetSourceValues();
+		virtual const uint32_t& GetID() const = 0;
+		virtual const Config& GetConfig() const = 0;
+		virtual const uint32_t GetBufferCount() const = 0;
+		virtual const float GetDurationInSeconds() = 0;
 
-		const uint32_t& GetSource() const { return m_Config.SourceID; }
-
-		Ref<AudioBuffer> GetBuffer() { return m_AudioBuffer; }
-
-		void Play(Config& audioConfig = Config(), const glm::vec3& position = glm::vec3(0), const glm::vec3& velocity = glm::vec3(0));
-	private:
-		Config m_Config;
-		glm::vec3 m_Position = glm::vec3(0);
-		glm::vec3 m_Velocity = glm::vec3(0);
-
-		Ref<AudioBuffer> m_AudioBuffer;
-	};
-
-	class AudioListener
-	{
-	public:
-		AudioListener();
-		~AudioListener();
-	private:
-		ALCdevice* m_Device = nullptr;
-		ALCcontext* m_Context = nullptr;
+		virtual const std::vector<uint32_t>& GenerateBuffers(const uint32_t& count = 1) = 0;
+		virtual void ClearBuffers() = 0;
+	protected:
+		/*
+		* Use after Config is set.
+		*/
+		virtual void SetBufferData() = 0;
+		/*
+		* ID should already be generated
+		*/
+		virtual void AddID(const uint32_t& id) = 0;
 	};
 }

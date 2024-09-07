@@ -1,11 +1,10 @@
 #pragma once
 
+#include "GE/Audio/AudioDevice.h"
+
 #include "GE/Core/UUID/UUID.h"
 
 #include "GE/Rendering/Camera/SceneCamera.h"
-
-#define GLM_ENABLE_EXPERIMENTAL
-	#include <glm/gtx/quaternion.hpp>
 
 namespace GE
 {	
@@ -19,7 +18,7 @@ namespace GE
 
 	struct TagComponent
 	{
-		std::string Tag = "";
+		std::string Tag = std::string("New Entity");
 
 		TagComponent() = default;
 		TagComponent(const TagComponent&) = default;
@@ -41,16 +40,7 @@ namespace GE
 		* param translationOffset : added with Translation using glm::translate()
 		* param scaleOffset : multiplied with Scale using glm::scale()
 		*/
-		const glm::mat4 GetTransform(glm::vec3& translationOffset = glm::vec3(0.0f), glm::vec3& scaleOffset = glm::vec3(1.0f)) const
-		{
-			glm::mat4 identityMat4 = glm::mat4(1.0f);
-			glm::mat4 rotation = glm::rotate(identityMat4, Rotation.x, {1, 0, 0})
-				* glm::rotate(identityMat4, Rotation.y, { 0, 1, 0 })
-				* glm::rotate(identityMat4, Rotation.z, { 0, 0, 1 });
-
-			return glm::translate(identityMat4, Translation + translationOffset)
-				* rotation * glm::scale(identityMat4, Scale * scaleOffset);
-		}
+		const glm::mat4 GetTransform(glm::vec3& translationOffset = glm::vec3(0.0f), glm::vec3& scaleOffset = glm::vec3(1.0f)) const;
 	};
 
 	struct CameraComponent
@@ -66,21 +56,29 @@ namespace GE
 
 	struct AudioSourceComponent
 	{
+		// Audio Buffer Asset
 		UUID AssetHandle = 0;
 
+		uint32_t ID = 0;
 		bool Loop = false;
 		float Pitch = 1.0f;
-		float Gain = 1.0f;
+		float Gain = 1.0f; // Volume
 
 		AudioSourceComponent() = default;
 		AudioSourceComponent(const AudioSourceComponent&) = default;
+		inline AudioSourceComponent(const uint32_t& sourceID, const UUID& handle) { ID = sourceID; AssetHandle = handle; }
+
+		void Play(const glm::vec3& position = glm::vec3(), const glm::vec3& velocity = glm::vec3()) const;
+		void Pause() const;
+		void Stop() const;
+
+		bool IsPlaying() const;
 	};
 
 	struct AudioListenerComponent
 	{
-		bool Test = false;
-
-		AudioListenerComponent() = default;
+		Ref<AudioDevice> Device = nullptr;
+		AudioListenerComponent();
 		AudioListenerComponent(const AudioListenerComponent&) = default;
 	};
 

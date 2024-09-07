@@ -110,7 +110,7 @@ namespace GE
 	protected:
 		virtual void OnCreate() = 0;
 		virtual void OnDestroy() = 0;
-		virtual void OnUpdate(Timestep timestep) = 0;
+		virtual void OnUpdate(Timestep ts) = 0;
 	};
 
 	class Scene : public Asset
@@ -246,18 +246,18 @@ namespace GE
 		void OnResizeViewport(uint32_t width, uint32_t height);
 
 		void OnRuntimeStart();
-		void OnRuntimeUpdate(Timestep timestep);
+		void OnRuntimeUpdate(Timestep ts);
 
 		void OnSimulationStart();
-		void OnSimulationUpdate(Timestep timestep, Camera* camera = nullptr);
+		void OnSimulationUpdate(Timestep ts, Camera* camera = nullptr);
 
 		void OnPauseStart();
-		void OnPauseUpdate(Timestep timestep, Camera* camera = nullptr);
+		void OnPauseUpdate(Timestep ts, Camera* camera = nullptr);
 
 		/*
 		* Updates camera and calls Render
 		*/
-		void OnEditorUpdate(Timestep timestep, Camera* camera = nullptr);
+		void OnEditorUpdate(Timestep ts, Camera* camera = nullptr);
 
 		/*
 		* Renders using first found Primary Camera via Component
@@ -269,12 +269,16 @@ namespace GE
 		void Render(Camera* camera);
 
 		void InitializePhysics2D();
-		void UpdatePhysics2D(Timestep timestep);
+		void UpdatePhysics2D(Timestep ts);
 		void DestroyPhysics2D();
 
 		void InitializeScripting();
-		void UpdateScripting(Timestep timestep);
+		void UpdateScripting(Timestep ts);
 		void DestroyScripting();
+
+		void InitializeAudio();
+		void UpdateAudio(Timestep ts);
+		void DestroyAudio();
 	private:
 		Config m_Config;
 		entt::registry m_Registry;

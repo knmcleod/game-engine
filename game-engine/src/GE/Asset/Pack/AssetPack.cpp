@@ -29,7 +29,7 @@ namespace GE
         if (!HandleExists(handle))
         {
             GE_CORE_WARN("Could not get AssetInfo. Handle does not exist.");
-            return AssetInfo();
+            return 0;
         }
 
         bool found = false;
@@ -65,7 +65,7 @@ namespace GE
         }
 
         GE_CORE_WARN("Could not get AssetInfo. Returning empty AssetInfo.");
-        return AssetInfo();
+        return 0;
     }
 
     bool AssetPack::HandleExists(UUID handle)

@@ -3,6 +3,7 @@
 #include "Scene.h"
 #include "Components/Components.h"
 
+#include "GE/Audio/AudioManager.h"
 #include "GE/Physics/Physics.h"
 #include "GE/Project/Project.h"
 
@@ -141,7 +142,6 @@ namespace GE
 
 	Scene::Scene() : Asset(UUID(), Asset::Type::Scene)
 	{
-
 	}
 
 	Scene::Scene(UUID handle, const Config& config /*= Config()*/) : Asset(handle, Scene::Type::Scene)
@@ -382,8 +382,9 @@ namespace GE
 	{
 		m_Config.CurrentState = State::Stop;
 		
-		DestroyPhysics2D();
 		DestroyScripting();
+		DestroyAudio();
+		DestroyPhysics2D();
 	}
 
 	void Scene::OnRuntimeStart()
@@ -391,19 +392,23 @@ namespace GE
 		m_Config.CurrentState = State::Run;
 
 		InitializePhysics2D();
+		InitializeAudio();
 		InitializeScripting();
 	}
 	
-	void Scene::OnRuntimeUpdate(Timestep timestep)
+	void Scene::OnRuntimeUpdate(Timestep ts)
 	{
 		// Update Physics
-		UpdatePhysics2D(timestep);
+		UpdatePhysics2D(ts);
 
 		// Update Scripts
-		UpdateScripting(timestep);
+		UpdateScripting(ts);
+
+		UpdateAudio(ts);
 
 		// Update Camera & 2D Renderer
 		Render();
+
 	}
 
 	void Scene::OnSimulationStart()
@@ -411,17 +416,18 @@ namespace GE
 		m_Config.CurrentState = State::Simulate;
 		
 		InitializePhysics2D();
+		InitializeAudio();
 		InitializeScripting();
 	}
 
-	void Scene::OnSimulationUpdate(Timestep timestep, Camera* camera)
+	void Scene::OnSimulationUpdate(Timestep ts, Camera* camera)
 	{
-		UpdatePhysics2D(timestep);
-		UpdateScripting(timestep);
-
+		UpdatePhysics2D(ts);
+		UpdateScripting(ts);
+		UpdateAudio(ts);
 		if (camera)
 		{
-			camera->OnUpdate(timestep);
+			camera->OnUpdate(ts);
 			Render(camera);
 		}
 		else
@@ -436,18 +442,19 @@ namespace GE
 
 	}
 
-	void Scene::OnPauseUpdate(Timestep timestep, Camera* camera)
+	void Scene::OnPauseUpdate(Timestep ts, Camera* camera)
 	{	
 		if (m_Config.StepFrames > 0)
 		{
-			UpdatePhysics2D(timestep);
-			UpdateScripting(timestep);
+			UpdatePhysics2D(ts);
+			UpdateScripting(ts);
+			UpdateAudio(ts);
 			m_Config.StepFrames--;
 		}
 
 		if (camera)
 		{
-			camera->OnUpdate(timestep);
+			camera->OnUpdate(ts);
 			Render(camera);
 		}
 		else
@@ -461,11 +468,11 @@ namespace GE
 		m_Config.StepFrames += steps;
 	}
 
-	void Scene::OnEditorUpdate(Timestep timestep, Camera* camera)
+	void Scene::OnEditorUpdate(Timestep ts, Camera* camera)
 	{
 		if (camera)
 		{
-			camera->OnUpdate(timestep);
+			camera->OnUpdate(ts);
 			Render(camera);
 		}
 		else
@@ -637,14 +644,14 @@ namespace GE
 		}
 	}
 	
-	void Scene::UpdatePhysics2D(Timestep timestep)
+	void Scene::UpdatePhysics2D(Timestep ts)
 	{
 		GE_PROFILE_SCOPE("Scene - UpdatePhysics2D");
 		if (m_PhysicsWorld)
 		{
 			const int32_t velocityInteration = 5;
 			const int32_t positionInteration = 5;
-			m_PhysicsWorld->Step(timestep, velocityInteration, positionInteration);
+			m_PhysicsWorld->Step(ts, velocityInteration, positionInteration);
 
 			auto view = m_Registry.view<Rigidbody2DComponent>();
 			for (auto e : view)
@@ -695,18 +702,18 @@ namespace GE
 			});
 	}
 
-	void Scene::UpdateScripting(Timestep timestep)
+	void Scene::UpdateScripting(Timestep ts)
 	{
 		GE_PROFILE_SCOPE("UpdateScripting");
 		m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc)
 			{
-				nsc.Instance->OnUpdate(timestep);
+				nsc.Instance->OnUpdate(ts);
 			});
 
 		m_Registry.view<ScriptComponent>().each([=](auto entity, auto& sc)
 			{
 				Entity e = { entity, this };
-				Scripting::OnUpdateScript(e, timestep);
+				Scripting::OnUpdateScript(e, ts);
 			});
 	}
 
@@ -714,6 +721,60 @@ namespace GE
 	{
 		GE_PROFILE_SCOPE("DestroyScripting");
 		Scripting::OnStop();
+	}
+#pragma endregion
+
+#pragma region Audio
+	void Scene::InitializeAudio() 
+	{
+		auto view = m_Registry.view<AudioSourceComponent>();
+		for (auto e : view)
+		{
+			Entity entity = { e, this };
+			auto& asc = GetComponent<AudioSourceComponent>(entity);
+			auto& trsc = GetComponent<TransformComponent>(entity);
+			
+			glm::vec3 velocity = glm::vec3(0.0);
+			
+			AudioManager::GenerateSource(asc, trsc.Translation, velocity);
+		}
+	}
+
+	void Scene::UpdateAudio(Timestep ts)
+	{
+		auto view = m_Registry.view<AudioSourceComponent>();
+		for (auto e : view)
+		{
+			Entity entity = { e, this };
+			auto& asc = GetComponent<AudioSourceComponent>(entity);
+			auto& trsc = GetComponent<TransformComponent>(entity);
+
+			glm::vec3 velocity = glm::vec3(0.0);
+			if (HasComponent<Rigidbody2DComponent>(entity))
+			{
+				auto& rb2D = GetComponent<Rigidbody2DComponent>(entity);
+				if (rb2D.RuntimeBody)
+				{
+					b2Body* body = (b2Body*)rb2D.RuntimeBody;
+					const auto& v = body->GetLinearVelocity();
+					velocity = glm::vec3(v.x, v.y, 0.0);
+				}
+			}
+
+			AudioManager::Update(asc, trsc.Translation, velocity);
+		}
+	}
+
+	void Scene::DestroyAudio()
+	{
+		auto view = m_Registry.view<AudioSourceComponent>();
+		for (auto e : view)
+		{
+			Entity entity = { e, this };
+			auto& asc = GetComponent<AudioSourceComponent>(entity);
+			
+			AudioManager::RemoveSource(asc.ID);
+		}
 	}
 #pragma endregion
 

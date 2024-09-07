@@ -95,11 +95,11 @@ namespace GE
 
 	bool EditorAssetManager::RemoveAsset(UUID handle)
 	{
-		if (AssetLoaded(handle))
-			m_LoadedAssets.erase(handle);
-
 		if (!HandleExists(handle))
 			return false;
+
+		if (AssetLoaded(handle))
+			m_LoadedAssets.erase(handle);
 
 		return m_AssetRegistry->RemoveAsset(handle);
 	}

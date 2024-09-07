@@ -16,7 +16,7 @@ namespace GE
 			Scene,
 			Texture2D,
 			Font,
-			AudioClip
+			Audio
 			// Script
 			// Prefab
 		};

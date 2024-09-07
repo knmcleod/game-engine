@@ -2,7 +2,7 @@
 
 #include "Scripting.h"
 
-#include "GE/Asset/Assets/Audio/Audio.h"
+#include "GE/Audio/AudioManager.h"
 
 #include "GE/Core/Application/Application.h"
 #include "GE/Core/FileSystem/FileSystem.h"
@@ -222,17 +222,38 @@ namespace GE
 		}
 	}
 
-	static void AudioSourceComponent_Play(UUID uuid)
+	static void AudioSourceComponent_Play(UUID uuid, glm::vec3* translation = nullptr, glm::vec3* velocity = nullptr)
 	{
 		Scene* scene = Scripting::GetScene();
 
 		Entity entity = scene->GetEntityByUUID(uuid);
 		if (entity.HasComponent<AudioSourceComponent>())
 		{
+			glm::vec3 position = glm::vec3(0.0);
+			if (translation)
+				position = *translation;
+			else if (entity.HasComponent<TransformComponent>())
+			{
+				auto& trsc = entity.GetComponent<TransformComponent>();
+				position = trsc.Translation;
+			}
+
+			glm::vec3 v = glm::vec3(0.0);
+			if (velocity)
+				v = *velocity;
+			else if (entity.HasComponent<Rigidbody2DComponent>())
+			{
+				auto& rb2D = entity.GetComponent<Rigidbody2DComponent>();
+				if (rb2D.RuntimeBody)
+				{
+					b2Body* body = (b2Body*)rb2D.RuntimeBody;
+					const auto& lv = body->GetLinearVelocity();
+					v = glm::vec3(lv.x, lv.y, 0.0);
+				}
+			}
+
 			auto& asc = entity.GetComponent<AudioSourceComponent>();
-			Ref<AudioClip> audioClip = Project::GetAsset<AudioClip>(asc.AssetHandle);
-			if (audioClip)
-				audioClip->Play();
+			asc.Play(position, v);
 		}
 	}
 
@@ -723,14 +744,14 @@ namespace GE
 			return nullptr;
 		}
 
-		Buffer monoBuffer = Buffer(size);
-		stream.read(monoBuffer.As<char>(), monoBuffer.Size);
+		char* data = new char[size];
+		stream.read(data, size);
 		stream.close();
 
 		MonoImageOpenStatus monoStatus;
-		MonoImage* image = mono_image_open_from_data_full(monoBuffer.As<char>(),
-			(uint32_t)monoBuffer.Size, 1, &monoStatus, 0);
-		monoBuffer.Release();
+		MonoImage* image = mono_image_open_from_data_full(data,
+			(uint32_t)size, 1, &monoStatus, 0);
+		delete[] data;
 
 		if (monoStatus != MONO_IMAGE_OK)
 		{

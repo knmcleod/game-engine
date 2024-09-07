@@ -15,6 +15,11 @@
 #include "GE/Asset/RuntimeAssetManager.h"
 #pragma endregion
 
+#pragma region Audio
+#include "GE/Audio/AudioManager.h"
+#pragma endregion
+
+
 #pragma region Core
 //	-- Core	--
 #include "GE/Core/Core.h"

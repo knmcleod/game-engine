@@ -115,7 +115,7 @@ Entities:
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     AudioSourceComponent:
-      AssetHandle: 11431965439572258343
+      AssetHandle: 12083958930263244828
       Gain: 1
       Pitch: 1
       Loop: false

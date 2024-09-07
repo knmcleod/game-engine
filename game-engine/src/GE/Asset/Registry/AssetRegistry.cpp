@@ -46,9 +46,8 @@ namespace GE
 	bool AssetRegistry::RemoveAsset(UUID handle)
 	{
 		if (!AssetExists(handle))
-		{
 			return false;
-		}
+
 		m_AssetRegistry.erase(handle);
 		return true;
 	}

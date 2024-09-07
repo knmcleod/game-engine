@@ -2,7 +2,7 @@
 
 #include "AssetSerializer.h"
 
-#include "GE/Asset/Assets/Audio/Audio.h"
+#include "GE/Audio/AudioManager.h"
 #include "GE/Asset/Assets/Scene/Scene.h"
 
 #include "GE/Asset/RuntimeAssetManager.h"
@@ -11,6 +11,7 @@
 
 #include "GE/Scripting/Scripting.h"
 
+#include <al.h>
 #include <stb_image.h>
 #include <yaml-cpp/yaml.h>
 
@@ -135,7 +136,7 @@ namespace GE
 		{ Asset::Type::Scene,		AssetSerializer::DeserializeScene		},
 		{ Asset::Type::Texture2D,	AssetSerializer::DeserializeTexture2D	},
 		{ Asset::Type::Font,		AssetSerializer::DeserializeFont		},
-		{ Asset::Type::AudioClip,	AssetSerializer::DeserializeAudio		},
+		{ Asset::Type::Audio,		AssetSerializer::DeserializeAudio		},
 	};
 
 	std::map<Asset::Type, AssetPackDeserializeFunction> AssetSerializer::s_AssetPackDeserializeFuncs =
@@ -143,7 +144,7 @@ namespace GE
 		{ Asset::Type::Scene,		AssetSerializer::DeserializeSceneFromPack		},
 		{ Asset::Type::Texture2D,	AssetSerializer::DeserializeTexture2DFromPack	},
 		{ Asset::Type::Font,		AssetSerializer::DeserializeFontFromPack		},
-		{ Asset::Type::AudioClip,	AssetSerializer::DeserializeAudioFromPack		},
+		{ Asset::Type::Audio,		AssetSerializer::DeserializeAudioFromPack		},
 	};
 
 	std::map<Asset::Type, AssetSerializeFunction> AssetSerializer::s_AssetSerializeFuncs =
@@ -153,10 +154,10 @@ namespace GE
 
 	std::map<Asset::Type, AssetPackSerializeFunction> AssetSerializer::s_AssetPackSerializeFuncs =
 	{
-		{ Asset::Type::Scene, AssetSerializer::SerializeSceneForPack },
-		{ Asset::Type::Texture2D, AssetSerializer::SerializeTexture2DForPack },
-		{ Asset::Type::Font, AssetSerializer::SerializeFontForPack },
-		{ Asset::Type::AudioClip, AssetSerializer::SerializeAudioForPack }
+		{ Asset::Type::Scene,		AssetSerializer::SerializeSceneForPack		},
+		{ Asset::Type::Texture2D,	AssetSerializer::SerializeTexture2DForPack	},
+		{ Asset::Type::Font,		AssetSerializer::SerializeFontForPack		},
+		{ Asset::Type::Audio,		AssetSerializer::SerializeAudioForPack		}
 	};
 
 #pragma region Entity
@@ -669,11 +670,12 @@ namespace GE
 	{
 		GE_PROFILE_SCOPE("stbi_load - LoadTextureDataFromFile()");
 		stbi_set_flip_vertically_on_load(1);
-		Buffer data;
-		data.Data = stbi_load(filePath.c_str(), &width, &height, &channels, 0);
+		// Size assumed 1 byte per channel
+		uint8_t* data = stbi_load(filePath.c_str(), &width, &height, &channels, 0);
 		GE_CORE_ASSERT(data, "Failed to load stb_image!");
-		data.Size = width * height * channels;  // Assumed 1 byte per channel
-		return data;
+		Buffer dataBuffer = Buffer(data, width * height * channels);
+		delete[] data;
+		return dataBuffer;
 	}
 
 #pragma endregion
@@ -732,8 +734,6 @@ namespace GE
 		int width, height;
 		atlasPacker.getDimensions(width, height);
 		scale = (float)atlasPacker.getScale();
-		atlasConfig.Width = width;
-		atlasConfig.Height = height;
 		atlasConfig.Scale = scale;
 
 #define DEFAULT_ANGLE_THRESHOLD 3.0
@@ -763,7 +763,7 @@ namespace GE
 		attributes.config.overlapSupport = true;
 		attributes.scanlinePass = true;
 	
-		msdf_atlas::ImmediateAtlasGenerator<S, N, func, msdf_atlas::BitmapAtlasStorage<T, N>> atlasGenerator(atlasConfig.Width, atlasConfig.Height);
+		msdf_atlas::ImmediateAtlasGenerator<S, N, func, msdf_atlas::BitmapAtlasStorage<T, N>> atlasGenerator(width, height);
 		{
 			atlasGenerator.setAttributes(attributes);
 			atlasGenerator.setThreadCount(8);
@@ -787,7 +787,7 @@ namespace GE
 	}
 	
 	template<typename T, typename S, int N, msdf_atlas::GeneratorFunction<S, N> func>
-	static Ref<Texture2D> LoadFontAtlas(Buffer data, Font::AtlasConfig& atlasConfig, Ref<Font::MSDFData> msdfData)
+	static Ref<Texture2D> LoadFontAtlas(Buffer data, const uint32_t& width, const uint32_t& height, Font::AtlasConfig& atlasConfig, Ref<Font::MSDFData> msdfData)
 	{
 		msdfgen::FreetypeHandle* ft = msdfgen::initializeFreetype();
 		if (!ft)
@@ -796,7 +796,7 @@ namespace GE
 			return 0;
 		}
 
-		msdfgen::FontHandle* font = msdfgen::loadFontData(ft, data.Data, data.Size);
+		msdfgen::FontHandle* font = msdfgen::loadFontData(ft, data.As<uint8_t>(), data.GetSize());
 		if (!font)
 		{
 			GE_CORE_ERROR("Failed to load Font Atlas.");
@@ -850,13 +850,13 @@ namespace GE
 		}
 
 		Texture::Config config;
-		config.Height = atlasConfig.Height;
-		config.Width = atlasConfig.Width;
+		config.Height = height;
+		config.Width = width;
 		config.InternalFormat = Texture::ImageFormat::RGB8;
 		config.Format = Texture::DataFormat::RGB;
 		config.GenerateMips = false;
 
-		Buffer dataBuffer((void*)data.Data,
+		Buffer dataBuffer(data.As<void>(),
 			config.Height* config.Width * (config.InternalFormat == Texture::ImageFormat::RGB8 ? 3 : 4));
 		Ref<Texture2D> texture = Texture2D::Create(config, dataBuffer);
 		dataBuffer.Release();
@@ -873,176 +873,6 @@ namespace GE
 		std::int32_t a = 0;
 		std::memcpy(&a, audioClip, len);
 		return a;
-	}
-
-	static  bool LoadWavFile(std::ifstream& file, std::uint8_t& channels, std::int32_t& sampleRate, std::uint8_t& bitsPerSample, uint64_t& size)
-	{
-		char audioClip[4];
-		if (!file.is_open())
-			return false;
-
-		// the RIFF
-		if (!file.read(audioClip, 4))
-		{
-			GE_CORE_ERROR("Could not read RIFF while loading Wav file.");
-			return false;
-		}
-		if (std::strncmp(audioClip, "RIFF", 4) != 0)
-		{
-			GE_CORE_ERROR("File is not a valid WAVE file (header doesn't begin with RIFF)");
-			return false;
-		}
-
-		// the size of the file
-		if (!file.read(audioClip, 4))
-		{
-			GE_CORE_ERROR("Could not read size of Wav file.");
-			return false;
-		}
-
-		// the WAVE
-		if (!file.read(audioClip, 4))
-		{
-			GE_CORE_ERROR("Could not read WAVE");
-			return false;
-		}
-		if (std::strncmp(audioClip, "WAVE", 4) != 0)
-		{
-			GE_CORE_ERROR("File is not a valid WAVE file (header doesn't contain WAVE)");
-			return false;
-		}
-
-		// "fmt/0"
-		if (!file.read(audioClip, 4))
-		{
-			GE_CORE_ERROR("Could not read fmt of Wav file.");
-			return false;
-		}
-
-		// this is always 16, the size of the fmt data chunk
-		if (!file.read(audioClip, 4))
-		{
-			GE_CORE_ERROR("Could not read the size of the fmt data chunk. Should be 16.");
-			return false;
-		}
-
-		// PCM should be 1?
-		if (!file.read(audioClip, 2))
-		{
-			GE_CORE_ERROR("Could not read PCM. Should be 1.");
-			return false;
-		}
-
-		// the number of Channels
-		if (!file.read(audioClip, 2))
-		{
-			GE_CORE_ERROR("Could not read number of Channels.");
-			return false;
-		}
-		channels = convert_to_int(audioClip, 2);
-
-		// sample rate
-		if (!file.read(audioClip, 4))
-		{
-			GE_CORE_ERROR("Could not read sample rate.");
-			return false;
-		}
-		sampleRate = convert_to_int(audioClip, 4);
-
-		// (SampleRate * BPS * Channels) / 8
-		if (!file.read(audioClip, 4))
-		{
-			GE_CORE_ERROR("Could not read (SampleRate * BPS * Channels) / 8");
-			return false;
-		}
-
-		// ?? dafaq
-		if (!file.read(audioClip, 2))
-		{
-			GE_CORE_ERROR("Could not read dafaq?");
-			return false;
-		}
-
-		// BPS
-		if (!file.read(audioClip, 2))
-		{
-			GE_CORE_ERROR("Could not read bits per sample.");
-			return false;
-		}
-		bitsPerSample = convert_to_int(audioClip, 2);
-
-		// data chunk header "data"
-		if (!file.read(audioClip, 4))
-		{
-			GE_CORE_ERROR("Could not read data chunk header.");
-			return false;
-		}
-		if (std::strncmp(audioClip, "data", 4) != 0)
-		{
-			GE_CORE_ERROR("File is not a valid WAVE file (doesn't have 'data' tag).");
-			return false;
-		}
-
-		// size of data
-		if (!file.read(audioClip, 4))
-		{
-			GE_CORE_ERROR("Could not read data size.");
-			return false;
-		}
-		size = convert_to_int(audioClip, 4);
-
-		/* cannot be at the end of file */
-		if (file.eof())
-		{
-			GE_CORE_ERROR("Reached EOF.");
-			return false;
-		}
-		if (file.fail())
-		{
-			GE_CORE_ERROR("Fail state set on the file.");
-			return false;
-		}
-
-		return true;
-	}
-
-	static bool LoadWav(const std::filesystem::path& filePath, Ref<AudioBuffer> audioBuffer)
-	{
-		std::ifstream stream(filePath, std::ios::binary);
-		if (!stream.is_open())
-		{
-			GE_CORE_ERROR("Could not open WAV file {0}", filePath.string().c_str());
-			return false;
-		}
-		if (!LoadWavFile(stream, audioBuffer->Channels, audioBuffer->SampleRate, audioBuffer->BPS, audioBuffer->DataBuffer.Size))
-		{
-			GE_CORE_ERROR("Could not load WAV file {0}", filePath.string().c_str());
-			return false;
-		}
-
-		if (audioBuffer->Channels == 1 && audioBuffer->BPS == 8)
-			audioBuffer->Format = AL_FORMAT_MONO8;
-		else if (audioBuffer->Channels == 1 && audioBuffer->BPS == 16)
-			audioBuffer->Format = AL_FORMAT_MONO16;
-		else if (audioBuffer->Channels == 2 && audioBuffer->BPS == 8)
-			audioBuffer->Format = AL_FORMAT_STEREO8;
-		else if (audioBuffer->Channels == 2 && audioBuffer->BPS == 16)
-			audioBuffer->Format = AL_FORMAT_STEREO16;
-		else
-		{
-			GE_CORE_ERROR("Unrecognized wave format.\nChannels {0}\nBPS {1}\n", audioBuffer->Channels, audioBuffer->BPS);
-			return 0;
-		}
-
-		for (uint32_t i = 0; i < audioBuffer->NUM_BUFFERS; i++)
-		{
-			uint8_t* soundData = new uint8_t[audioBuffer->DataBuffer.Size];
-			stream.read((char*)soundData, audioBuffer->DataBuffer.Size);
-			audioBuffer->DataBuffer.Data += *soundData;
-		}
-
-		stream.close();
-		return true;
 	}
 
 #pragma endregion
@@ -1081,7 +911,7 @@ namespace GE
 			assetMetadata.Type = AssetUtils::AssetTypeFromString(node["Type"].as<std::string>());
 			GE_CORE_TRACE("Asset\n\tUUID : {0}\n\tFilePath : {1}\n\tType : {2}", (uint64_t)assetMetadata.Handle, assetMetadata.FilePath.string().c_str(), AssetUtils::AssetTypeToString(assetMetadata.Type).c_str());
 			if (!registry->AddAsset(assetMetadata))
-				GE_CORE_WARN("Failed to add Asset::{0} : {1}\n\tFilePath : {2}", (uint64_t)assetMetadata.Handle, AssetUtils::AssetTypeToString(assetMetadata.Type).c_str(), assetMetadata.FilePath.string().c_str());
+				GE_CORE_WARN("Failed to add Asset::{0} : {1}\n\tFilePath : {2}", AssetUtils::AssetTypeToString(assetMetadata.Type).c_str(), (uint64_t)assetMetadata.Handle, assetMetadata.FilePath.string().c_str());
 		}
 		GE_CORE_INFO("Asset Registry Deserialization Complete.");
 		return true;
@@ -1149,9 +979,16 @@ namespace GE
 			for (uint64_t i = 0; i < sceneCount; i++)
 			{
 				SceneInfo sceneInfo = SceneInfo();
-				stream.read((char*)&sceneInfo.DataBuffer.Size, sizeof(sceneInfo.DataBuffer.Size));
-				sceneInfo.DataBuffer.Allocate(sceneInfo.DataBuffer.Size);
-				stream.read((char*)sceneInfo.DataBuffer.Data, sceneInfo.DataBuffer.Size * sizeof(uint8_t));
+
+				size_t size = 0;
+				stream.read((char*)&size, sizeof(size));
+
+				uint8_t* data = new uint8_t[size];
+				stream.read((char*)data, size * sizeof(uint8_t));
+
+				sceneInfo.DataBuffer = Buffer(data, size);
+
+				delete[] data;
 
 				if (Ref<Asset> sceneAsset = DeserializeAsset(sceneInfo))
 				{
@@ -1299,7 +1136,7 @@ namespace GE
 						// Scene and its children have been populated into pack->m_File.Index.Scenes.at(uuid)
 						// Scene.Size should represent the total scene size and be aligned
 						// Add to Index.Size for each Scene Asset
-						pack->m_File.Index.Size += pack->m_File.Index.Scenes.at(uuid).DataBuffer.Size;
+						pack->m_File.Index.Size += pack->m_File.Index.Scenes.at(uuid).DataBuffer.GetSize();
 					}
 				}
 			}
@@ -1316,8 +1153,9 @@ namespace GE
 			{
 				// Write all data
 				// SceneInfo.Data contains all AssetInfo & EntityInfo
-				stream.write(reinterpret_cast<const char*>(&sceneInfo.DataBuffer.Size), sizeof(sceneInfo.DataBuffer.Size));
-				stream.write(reinterpret_cast<const char*>(sceneInfo.DataBuffer.Data), sceneInfo.DataBuffer.Size * sizeof(uint8_t));
+				size_t sceneSize = sceneInfo.DataBuffer.GetSize();
+				stream.write(reinterpret_cast<const char*>(&sceneSize), sizeof(sceneSize));
+				stream.write(reinterpret_cast<const char*>(sceneInfo.DataBuffer.As<char>()), sceneSize * sizeof(uint8_t));
 
 			}
 		}
@@ -1440,6 +1278,7 @@ namespace GE
 		Buffer data = LoadTextureDataFromFile(Project::GetPathToAsset(metadata.FilePath).string(), width, height, channels);
 
 		Texture::Config config;
+		config.Name = metadata.FilePath.filename().string();
 		config.Height = height;
 		config.Width = width;
 		if (channels == 3)
@@ -1463,7 +1302,6 @@ namespace GE
 		if (texture)
 		{
 			texture->p_Handle = metadata.Handle;
-			texture->GetConfig().Name = metadata.FilePath.filename().string();
 		}
 		return texture;
 	}
@@ -1479,35 +1317,162 @@ namespace GE
 		return asset;
 	}
 
-	// TODO: Fix audio
 	Ref<Asset> AssetSerializer::DeserializeAudio(const AssetMetadata& metadata)
-	{
-		Ref<AudioClip> audioSource = CreateRef<AudioClip>(metadata.Handle);
-
-		/*if (LoadWav(Project::GetPathToAsset(metadata.FilePath), audioSource->m_AudioBuffer))
+	{	
+		// Read data from filePath
 		{
-			alGenBuffers(audioSource->m_AudioBuffer->NUM_BUFFERS, audioSource->m_AudioBuffer->Buffers);
-
-			for (std::size_t i = 0; i < audioSource->m_AudioBuffer->NUM_BUFFERS; ++i)
+			const std::filesystem::path filePath = Project::GetPathToAsset(metadata.FilePath);
+			std::ifstream stream(filePath, std::ios::binary);
+			if (!stream.is_open())
 			{
-				alBufferData(audioSource->m_AudioBuffer->Buffers[i], 
-					audioSource->m_AudioBuffer->Format, 
-					&audioSource->m_AudioBuffer->DataBuffer.Data[i], audioSource->m_AudioBuffer->DataBuffer.Size,
-					audioSource->m_AudioBuffer->SampleRate);
-
-				ALenum error = alGetError();
-				if (error != AL_NO_ERROR)
-				{
-					GE_CORE_ERROR("OpenAL Error: {0}", (char*)alGetString(error));
-					if (audioSource->m_AudioBuffer->Buffers[i] && alIsBuffer(audioSource->m_AudioBuffer->Buffers[i]))
-						alDeleteBuffers(1, &audioSource->m_AudioBuffer->Buffers[i]);
-					return 0;
-				}
+				GE_CORE_ERROR("Could not open WAV file {0}", filePath.string().c_str());
+				return nullptr;
 			}
-				
-		}*/
 
-		return audioSource;
+			{
+				char data[4];
+
+				// the RIFF
+				if (!stream.read(data, 4))
+				{
+					GE_CORE_ERROR("Could not read RIFF while loading Wav file.");
+					return false;
+				}
+				if (std::strncmp(data, "RIFF", 4) != 0)
+				{
+					GE_CORE_ERROR("File is not a valid WAVE file (header doesn't begin with RIFF)");
+					return false;
+				}
+
+				// the size of the file
+				if (!stream.read(data, 4))
+				{
+					GE_CORE_ERROR("Could not read size of Wav file.");
+					return false;
+				}
+
+				// the WAVE
+				if (!stream.read(data, 4))
+				{
+					GE_CORE_ERROR("Could not read WAVE");
+					return false;
+				}
+				if (std::strncmp(data, "WAVE", 4) != 0)
+				{
+					GE_CORE_ERROR("File is not a valid WAVE file (header doesn't contain WAVE)");
+					return false;
+				}
+
+				// "fmt/0"
+				if (!stream.read(data, 4))
+				{
+					GE_CORE_ERROR("Could not read fmt of Wav file.");
+					return false;
+				}
+
+				// this is always 16, the size of the fmt data chunk
+				if (!stream.read(data, 4))
+				{
+					GE_CORE_ERROR("Could not read the size of the fmt data chunk. Should be 16.");
+					return false;
+				}
+
+				// PCM should be 1?
+				if (!stream.read(data, 2))
+				{
+					GE_CORE_ERROR("Could not read PCM. Should be 1.");
+					return false;
+				}
+
+				// the number of Channels
+				if (!stream.read(data, 2))
+				{
+					GE_CORE_ERROR("Could not read number of Channels.");
+					return false;
+				}
+				uint32_t channels = convert_to_int(data, 2);
+
+				// sample rate
+				if (!stream.read(data, 4))
+				{
+					GE_CORE_ERROR("Could not read sample rate.");
+					return false;
+				}
+				uint32_t sampleRate = convert_to_int(data, 4);
+
+				// (SampleRate * BPS * Channels) / 8
+				if (!stream.read(data, 4))
+				{
+					GE_CORE_ERROR("Could not read (SampleRate * BPS * Channels) / 8");
+					return false;
+				}
+
+				// ?? dafaq
+				if (!stream.read(data, 2))
+				{
+					GE_CORE_ERROR("Could not read dafaq?");
+					return false;
+				}
+
+				// BPS
+				if (!stream.read(data, 2))
+				{
+					GE_CORE_ERROR("Could not read bits per sample.");
+					return false;
+				}
+				uint32_t bps = convert_to_int(data, 2);
+
+				// data chunk header "data"
+				if (!stream.read(data, 4))
+				{
+					GE_CORE_ERROR("Could not read data chunk header.");
+					return false;
+				}
+				if (std::strncmp(data, "data", 4) != 0)
+				{
+					GE_CORE_ERROR("File is not a valid WAVE file (doesn't have 'data' tag).");
+					return false;
+				}
+
+				// size of data
+				if (!stream.read(data, 4))
+				{
+					GE_CORE_ERROR("Could not read data size.");
+					return false;
+				}
+				size_t size = convert_to_int(data, 4);
+
+				/* cannot be at the end of file */
+				if (stream.eof())
+				{
+					GE_CORE_ERROR("Reached EOF.");
+					return false;
+				}
+
+				uint32_t bufferCount = size > AudioManager::BUFFER_SIZE ? (size / AudioManager::BUFFER_SIZE) + 1 : 1;
+				Buffer buffer = Buffer(AudioManager::BUFFER_SIZE * bufferCount);
+				// Read Data
+				if (!stream.read(buffer.As<char>(), size))
+				{
+					GE_CORE_ERROR("Could not read data.");
+					return false;
+				}
+
+				if (stream.fail())
+				{
+					GE_CORE_ERROR("File stream Failed.");
+					return false;
+				}
+				stream.close();
+
+				Ref<Audio> audio = Audio::Create(metadata.Handle, Audio::Config(metadata.FilePath.filename().string(), channels, sampleRate, bps, buffer), bufferCount);
+				buffer.Release();
+
+				return audio;
+			}
+
+		}
+		return nullptr;
 	}
 
 	bool AssetSerializer::SerializeScene(Ref<Asset> asset, const AssetMetadata& metadata)
@@ -1550,7 +1515,7 @@ namespace GE
 
 	Ref<Asset> AssetSerializer::DeserializeSceneFromPack(const AssetInfo& assetInfo)
 	{
-		if (assetInfo.DataBuffer.Size <= 0 || !assetInfo.DataBuffer.Data)
+		if (assetInfo.DataBuffer)
 		{
 			GE_CORE_ERROR("Cannot import Scene from AssetPack.\n\tAssetInfo has no Data");
 			return nullptr;
@@ -1585,8 +1550,8 @@ namespace GE
 		Scene::Config config;
 
 		// Read Data & Assign
-		const uint8_t* source = assetInfo.DataBuffer.Data;
-		const uint8_t* end = source + assetInfo.DataBuffer.Size;
+		const uint8_t* source = assetInfo.DataBuffer.As<uint8_t>();
+		const uint8_t* end = source + assetInfo.DataBuffer.GetSize();
 
 		// Handle
 		if (!ReadAligned(source, end, handle))
@@ -1621,9 +1586,12 @@ namespace GE
 			// Read size of array first
 			if (!ReadAligned(source, end, size))
 				return nullptr;
-			Buffer cadBuffer = Buffer(size);
-			if (!ReadAlignedArray<uint8_t>(source, end, cadBuffer.Data, cadBuffer.Size))
+			uint8_t* data = new uint8_t[size];
+			if (!ReadAlignedArray<uint8_t>(source, end, data, size))
 				return nullptr;
+
+			Buffer cadBuffer = Buffer(data, size);
+			delete[] data;
 
 			// Overflow check
 			if (source > end)
@@ -1631,8 +1599,8 @@ namespace GE
 
 			// Set Data
 			{
-				const uint8_t* childSource = cadBuffer.Data;
-				const uint8_t* endCAD = childSource + cadBuffer.Size;
+				const uint8_t* childSource = cadBuffer.As<uint8_t>();
+				const uint8_t* endCAD = childSource + cadBuffer.GetSize();
 
 				// UUID
 				uint64_t uuid = 0;
@@ -1645,7 +1613,7 @@ namespace GE
 					return nullptr;
 
 				((SceneInfo&)assetInfo).m_Assets[uuid].Type = type;
-				((SceneInfo&)assetInfo).m_Assets.at(uuid).InitializeData(cadBuffer.Size, cadBuffer.Data);
+				((SceneInfo&)assetInfo).m_Assets.at(uuid).InitializeData(cadBuffer.GetSize(), cadBuffer.As<uint8_t>());
 
 			}
 
@@ -1662,9 +1630,12 @@ namespace GE
 			// Read size of array first
 			if (!ReadAligned(source, end, size))
 				return nullptr;
-			Buffer eDataBuffer = Buffer(size);
-			if(!ReadAlignedArray<uint8_t>(source, end, eDataBuffer.Data, eDataBuffer.Size))
+			uint8_t* data = new uint8_t[size];
+			if(!ReadAlignedArray<uint8_t>(source, end, data, size))
 				return nullptr;
+
+			Buffer eDataBuffer = Buffer(data, size);
+			delete[] data;
 
 			// Overflow check
 			if (source > end)
@@ -1672,8 +1643,8 @@ namespace GE
 
 			// Set
 			{
-				const uint8_t* entitySource = eDataBuffer.Data;
-				const uint8_t* endED = entitySource + eDataBuffer.Size;
+				const uint8_t* entitySource = eDataBuffer.As<uint8_t>();
+				const uint8_t* endED = entitySource + eDataBuffer.GetSize();
 
 				// Component Type : IDComponent(1) expected
 				uint16_t cType = 0;
@@ -1688,7 +1659,7 @@ namespace GE
 						return nullptr;
 
 					scene->CreateEntityWithUUID(uuid, "Deserialized Entity");
-					((SceneInfo&)assetInfo).m_Entities[uuid].InitializeData(eDataBuffer.Size, eDataBuffer.Data);
+					((SceneInfo&)assetInfo).m_Entities[uuid].InitializeData(eDataBuffer.GetSize(), eDataBuffer.As<uint8_t>());
 				}
 			}
 			eDataBuffer.Release();
@@ -1700,15 +1671,15 @@ namespace GE
 
 	bool AssetSerializer::DeserializeEntity(const SceneInfo::EntityInfo& eInfo, Entity& e)
 	{
-		if (eInfo.DataBuffer.Size <= 0 || !eInfo.DataBuffer.Data)
+		if (eInfo.DataBuffer)
 		{
 			GE_CORE_ERROR("Cannot import Entity from AssetPack.\n\EntityInfo has no Data");
 			return false;
 		}
 
 		// Read Data & Assign
-		const uint8_t* source = eInfo.DataBuffer.Data;
-		const uint8_t* end = source + eInfo.DataBuffer.Size;
+		const uint8_t* source = eInfo.DataBuffer.As<uint8_t>();
+		const uint8_t* end = source + eInfo.DataBuffer.GetSize();
 
 		while (source < end)
 		{
@@ -1806,7 +1777,7 @@ namespace GE
 						asc.Gain = gain;
 				}
 				break;
-				case 6: // AudioListener
+				case 6: // AudioDevice
 				{
 					AudioListenerComponent alc = e.GetOrAddComponent<AudioListenerComponent>();
 				}
@@ -2014,7 +1985,7 @@ namespace GE
 
 	Ref<Asset> AssetSerializer::DeserializeTexture2DFromPack(const AssetInfo& assetInfo)
 	{
-		if (assetInfo.DataBuffer.Size <= 0 || !assetInfo.DataBuffer.Data)
+		if (assetInfo.DataBuffer)
 		{
 			GE_CORE_ERROR("Cannot import Texture2D from AssetPack.\n\tAssetInfo has no Data");
 			return nullptr;
@@ -2023,8 +1994,8 @@ namespace GE
 		Texture::Config config;
 
 		// Read Data & Assign
-		const uint8_t* source = assetInfo.DataBuffer.Data;
-		const uint8_t* end = source + assetInfo.DataBuffer.Size;
+		const uint8_t* source = assetInfo.DataBuffer.As<uint8_t>();
+		const uint8_t* end = source + assetInfo.DataBuffer.GetSize();
 
 		// Handle
 		uint64_t handle = 0;
@@ -2067,9 +2038,12 @@ namespace GE
 		uint64_t textureDataSize = 0;
 		if (!ReadAligned(source, end, textureDataSize))
 			return nullptr;
-		Buffer textureBuffer = Buffer(textureDataSize);
-		if (!ReadAlignedArray<uint8_t>(source, end, textureBuffer.Data, textureBuffer.Size))
+		uint8_t* data = new uint8_t[textureDataSize];
+		if (!ReadAlignedArray<uint8_t>(source, end, data, textureDataSize))
 			return nullptr;
+
+		Buffer textureBuffer = Buffer(data, textureDataSize);
+		delete[] data;
 
 		// Overflow check
 		if (source > end)
@@ -2085,7 +2059,7 @@ namespace GE
 	
 	Ref<Asset> AssetSerializer::DeserializeFontFromPack(const AssetInfo& assetInfo)
 	{
-		if (assetInfo.DataBuffer.Size <= 0 || !assetInfo.DataBuffer.Data)
+		if (assetInfo.DataBuffer)
 		{
 			GE_CORE_ERROR("Cannot import Font from AssetPack.\n\tAssetInfo has no Data");
 			return nullptr;
@@ -2110,8 +2084,8 @@ namespace GE
 		Font::AtlasConfig config;
 
 		// Read Data & Assign
-		const uint8_t* source = assetInfo.DataBuffer.Data;
-		const uint8_t* end = source + assetInfo.DataBuffer.Size;
+		const uint8_t* source = assetInfo.DataBuffer.As<uint8_t>();
+		const uint8_t* end = source + assetInfo.DataBuffer.GetSize();
 
 		// Handle
 		uint64_t handle = 0;
@@ -2132,9 +2106,11 @@ namespace GE
 		delete[](name);
 
 		// Config
-		if (!ReadAligned<uint32_t>(source, end, config.Width))
+		uint32_t width = 0;
+		if (!ReadAligned<uint32_t>(source, end, width))
 			return nullptr;
-		if (!ReadAligned<uint32_t>(source, end, config.Height))
+		uint32_t height = 0;
+		if (!ReadAligned<uint32_t>(source, end, height))
 			return nullptr;
 		if (!ReadAligned<float>(source, end, config.Scale))
 			return nullptr;
@@ -2149,10 +2125,13 @@ namespace GE
 		size_t size = 0;
 		if (!ReadAligned(source, end, size))
 			return nullptr;
-		Buffer textBuffer = Buffer(size);
-		if (!ReadAlignedArray<uint8_t>(source, end, textBuffer.Data, size))
+		uint8_t* data = new uint8_t[size];
+		if (!ReadAlignedArray<uint8_t>(source, end, data, size))
 			return nullptr;
 		
+		Buffer textBuffer = Buffer(data, size);
+		delete[] data;
+
 		// Overflow check
 		if (source > end)
 			GE_CORE_ASSERT(false, "AssetSerializer::DeserializeFont2DFromPack(AssetInfo&) Buffer Overflow");
@@ -2161,17 +2140,16 @@ namespace GE
 		Ref<Font> font = CreateRef<Font>(handle, config);
 		font->p_Status = Asset::Status::Loading;
 		font->m_AtlasConfig.Texture = LoadFontAtlas<uint8_t, float, 3, msdf_atlas::msdfGenerator>
-			(textBuffer, font->m_AtlasConfig, font->m_MSDFData);
+			(textBuffer, width, height, font->m_AtlasConfig, font->m_MSDFData);
 		textBuffer.Release();
 		font->p_Status = Asset::Status::Ready;
 
 		return font;
 	}
 
-	// TODO : Fix Audio Buffer, then fix this
 	Ref<Asset> AssetSerializer::DeserializeAudioFromPack(const AssetInfo& assetInfo)
 	{
-		if (assetInfo.DataBuffer.Size <= 0 || !assetInfo.DataBuffer.Data)
+		if (assetInfo.DataBuffer)
 		{
 			GE_CORE_ERROR("Cannot import Font from AssetPack.\n\tAssetInfo has no Data");
 			return nullptr;
@@ -2185,21 +2163,18 @@ namespace GE
 		* * - Loop : bool
 		* * - Pitch : float
 		* * - Gain : float
-		* ~ Audio Buffer Data : TODO
-		* * - BPS : uint8_t
 		* * - Channels : uint8_t
-		* * - SampleRate : int32_t
-		* * - Format : int32_t
-		* * - Size : uint32_t
-		* * ~ Data : uint_8_t*
+		* * - SampleRate : uint32_t
+		* * - BPS : uint8_t
+		* * - Format : uint32_t
+		* * ~ Audio Buffer Data
+		* * * - Size : uint32_t
+		* * * ~ Data : uint_8_t*
 		*/
 
-		AudioClip::Config config;
-		//AudioBuffer audioBuffer; 
-
 		// Read Data & Assign
-		const uint8_t* source = assetInfo.DataBuffer.Data;
-		const uint8_t* end = source + assetInfo.DataBuffer.Size;
+		const uint8_t* source = assetInfo.DataBuffer.As<uint8_t>();
+		const uint8_t* end = source + assetInfo.DataBuffer.GetSize();
 
 		// Handle
 		uint64_t handle = 0;
@@ -2216,30 +2191,52 @@ namespace GE
 		char* name = new char[sizeofString];
 		if (!ReadAlignedArray<char>(source, end, name, sizeofString))
 			return nullptr;
-		config.Name.assign(name, sizeofString);
-		delete[](name);
 
 		// Config
-		ReadAligned<bool>(source, end, config.Loop);
-		ReadAligned<float>(source, end, config.Pitch);
-		ReadAligned<float>(source, end, config.Gain);
+		bool loop = false;
+		if (!ReadAligned<bool>(source, end, loop))
+			return nullptr;
+		float pitch = 1.0f;
+		if(!ReadAligned<float>(source, end, pitch))
+			return nullptr;
+		float gain = 1.0f;
+		if(!ReadAligned<float>(source, end, gain))
+			return nullptr;
+
+		uint8_t channels = 0;
+		if(!ReadAligned<uint8_t>(source, end, channels))
+			return nullptr;
+		uint32_t sampleRate = 0;
+		if(!ReadAligned<uint32_t>(source, end, sampleRate))
+			return nullptr;
+		uint8_t bps = 0;
+		if(!ReadAligned<uint8_t>(source, end, bps))
+			return nullptr;
+		uint32_t format = 0;
+		if(!ReadAligned<uint32_t>(source, end, format))
+			return nullptr;
 
 		// Audio Buffer
-		/*ReadAligned<uint8_t>(source, end, audioBuffer.BPS);
-		ReadAligned<uint8_t>(source, end, audioBuffer.Channels);
-		ReadAligned<int32_t>(source, end, audioBuffer.SampleRate);
-		ReadAligned<int32_t>(source, end, audioBuffer.Format);*/
+		size_t size = 0;
+		if (!ReadAligned(source, end, size))
+			return nullptr;
+		uint8_t* data = new uint8_t[size];
+		if (!ReadAlignedArray<uint8_t>(source, end, data, size))
+			return nullptr;
+		
+		Buffer buffer = Buffer(data, size);
+		delete[] data;
 
-		// TODO : Audio Buffer.Data
-		// ReadAlignedArray<uint8_t>(source, end, audioBuffer.DataBuffer.Data, audioBuffer.DataBuffer.Size);
-		// 
 		// Overflow check
 		if (source > end)
 			GE_CORE_ASSERT(false, "AssetSerializer::DeserializeAudioFromPack(AssetInfo&) Buffer Overflow");
-		
-		Ref<AudioClip> audioClip = CreateRef<AudioClip>(handle);
+
+		std::string stringName = std::string(name, sizeofString);
+		delete[](name);
+		Ref<Audio> audio = Audio::Create(handle, Audio::Config(stringName, channels, sampleRate, bps, buffer));
+		buffer.Release();
 		GE_CORE_INFO("AssetSerializer::DeserializeAudioFromPack(AssetInfo&) Successful");
-		return audioClip;
+		return audio;
 	}
 	
 	bool AssetSerializer::SerializeSceneForPack(Ref<Asset> asset, AssetInfo& assetInfo)
@@ -2294,7 +2291,7 @@ namespace GE
 					if (SerializeAsset(asset, sceneInfo.m_Assets[uuid]))
 					{
 						// += SizeofData + Data
-						requiredSize += GetAlignedOfArray<uint8_t>(sceneInfo.m_Assets.at(uuid).DataBuffer.Size);
+						requiredSize += GetAlignedOfArray<uint8_t>(sceneInfo.m_Assets.at(uuid).DataBuffer.GetSize());
 					}
 				}
 			}
@@ -2312,7 +2309,7 @@ namespace GE
 						if (SerializeEntity(sceneInfo.m_Entities[uuid], e))
 						{
 							// += SizeofData + Data
-							requiredSize += GetAlignedOfArray<uint8_t>(sceneInfo.m_Entities.at(uuid).DataBuffer.Size);
+							requiredSize += GetAlignedOfArray<uint8_t>(sceneInfo.m_Entities.at(uuid).DataBuffer.GetSize());
 						}
 
 					}
@@ -2327,12 +2324,12 @@ namespace GE
 
 		// Set Data
 		{
-			if (assetInfo.DataBuffer.Data)
+			if (assetInfo.DataBuffer)
 			{
-				if (assetInfo.DataBuffer.Size >= requiredSize)
+				if (assetInfo.DataBuffer.GetSize() >= requiredSize)
 				{
 					// Start at beginning of buffer
-					uint8_t* destination = assetInfo.DataBuffer.Data;
+					uint8_t* destination = assetInfo.DataBuffer.As<uint8_t>();
 					uint8_t* end = destination + requiredSize;
 
 					// Clear requiredSize from destination
@@ -2355,8 +2352,8 @@ namespace GE
 							for (const auto& [uuid, assetInfo] : sceneInfo.m_Assets)
 							{
 								//  asset size & data
-								const uint8_t* data = assetInfo.DataBuffer.Data;
-								WriteAlignedArray<uint8_t>(destination, data, assetInfo.DataBuffer.Size);
+								const uint8_t* data = assetInfo.DataBuffer.As<uint8_t>();
+								WriteAlignedArray<uint8_t>(destination, data, assetInfo.DataBuffer.GetSize());
 
 							}
 
@@ -2369,13 +2366,13 @@ namespace GE
 							for (const auto& [uuid, eInfo] : sceneInfo.m_Entities)
 							{
 								// e size & data
-								const uint8_t* data = eInfo.DataBuffer.Data;
-								WriteAlignedArray<uint8_t>(destination, data, eInfo.DataBuffer.Size);
+								const uint8_t* data = eInfo.DataBuffer.As<uint8_t>();
+								WriteAlignedArray<uint8_t>(destination, data, eInfo.DataBuffer.GetSize());
 							}
 						}
 					}
 
-					if (destination - assetInfo.DataBuffer.Data == requiredSize)
+					if (destination - assetInfo.DataBuffer.As<uint8_t>() == requiredSize)
 					{
 						GE_CORE_INFO("AssetSerializer::SerializeSceneForPack Successful.");
 					}
@@ -2467,7 +2464,7 @@ namespace GE
 
 			}
 
-			// AudioListener
+			// AudioDevice
 			if (e.HasComponent<AudioListenerComponent>())
 			{
 				// Component identifier
@@ -2598,12 +2595,12 @@ namespace GE
 		eInfo.DataBuffer.Allocate(requiredSize);
 
 		// Set Data
-		if (eInfo.DataBuffer.Data)
+		if (eInfo.DataBuffer.As<uint8_t>())
 		{
-			if (eInfo.DataBuffer.Size >= requiredSize)
+			if (eInfo.DataBuffer.GetSize() >= requiredSize)
 			{
 				// Start at beginning of buffer
-				uint8_t* destination = eInfo.DataBuffer.Data;
+				uint8_t* destination = eInfo.DataBuffer.As<uint8_t>();
 				uint8_t* end = destination + requiredSize;
 
 				// Clear requiredSize from destination
@@ -2689,7 +2686,7 @@ namespace GE
 
 						}
 
-						// AudioListener
+						// AudioDevice
 						if (e.HasComponent<AudioListenerComponent>())
 						{
 							uint16_t currentType = (uint16_t)ComponentType::AudioListener;
@@ -2841,7 +2838,7 @@ namespace GE
 					}
 				}
 
-				if (destination - (uint8_t*)eInfo.DataBuffer.Data == requiredSize)
+				if (destination - eInfo.DataBuffer.As<uint8_t>() == requiredSize)
 				{
 					GE_CORE_INFO("AssetSerializer::SerializeEntity(EntityInfo&, const Entity&) Successful.");
 					return true;
@@ -2881,19 +2878,19 @@ namespace GE
 				+ GetAligned(sizeof(bool)); // GenerateMips
 
 			// Buffer Size & Data
-			requiredSize += GetAlignedOfArray<uint8_t>(texture->GetConfig().TextureBuffer.Size);
+			requiredSize += GetAlignedOfArray<uint8_t>(texture->GetConfig().TextureBuffer.GetSize());
 		}
 
 		// Allocate Size for Data
 		assetInfo.InitializeData(requiredSize);
 
 		// Data
-		if (assetInfo.DataBuffer.Data)
+		if (assetInfo.DataBuffer)
 		{
-			if (assetInfo.DataBuffer.Size >= requiredSize)
+			if (assetInfo.DataBuffer.GetSize() >= requiredSize)
 			{
 				// Start at beginning of buffer
-				uint8_t* destination = assetInfo.DataBuffer.Data;
+				uint8_t* destination = assetInfo.DataBuffer.As<uint8_t>();
 				uint8_t* end = destination + requiredSize;
 
 				// Clear requiredSize from destination
@@ -2922,12 +2919,12 @@ namespace GE
 					}
 
 					// Texture Buffer Size & Data
-					const uint8_t* data = texture->GetConfig().TextureBuffer.Data;
-					WriteAlignedArray<uint8_t>(destination, data, (uint64_t)texture->GetConfig().TextureBuffer.Size);
+					const uint8_t* data = texture->GetConfig().TextureBuffer.As<uint8_t>();
+					WriteAlignedArray<uint8_t>(destination, data, (uint64_t)texture->GetConfig().TextureBuffer.GetSize());
 
 				}
 
-				if (destination - assetInfo.DataBuffer.Data == requiredSize)
+				if (destination - assetInfo.DataBuffer.As<uint8_t>() == requiredSize)
 				{
 					GE_CORE_INFO("AssetSerializer::SerializeTexture2DForPack() Successful.");
 					return true;
@@ -2991,20 +2988,19 @@ namespace GE
 				+ GetAligned(sizeof(bool));				// ExpensiveColoring
 
 			// Special case for Font Atlas Texture Size & Data. Not handled with SerializeAsset(Ref<Asset>, AssetInfo&)
-			requiredSize += GetAlignedOfArray<uint8_t>(atlasTexture->GetConfig().TextureBuffer.Size);
+			requiredSize += GetAlignedOfArray<uint8_t>(atlasTexture->GetConfig().TextureBuffer.GetSize());
 		}
 
 		// Allocate Size for Data
 		assetInfo.InitializeData(requiredSize);
 
 		// Data
-		if (assetInfo.DataBuffer.Data)
+		if (assetInfo.DataBuffer)
 		{
-			if (assetInfo.DataBuffer.Size >= requiredSize)
+			if (assetInfo.DataBuffer.GetSize() >= requiredSize)
 			{
-
 				// Start at beginning of buffer
-				uint8_t* destination = assetInfo.DataBuffer.Data;
+				uint8_t* destination = assetInfo.DataBuffer.As<uint8_t>();
 				uint8_t* end = destination + requiredSize;
 
 				// Clear requiredSize from destination
@@ -3020,19 +3016,20 @@ namespace GE
 
 				// Config
 				{
-					WriteAligned<uint32_t>(destination, font->m_AtlasConfig.Width);
-					WriteAligned<uint32_t>(destination, font->m_AtlasConfig.Height);
+					const Texture::Config& textureConfig = atlasTexture->GetConfig();
+					WriteAligned<uint32_t>(destination, textureConfig.Width);
+					WriteAligned<uint32_t>(destination, textureConfig.Height);
 					WriteAligned<float>(destination, font->m_AtlasConfig.Scale);
 					WriteAligned<uint64_t>(destination, font->m_AtlasConfig.Seed);
 					WriteAligned<uint32_t>(destination, font->m_AtlasConfig.ThreadCount);
 					WriteAligned<bool>(destination, font->m_AtlasConfig.ExpensiveColoring);
 
 					// FontTexture Size & Data
-					const uint8_t* data = atlasTexture->GetConfig().TextureBuffer.Data;
-					WriteAlignedArray<uint8_t>(destination, data, atlasTexture->GetConfig().TextureBuffer.Size);
+					const uint8_t* data = textureConfig.TextureBuffer.As<uint8_t>();
+					WriteAlignedArray<uint8_t>(destination, data, atlasTexture->GetConfig().TextureBuffer.GetSize());
 				}
 
-				if (destination - assetInfo.DataBuffer.Data == requiredSize)
+				if (destination - assetInfo.DataBuffer.As<uint8_t>() == requiredSize)
 				{
 					GE_CORE_INFO("AssetSerializer::SerializeFontForPack() Successful.");
 					return true;
@@ -3051,7 +3048,6 @@ namespace GE
 		return false;
 	}
 
-	// TODO : Fix Audio Buffer, then fix this
 	bool AssetSerializer::SerializeAudioForPack(Ref<Asset> asset, AssetInfo& assetInfo)
 	{
 		/*
@@ -3062,17 +3058,19 @@ namespace GE
 		* * - Loop : bool
 		* * - Pitch : float
 		* * - Gain : float
-		* ~ Audio Buffer Data : TODO
-		* * - BPS : uint8_t
 		* * - Channels : uint8_t
-		* * - SampleRate : int32_t
-		* * - Format : int32_t
-		* * - Size : uint32_t
-		* * ~ Data : uint_8_t*
-	    */
+		* * - SampleRate : uint32_t
+		* * - BPS : uint8_t
+		* * - Format : uint32_t
+		* * ~ Audio Buffer Data
+		* * * - Size : uint32_t
+		* * * ~ Data : uint_8_t*
+		*/
 
-		Ref<AudioClip> audioClip = Project::GetAssetAs<AudioClip>(asset);
-		assetInfo.Type = 4; // See Asset::Type
+		Ref<Audio> audio = Project::GetAssetAs<Audio>(asset);
+		assetInfo.Type = 4; // See Asset::Type::Audio
+		const Audio::Config& config = audio->GetConfig();
+
 		uint64_t requiredSize = 0;
 
 		// Size
@@ -3080,25 +3078,23 @@ namespace GE
 			requiredSize = GetAligned(sizeof(uint64_t)) // Handle
 				+ GetAligned(sizeof(uint16_t))	// Type
 				+ GetAligned(sizeof(size_t)) // sizeof(stringLength)
-				+ GetAligned(audioClip->m_Config.Name.size() * sizeof(char)); //sizeof(string)
+				+ GetAligned(config.Name.size() * sizeof(char)); //sizeof(string)
 
 			// Config
 			requiredSize += GetAligned(sizeof(bool))       // Loop
 				+ GetAligned(sizeof(float))                // Pitch
 				+ GetAligned(sizeof(float));               // Gain
 
-			// Audio Buffer Data
-			//requiredSize += GetAligned(sizeof(uint8_t))                    // BPS
-			//	+ GetAligned(sizeof(uint8_t))                              // Channels
-			//	+ GetAligned(sizeof(int32_t))                              // SampleRate
-			//	+ GetAligned(sizeof(int32_t));                              // Format
+			requiredSize += GetAligned(sizeof(uint8_t))		// Channels
+				+ GetAligned(sizeof(uint32_t))               // SampleRate
+				+ GetAligned(sizeof(uint8_t))               // BPS
+				+ GetAligned(sizeof(uint32_t));              // Format
 
-			// TODO : Audio Buffer.Data
-			//if (m_AudioBuffer->Data)
-			//{
-			//    requiredSize += GetAligned(sizeof(uint64_t))							// Size of data
-			//        + GetAligned(audioClip->m_AudioBuffer->Size * sizeof(uint8_t));	// Data
-			//}
+			if (config.DataBuffer)
+			{
+			    requiredSize += GetAligned(sizeof(uint64_t))							// Size of data
+			        + GetAligned(config.DataBuffer.GetSize() * sizeof(uint8_t));	// Data
+			}
 
 		}
 
@@ -3106,13 +3102,13 @@ namespace GE
 		assetInfo.InitializeData(requiredSize);
 
 		// Data
-		if (assetInfo.DataBuffer.Data)
+		if (assetInfo.DataBuffer)
 		{
-			if (assetInfo.DataBuffer.Size >= requiredSize)
+			if (assetInfo.DataBuffer.GetSize() >= requiredSize)
 			{
 
 				// Start at beginning of buffer
-				uint8_t* destination = assetInfo.DataBuffer.Data;
+				uint8_t* destination = assetInfo.DataBuffer.As<uint8_t>();
 				uint8_t* end = destination + requiredSize;
 
 				// Clear requiredSize from destination
@@ -3120,40 +3116,29 @@ namespace GE
 
 				// Fill out buffer
 				{
-					WriteAligned<uint64_t>(destination, audioClip->p_Handle);
-					WriteAligned<uint16_t>(destination, (uint16_t)audioClip->p_Type);
+					WriteAligned<uint64_t>(destination, audio->p_Handle);
+					WriteAligned<uint16_t>(destination, (uint16_t)audio->p_Type);
 
-					const char* cStr = audioClip->m_Config.Name.c_str();
-					WriteAlignedArray<char>(destination, cStr, (uint64_t)audioClip->m_Config.Name.size());
+					const char* cStr = config.Name.c_str();
+					WriteAlignedArray<char>(destination, cStr, (uint64_t)config.Name.size());
 
 					// Config
 					{
-						WriteAligned<bool>(destination, audioClip->m_Config.Loop);
+						WriteAligned<uint8_t>(destination, config.Channels);
+						WriteAligned<uint32_t>(destination, config.SampleRate);
+						WriteAligned<uint8_t>(destination, config.BPS);
+						WriteAligned<uint32_t>(destination, config.Format);
 
-						WriteAligned<float>(destination, audioClip->m_Config.Pitch);
-						WriteAligned<float>(destination, audioClip->m_Config.Gain);
-
-					}
-
-					// Audio Buffer
-					{
-						/*WriteAligned<uint8_t>(destination, audioClip->m_AudioBuffer->BPS);
-						WriteAligned<uint8_t>(destination, audioClip->m_AudioBuffer->Channels);
-						
-						WriteAligned<uint32_t>(destination, audioClip->m_AudioBuffer->SampleRate);
-						WriteAligned<uint32_t>(destination, audioClip->m_AudioBuffer->Format);*/
-
-						// TODO : Audio Buffer.Data
-						/*if (m_AudioBuffer->Data)
+						if (config.DataBuffer)
 						{
-							const uint8_t* data = audioClip->m_AudioBuffer->DataBuffer.Data;
-							WriteAlignedArray<uint8_t>(destination, data, audioClip->m_AudioBuffer->DataBuffer.Size);
-						}*/
+							const uint8_t* data = config.DataBuffer.As<uint8_t>();
+							WriteAlignedArray<uint8_t>(destination, data, config.DataBuffer.GetSize());
+						}
 					}
 
 				}
 
-				if (destination - assetInfo.DataBuffer.Data == requiredSize)
+				if (destination - assetInfo.DataBuffer.As<uint8_t>() == requiredSize)
 				{
 					GE_CORE_INFO("AssetSerializer::SerializeAudioForPack() Successful.");
 					return true;

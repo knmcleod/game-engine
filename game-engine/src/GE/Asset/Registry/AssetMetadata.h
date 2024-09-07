@@ -16,7 +16,9 @@ namespace GE
 			{ ".png",	Asset::Type::Texture2D		},
 			{ ".jpg",	Asset::Type::Texture2D		},
 			{ ".ttf",	Asset::Type::Font			},
-			{ ".wav",	Asset::Type::AudioClip		}
+			{ ".wav",	Asset::Type::Audio			}
+			// { ".mp3",	Asset::Type::Audio			}
+			// { ".ogg",	Asset::Type::Audio			}
 		};
 
 		static Asset::Type AssetTypeFromFileExtension(const std::filesystem::path& extension)

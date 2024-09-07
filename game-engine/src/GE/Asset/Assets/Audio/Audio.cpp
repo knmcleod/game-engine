@@ -2,156 +2,62 @@
 
 #include "Audio.h"
 
-#include "GE/Project/Project.h"
+#include "GE/Audio/AudioManager.h"
+
+#include "Platform/OpenAL/Assets/OpenALAudio.h"
+
+#include <al.h>
 
 namespace GE
 {
-    AudioClip::AudioClip() : AudioClip(UUID())
-    {
+	Audio::Config::Config(const Config& config) : Config(config.Name, config.Channels, config.SampleRate, config.BPS, config.DataBuffer)
+	{
+		Format = config.Format;
+		BufferIDs = config.BufferIDs;
+	}
 
-    }
+	Audio::Config::Config(const std::string& name, uint32_t channels, uint32_t sampleRate, uint32_t bps, const Buffer& buffer /*= Buffer()*/)
+	{
+		Name = name;
+		BufferIDs = std::vector<uint32_t>();
 
-    AudioClip::AudioClip(UUID handle) : Asset(handle, Asset::Type::AudioClip)
-    {
-        alGenSources(1, &m_Config.SourceID);
-        m_AudioBuffer = CreateRef<AudioBuffer>();
-    }
+		Channels = channels;
+		SampleRate = sampleRate;
+		BPS = bps;
 
-    AudioClip::~AudioClip()
-    {
-        if (m_AudioBuffer)
-        {
-            if(m_AudioBuffer->Buffers)
-                alDeleteBuffers(m_AudioBuffer->NUM_BUFFERS, m_AudioBuffer->Buffers);
-            
-            //m_AudioBuffer->DataBuffer.Release();
-        }
+		CalculateFormat();
 
-        alDeleteSources(1, &m_Config.SourceID);
-    }
+		if (buffer)
+			SetData(buffer);
+	}
 
-    Ref<Asset> AudioClip::GetCopy()
-    {
-        GE_CORE_WARN("Could not copy AudioClip Asset. Returning nullptr.");
-        return nullptr;
-    }
+	void Audio::Config::CalculateFormat()
+	{
+		if (Channels == 1 && BPS == 8)
+			Format = AL_FORMAT_MONO8;
+		else if (Channels == 1 && BPS == 16)
+			Format = AL_FORMAT_MONO16;
+		else if (Channels == 2 && BPS == 8)
+			Format = AL_FORMAT_STEREO8;
+		else if (Channels == 2 && BPS == 16)
+			Format = AL_FORMAT_STEREO16;
+		else
+		{
+			GE_CORE_ERROR("Unrecognized wave format.\nChannels {0}\nBPS {1}\n", Channels, BPS);
+		}
+	}
 
-    void AudioClip::SetSourceValues()
-    {
-        alSourcei(m_Config.SourceID, AL_LOOPING, m_Config.Loop);
-        alSourcef(m_Config.SourceID, AL_PITCH, m_Config.Pitch);
-        alSourcef(m_Config.SourceID, AL_GAIN, m_Config.Gain);
-        alSource3f(m_Config.SourceID, AL_POSITION, m_Position.x, m_Position.y, m_Position.z);
-        alSource3f(m_Config.SourceID, AL_VELOCITY, m_Velocity.x, m_Velocity.y, m_Velocity.z);
-    }
-
-    void AudioClip::Play(Config& audioConfig, const glm::vec3& position, const glm::vec3& velocity)
-    {
-        if (&audioConfig)
-        {
-            if(&position)
-                m_Position = position;
-            if (&velocity)
-                m_Velocity = velocity;
-
-            m_Config.Gain = audioConfig.Gain;
-            m_Config.Pitch = audioConfig.Pitch;
-            m_Config.Loop = audioConfig.Loop;
-            m_Config.SourceID = audioConfig.SourceID;
-
-            SetSourceValues();
-        }
-
-        if (&m_AudioBuffer)
-        {
-            alSourceQueueBuffers(m_Config.SourceID, m_AudioBuffer->NUM_BUFFERS, m_AudioBuffer->Buffers);
-            alSourcePlay(m_Config.SourceID);
-
-            ALint state = AL_PLAYING;
-            alGetSourcei(m_Config.SourceID, AL_SOURCE_STATE, &state);
-
-            while (state == AL_PLAYING)
-            {
-                ALint buffersProcessed = 0;
-                alGetSourcei(m_Config.SourceID, AL_BUFFERS_PROCESSED, &buffersProcessed);
-                if (buffersProcessed <= 0)
-                    return;
-
-                while (buffersProcessed--)
-                {
-                    AudioBuffer buffer; // Holds unqueued audio buffer
-                    alSourceUnqueueBuffers(m_Config.SourceID, 1, buffer.Buffers);
-
-                    ALsizei dataSize = buffer.DataBuffer.Size;
-
-                    char* data = new char[dataSize];
-                    std::memset(data, 0, dataSize);
-
-                    std::size_t dataSizeToCopy = buffer.DataBuffer.Size;
-                    if (buffer.Cursor + buffer.DataBuffer.Size > sizeof(buffer.DataBuffer.Data))
-                        dataSizeToCopy = sizeof(buffer.DataBuffer.Data) - buffer.Cursor;
-
-                    std::memcpy(&data[0], &buffer.DataBuffer.Data[buffer.Cursor], dataSizeToCopy);
-                    buffer.Cursor += dataSizeToCopy;
-
-                    if (dataSizeToCopy < buffer.DataBuffer.Size)
-                    {
-                        buffer.Cursor = 0;
-                        std::memcpy(&data[dataSizeToCopy], &buffer.DataBuffer.Data[buffer.Cursor], buffer.DataBuffer.Size - dataSizeToCopy);
-                        buffer.Cursor = buffer.DataBuffer.Size - dataSizeToCopy;
-                    }
-
-                    alBufferData(*buffer.Buffers, buffer.Format, data, buffer.DataBuffer.Size, buffer.SampleRate);
-                    alSourceQueueBuffers(m_Config.SourceID, 1, buffer.Buffers);
-
-                    delete[] data;
-                }
-
-                alGetSourcei(m_Config.SourceID, AL_SOURCE_STATE, &state);
-                GE_CORE_TRACE("AudioClip::UpdateBuffers State: {0}", (char*)alGetString(state));
-            }
-            
-
-        }
-    }
-
-    AudioListener::AudioListener()
-    {
-        m_Device = alcOpenDevice(nullptr); // Returns default device
-        if (!m_Device)
-        {
-            GE_CORE_ERROR("Could not open audio device!");
-            return;
-        }
-
-        m_Context = alcCreateContext(m_Device, nullptr); // Returns default context
-        if (!m_Device)
-        {
-            GE_CORE_ERROR("Could not create audio device context!");
-            return;
-        }
-
-        if (!alcMakeContextCurrent(m_Context))
-        {
-            GE_CORE_ERROR("Could not make audio device context current!");
-            return;
-        }
-
-        const ALCchar* name = nullptr;
-        if (alcIsExtensionPresent(m_Device, "ALC_ENUMERATE_ALL_EXT"))
-            name = alcGetString(m_Device, ALC_ALL_DEVICES_SPECIFIER);
-
-        if (!name || alcGetError(m_Device) != ALC_NO_ERROR)
-            name = alcGetString(m_Device, ALC_DEVICE_SPECIFIER);
-
-        GE_CORE_INFO("Opened Audio Device: {0}", name);
-    }
-
-    AudioListener::~AudioListener()
-    {
-        alcMakeContextCurrent(nullptr);
-        alcDestroyContext(m_Context);
-
-        alcCloseDevice(m_Device);
-    }
+	Ref<Audio> Audio::Create(UUID handle /* = UUID()*/, const Config& config /* = Config()*/, const uint32_t& bufferCount /* = 1*/)
+	{
+		switch (AudioManager::GetAPI())
+		{
+		case AudioManager::API::None:
+			GE_CORE_ERROR("Audio API is None.");
+			break;
+		case AudioManager::API::OpenAL:
+			return CreateRef<OpenALAudio>(handle, config, bufferCount);
+			break;
+		}
+		return nullptr;
+	}
 }

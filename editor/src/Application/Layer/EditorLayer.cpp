@@ -3,6 +3,7 @@
 #include "../../AssetManager/EditorAssetManager.h"
 
 #include <GE/Asset/RuntimeAssetManager.h>
+#include <GE/Audio/AudioManager.h>
 #include <GE/Core/Application/Application.h>
 #include <GE/Core/Input/Input.h>
 #include <GE/Core/FileSystem/FileSystem.h>
@@ -164,7 +165,8 @@ namespace GE
 		dispatcher.Dispatch<KeyPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnKeyPressed));
 		dispatcher.Dispatch<MouseButtonPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnMousePressed));
 
-		m_EditorCamera->OnEvent(e);
+		if(m_ViewportFocused && m_ViewportHovered)
+			m_EditorCamera->OnEvent(e);
 	}
 
 	void EditorLayer::OnImGuiRender()
@@ -267,14 +269,6 @@ namespace GE
 				ImGui::DragFloat4("Hovered Color", glm::value_ptr(m_HoveredColor));
 
 				ImGui::DragFloat4("Selected Color", glm::value_ptr(m_ScenePanel->m_SelectedColor));
-			}
-
-			ImGui::Separator();
-
-			{
-				Ref<Font> font = Project::GetAsset<Font>(m_FontHandle);
-				if(font)
-					ImGui::Image((ImTextureID)font->GetAtlasTexture()->GetID(), ImVec2(512, 512));
 			}
 
 			ImGui::End();

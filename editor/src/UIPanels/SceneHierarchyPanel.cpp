@@ -2,7 +2,7 @@
 
 #include "../AssetManager/EditorAssetManager.h"
 
-#include "GE/Asset/Assets/Audio/Audio.h"
+#include "GE/Audio/AudioManager.h"
 #include "GE/Asset/Assets/Textures/Texture.h"
 
 #include "GE/Core/FileSystem/FileSystem.h"
@@ -281,26 +281,7 @@ namespace GE
 				ImGui::DragFloat("Gain", &component.Gain);
 				ImGui::DragFloat("Pitch", &component.Pitch);
 				
-				if (ImGui::Button("Demo Audio"))
-				{
-					if (Project::GetAssetManager<EditorAssetManager>()->HandleExists(component.AssetHandle))
-					{
-						Ref<Asset> asset = Project::GetAssetManager()->GetAsset(component.AssetHandle);
-						Asset::Type type = asset->GetType();
-						if (type == Asset::Type::AudioClip)
-						{
-							Project::GetAsset<AudioClip>(asset->GetHandle())->Play();
-						}
-						else
-						{
-							GE_WARN("Asset Type is not AudioClip.");
-						}
-					}
-					else
-					{
-						GE_ERROR("No AudioClip Found.");
-					}
-				}
+				ImGui::Text("Audio Asset");
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
@@ -309,7 +290,7 @@ namespace GE
 
 						Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
 						Asset::Type type = asset->GetType();
-						if (type == Asset::Type::AudioClip)
+						if (type == Asset::Type::Audio)
 						{
 							component.AssetHandle = asset->GetHandle();
 						}
@@ -325,7 +306,7 @@ namespace GE
 		DrawComponent<AudioListenerComponent>("Audio Listener", entity,
 			[](auto& component)
 			{
-				ImGui::Checkbox("Test", &component.Test);
+				ImGui::Text("Device", AudioManager::GetDeviceName());
 			});
 
 		DrawComponent<SpriteRendererComponent>("Sprite Renderer", entity,
@@ -458,12 +439,11 @@ namespace GE
 				if (!exists)
 					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0, 0.0, 0.0, 1.0));
 
-				static char buffer[64];
-				memset(buffer, 0, sizeof(buffer));
-				strcpy_s(buffer, sizeof(buffer), component.ClassName.c_str());
-
-				if (ImGui::InputText("Class", buffer, sizeof(buffer)))
-					component.ClassName = std::string(buffer);
+				Buffer buffer = Buffer(sizeof(std::string));
+				strcpy_s(buffer.As<char>(), buffer.GetSize(), component.ClassName.c_str());
+				if (ImGui::InputText("Class", buffer.As<char>(), sizeof(buffer)))
+					component.ClassName = std::string(buffer.As<char>());
+				buffer.Release();
 
 				// Script Fields
 				if (exists)
@@ -598,8 +578,9 @@ namespace GE
 						}
 					}
 				}
-				if (!exists)
+				else
 					ImGui::PopStyleColor();
+
 			});
 
 		DrawComponent<Rigidbody2DComponent>("Rigidbody 2D", entity,

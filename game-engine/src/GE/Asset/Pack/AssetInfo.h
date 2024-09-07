@@ -21,6 +21,9 @@ namespace GE
 		friend class AssetPack;
 		friend class AssetSerializer;
 	public:
+		/*
+		* Compares type of Asset
+		*/
 		virtual bool operator==(AssetInfo other) const
 		{
 			if (other.Type == this->Type)
@@ -37,7 +40,7 @@ namespace GE
 
 		AssetInfo(const AssetInfo& assetInfo) : Type(assetInfo.Type)
 		{
-			InitializeData(assetInfo.DataBuffer.Size, assetInfo.DataBuffer.Data);
+			InitializeData(assetInfo.DataBuffer.GetSize(), assetInfo.DataBuffer.As<uint8_t>());
 		}
 
 		void InitializeData(uint64_t size, const uint8_t* data = nullptr)
@@ -145,7 +148,7 @@ namespace GE
 
 			EntityInfo(const EntityInfo& entityInfo)
 			{
-				InitializeData(entityInfo.DataBuffer.Size, entityInfo.DataBuffer.Data);
+				InitializeData(entityInfo.DataBuffer.GetSize(), entityInfo.DataBuffer.As<uint8_t>());
 			}
 
 			void InitializeData(uint64_t size, const uint8_t* data = nullptr)
