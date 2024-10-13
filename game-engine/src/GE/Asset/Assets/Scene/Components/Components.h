@@ -14,15 +14,30 @@ namespace GE
 
 		IDComponent() = default;
 		IDComponent(const IDComponent&) = default;
+		IDComponent(UUID uuid) : ID(uuid)
+		{
+		}
 	};
 
 	struct TagComponent
 	{
-		std::string Tag = std::string("New Entity");
+		// Corresponding TagStr can be found using Project::GetTagByKey(uint32_t)
+		uint32_t ID = 0;
 
 		TagComponent() = default;
 		TagComponent(const TagComponent&) = default;
-		TagComponent(const std::string& tag) : Tag(tag) {}
+		TagComponent(uint32_t id) : ID(id)
+		{
+		}
+	};
+
+	struct NameComponent
+	{
+		std::string Name = std::string("New Entity");
+
+		NameComponent() = default;
+		NameComponent(const NameComponent&) = default;
+		NameComponent(const std::string& name) : Name(name) {}
 	};
 
 	struct TransformComponent
@@ -43,16 +58,7 @@ namespace GE
 		const glm::mat4 GetTransform(glm::vec3& translationOffset = glm::vec3(0.0f), glm::vec3& scaleOffset = glm::vec3(1.0f)) const;
 	};
 
-	struct CameraComponent
-	{
-		SceneCamera ActiveCamera;
-		bool Primary = false;
-		bool FixedAspectRatio = false;
-
-		CameraComponent() = default;
-		CameraComponent(const CameraComponent&) = default;
-		CameraComponent(const SceneCamera camera) : ActiveCamera(camera) {}
-	};
+#pragma region Audio
 
 	struct AudioSourceComponent
 	{
@@ -81,43 +87,7 @@ namespace GE
 		AudioListenerComponent();
 		AudioListenerComponent(const AudioListenerComponent&) = default;
 	};
-
-	struct SpriteRendererComponent
-	{
-		UUID AssetHandle = 0;
-		float TilingFactor = 1.0f;
-		glm::vec4 Color = glm::vec4(1.0f);
-
-		SpriteRendererComponent() = default;
-		SpriteRendererComponent(const SpriteRendererComponent&) = default;
-		SpriteRendererComponent(const glm::vec4& color) : Color(color) {}
-	};
-
-	struct CircleRendererComponent
-	{
-		UUID AssetHandle = 0;
-		float TilingFactor = 1.0f;
-		float Radius = 0.5f; // Game Engine is 1x1, thus radius = 1/2;
-		float Thickness = 1.0f; // 1: Full, 0: Empty
-		float Fade = 0.0; // Blurs Circle 1: Full Fade 0: No Fade
-		glm::vec4 Color = glm::vec4(1.0f);
-
-		CircleRendererComponent() = default;
-		CircleRendererComponent(const CircleRendererComponent&) = default;
-	};
-
-	struct TextRendererComponent
-	{
-		UUID AssetHandle = 0;
-		float KerningOffset = 0.0f; // Adjusts the spacing between characters proportionally
-		float LineHeightOffset = 0.0f;
-		std::string Text = "Text";
-		glm::vec4 TextColor = glm::vec4(0.0, 0.0, 0.0, 1.0);
-		glm::vec4 BGColor = glm::vec4(0.0);
-
-		TextRendererComponent() = default;
-		TextRendererComponent(const TextRendererComponent&) = default;
-	};
+#pragma endregion
 
 #pragma region Physics
 	struct Rigidbody2DComponent
@@ -166,6 +136,132 @@ namespace GE
 
 #pragma endregion
 
+#pragma region Renderer
+
+	struct RenderComponent
+	{
+		// An Entity should only be rendered once
+		bool Rendered = false;
+		// All Layers Entity can be rendered
+		std::vector<uint64_t> LayerIDs = std::vector<uint64_t>();
+	
+		RenderComponent() = default;
+		RenderComponent(const RenderComponent& other)
+		{
+			Rendered = other.Rendered;
+			if (!other.LayerIDs.empty())
+				LayerIDs = other.LayerIDs;
+		}
+		RenderComponent(bool rendered, std::vector<uint64_t> layerIDs = std::vector<uint64_t>()) : Rendered(rendered)
+		{
+			if (!layerIDs.empty())
+				LayerIDs = layerIDs;
+		}
+
+		~RenderComponent()
+		{
+			LayerIDs.clear();
+			LayerIDs = std::vector<uint64_t>();
+		}
+
+		/*
+		* Returns true if id exists in LayerIDs, i.e. Entity can be rendered on ID, see LayerStack::
+		*/
+		bool IDHandled(uint64_t id) const
+		{
+			auto it = std::find(LayerIDs.begin(), LayerIDs.end(), id);
+
+			if (it != LayerIDs.end())
+				return true;
+
+			return false;
+		}
+
+		void AddID(uint64_t id)
+		{
+			if (!IDHandled(id))
+				LayerIDs.insert(LayerIDs.begin() + LayerIDs.size(), id);
+		}
+
+		void RemoveID(uint64_t id)
+		{
+			bool remove = false;
+			uint64_t index = 0;
+			for (auto& layerID : LayerIDs)
+			{
+				if (layerID == id)
+				{
+					remove = true;
+					break;
+				}
+
+				index++;
+			}
+
+			if(remove)
+				LayerIDs.erase(LayerIDs.begin() + index);
+		}
+	};
+
+	struct CameraComponent
+	{
+		SceneCamera ActiveCamera = SceneCamera();
+		bool Primary = false;
+		bool FixedAspectRatio = false;
+
+		CameraComponent() = default;
+		CameraComponent(const CameraComponent&) = default;
+		CameraComponent(const SceneCamera camera) : ActiveCamera(camera)
+		{
+		}
+
+	};
+
+	struct SpriteRendererComponent
+	{
+		UUID AssetHandle = 0;
+		float TilingFactor = 1.0f;
+		glm::vec4 Color = glm::vec4(1.0f);
+
+		SpriteRendererComponent() = default;
+		SpriteRendererComponent(const SpriteRendererComponent&) = default;
+		SpriteRendererComponent(const glm::vec4& color) : Color(color) {}
+	};
+
+	struct CircleRendererComponent
+	{
+		UUID AssetHandle = 0;
+		float TilingFactor = 1.0f;
+		float Radius = 0.5f; // Game Engine is 1x1, thus radius = 1/2;
+		float Thickness = 1.0f; // 1: Full, 0: Empty
+		float Fade = 0.0; // Blurs Circle 1: Full Fade 0: No Fade
+		glm::vec4 Color = glm::vec4(1.0f);
+
+		CircleRendererComponent() = default;
+		CircleRendererComponent(const CircleRendererComponent&) = default;
+		CircleRendererComponent(const glm::vec4& color, const float& radius,
+			const float& thickness, const float& fade)
+			: Color(color), Radius(radius), Thickness(thickness), Fade(fade)
+		{
+
+		}
+	};
+
+	struct TextRendererComponent
+	{
+		UUID AssetHandle = 0;
+		float KerningOffset = 0.0f; // Adjusts the spacing between characters proportionally
+		float LineHeightOffset = 0.0f;
+		std::string Text = "Text";
+		glm::vec4 TextColor = glm::vec4(0.0, 0.0, 0.0, 1.0);
+		glm::vec4 BGColor = glm::vec4(0.0);
+
+		TextRendererComponent() = default;
+		TextRendererComponent(const TextRendererComponent&) = default;
+	};
+
+#pragma endregion
+
 #pragma region Scripting
 
 	class ScriptableEntity;
@@ -173,8 +269,8 @@ namespace GE
 	{
 		ScriptableEntity* Instance = nullptr;
 
-		ScriptableEntity* (*InstantiateScript)();
-		void (*DestroyScript)(NativeScriptComponent*);
+		ScriptableEntity* (*InstantiateScript)() = nullptr;
+		void (*DestroyScript)(NativeScriptComponent*) = nullptr;
 
 		template<typename T>
 		void Bind()
@@ -186,8 +282,8 @@ namespace GE
 
 	struct ScriptComponent
 	{
-		// TODO : Switch to UUID from Script : Asset, store ClassName in Script(?)
-		std::string ClassName = std::string();
+		// Script Asset Handle
+		UUID AssetHandle = 0;
 
 		ScriptComponent() = default;
 		ScriptComponent(const ScriptComponent&) = default;

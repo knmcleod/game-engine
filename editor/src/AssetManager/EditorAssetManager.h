@@ -11,13 +11,16 @@ namespace GE
 		EditorAssetManager(const AssetMap& assetMap = AssetMap());
 		~EditorAssetManager() override;
 
+		/*
+		* Returns nullptr if handle does NOT exist
+		* or if asset can not be loaded
+		*/
 		Ref<Asset> GetAsset(UUID handle) override;
 		const AssetMap& GetLoadedAssets() override;
 
 		bool HandleExists(UUID handle) override;
 		bool AssetLoaded(UUID handle) override;
 
-		bool AddAsset(UUID handle) override;
 		bool AddAsset(Ref<Asset> asset) override;
 		bool RemoveAsset(UUID handle) override;
 
@@ -30,13 +33,21 @@ namespace GE
 
 		const AssetMetadata& GetMetadata(UUID handle);
 	private:
-		Ref<Asset> LoadAsset(const AssetMetadata& metadata);
+		bool SerializeAsset(Ref<Asset> asset, const AssetMetadata& metadata);
+		Ref<Asset> DeserializeAsset(const AssetMetadata& metadata);
 
-		bool SerializeAssets(const std::filesystem::path& filePath);
-		bool DeserializeAssets(const std::filesystem::path& filePath);
+		bool SerializeScene(Ref<Asset> asset, const AssetMetadata& metadata);
+
+		Ref<Asset> DeserializeScene(const AssetMetadata& metadata);
+		Ref<Asset> DeserializeTexture2D(const AssetMetadata& metadata);
+		Ref<Asset> DeserializeFont(const AssetMetadata& metadata);
+		Ref<Asset> DeserializeAudio(const AssetMetadata& metadata);
+		Ref<Asset> DeserializeScript(const AssetMetadata& metadata);
 	private:
 		Ref<AssetRegistry> m_AssetRegistry;
 		AssetMap m_LoadedAssets;
+
+		static AssetMetadata s_NullMetadata;
 	};
 }
 

@@ -4,8 +4,6 @@
 
 #include "GE/Core/Core.h"
 
-#include "GE/Rendering/Renderer/2D/Renderer2D.h"
-
 namespace GE
 {
 	namespace AssetUtils
@@ -26,7 +24,11 @@ namespace GE
 			case Asset::Type::Audio:
 				return "Audio";
 				break;
+			case Asset::Type::Script:
+				return "Script";
+				break;
 			}
+
 			return "None";
 
 		}
@@ -49,14 +51,13 @@ namespace GE
 			{
 				return Asset::Type::Audio;
 			}
+			if (typeString == "Script")
+			{
+				return Asset::Type::Script;
+			}
 
 			return Asset::Type::None;
 		}
-
-		static std::unordered_map<Asset::Type, std::function<Ref<Asset>()>> s_AssetPlaceholders =
-		{
-			{ Asset::Type::Texture2D, []() { return Renderer2D::GetWhiteTexture(); }}
-		};
 
 	}
 
@@ -73,7 +74,7 @@ namespace GE
 		virtual bool HandleExists(UUID handle) = 0;
 		virtual bool AssetLoaded(UUID handle) = 0;
 
-		virtual bool AddAsset(UUID handle) = 0;
+		//virtual bool AddAsset(UUID handle) = 0;
 		virtual bool AddAsset(Ref<Asset> asset) = 0;
 		virtual bool RemoveAsset(UUID handle) = 0;
 

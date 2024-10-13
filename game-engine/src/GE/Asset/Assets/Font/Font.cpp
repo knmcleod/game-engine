@@ -4,9 +4,12 @@
 
 namespace GE
 {
-	Font::Font(UUID handle, const AtlasConfig& config) : Asset(handle, Asset::Type::Font)
+	Font::Font(UUID handle, const AtlasConfig& config, Ref<MSDFData> data) : Asset(handle, Asset::Type::Font)
 	{
-		m_MSDFData = CreateRef<MSDFData>();
+		if (data)
+			m_MSDFData = data;
+		else
+			m_MSDFData = CreateRef<MSDFData>();
 		m_AtlasConfig = config;
 	}
 
@@ -20,4 +23,5 @@ namespace GE
 		GE_CORE_WARN("Could not copy Font Asset. Returning nullptr.");
 		return nullptr;
 	}
+
 }

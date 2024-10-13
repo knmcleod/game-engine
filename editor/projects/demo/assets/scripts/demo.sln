@@ -5,7 +5,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "demo", "demo.csproj", "{8AA
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GE", "GE", "{D8390FDD-C406-6AE8-ED1F-5890D94B9F76}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GE-ScriptCore", "..\..\..\..\..\GE-ScriptCore\GE-ScriptCore.csproj", "{7CFD5644-E8BD-D27A-B1F8-1BF81D781757}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GE-ScriptCore", "core\GE-ScriptCore\GE-ScriptCore.csproj", "{7CFD5644-E8BD-D27A-B1F8-1BF81D781757}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

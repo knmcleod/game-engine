@@ -2,23 +2,23 @@
 
 #include "OpenGLFramebuffer.h"
 
+#include "GE/Rendering/Renderer/Renderer.h"
+
 #include <glad/glad.h>
 
 namespace GE
 {
-	static const uint32_t s_MaxFramebufferSize = 8192;
-
-	static bool IsDepthFormat(Framebuffer::TextureFormat format)
+	static bool IsDepthFormat(Framebuffer::Attachment format)
 	{
 		switch (format)
 		{
-		case Framebuffer::TextureFormat::DEPTH24STENCIL8:
+		case Framebuffer::Attachment::DEPTH24STENCIL8:
 			return true;
 			break;
 		default:
-			return false;
 			break;
 		}
+		return false;
 	}
 
 	static GLenum TextureTarget(bool isMultiSample)
@@ -26,21 +26,30 @@ namespace GE
 		return isMultiSample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 	}
 
-	static GLenum FBTextureFormatToGL(Framebuffer::TextureFormat format)
+	static GLenum FBFormatToGL(Framebuffer::Attachment format)
 	{
 		switch (format)
 		{
-		case Framebuffer::TextureFormat::RGBA8:
+		case Framebuffer::Attachment::RGBA8:
 			return GL_RGBA8;
 			break;
-		case Framebuffer::TextureFormat::RED_INTEGER:
+		case Framebuffer::Attachment::RED_INTEGER:
 			return GL_RED_INTEGER;
 			break;
+		case Framebuffer::Attachment::GREEN_INTEGER:
+			return GL_GREEN_INTEGER;
+			break;
+		case Framebuffer::Attachment::BLUE_INTEGER:
+			return GL_BLUE_INTEGER;
+			break;
+		case Framebuffer::Attachment::DEPTH24STENCIL8:
+			return GL_DEPTH24_STENCIL8;
+			break;
 		default:
-			GE_CORE_ASSERT(false, "Unsupported Framebuffer Texture InternalFormat.");
-			return 0;
+			GE_CORE_ASSERT(false, "Unsupported Framebuffer::Attachment.");
 			break;
 		}
+		return 0;
 	}
 
 	static void CreateTextures(bool isMultiSample, uint32_t* outID, uint32_t count)
@@ -100,17 +109,9 @@ namespace GE
 
 	}
 
-	OpenGLFramebuffer::OpenGLFramebuffer(const Framebuffer::Config& spec) : p_Config(spec)
+	OpenGLFramebuffer::OpenGLFramebuffer(const Framebuffer::Config& spec) : m_Config(spec)
 	{
-		for (auto& format : p_Config.AttachmentSpecification.Attachments)
-		{
-			if (!IsDepthFormat(format.TextureFormat))
-				m_ColorAttachmentSpecs.emplace_back(format);
-			else
-				m_DepthAttachmentSpec = format;
-		}
-
-		Invalidate();
+		Refresh();
 	}
 
 	OpenGLFramebuffer::~OpenGLFramebuffer()
@@ -120,9 +121,7 @@ namespace GE
 
 	void OpenGLFramebuffer::Bind()
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
-		glViewport(0, 0, p_Config.Width, p_Config.Height);
-
+		glBindFramebuffer(GL_FRAMEBUFFER, m_Config.RendererID);
 	}
 
 	void OpenGLFramebuffer::Unbind()
@@ -130,115 +129,112 @@ namespace GE
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	void OpenGLFramebuffer::Resize(uint32_t width, uint32_t height)
+	void OpenGLFramebuffer::Resize(uint32_t width, uint32_t height, const glm::vec2& min, const glm::vec2& max)
 	{	
-		if (p_Config.Width == width || p_Config.Height == height)
-			return;
+		m_Config.SetViewport(width, height);
+		m_Config.SetBounds(min, max);
 
-		if (width == 0 || height == 0
-			|| width > s_MaxFramebufferSize || height > s_MaxFramebufferSize)
-		{
-			GE_CORE_WARN("Attempted Framebuffer Resize. Size: {0}, {1}", width, height);
-			return;
-		}
-
-		p_Config.Width = width;
-		p_Config.Height = height;
-		Invalidate();
+		Refresh();
 	}
 
 	void OpenGLFramebuffer::Clean()
 	{
-		glDeleteFramebuffers(1, &m_RendererID);
-		glDeleteTextures((GLsizei)m_ColorAttachmentsID.size(), m_ColorAttachmentsID.data());
-		glDeleteTextures(1, &m_DepthAttachmentID);
-
-		m_ColorAttachmentsID.clear();
+		glDeleteFramebuffers(1, &m_Config.RendererID);
+		for (auto& [format, id] : m_Config.Attachments)
+		{
+			glDeleteTextures((GLsizei)1, &id);
+			id = 0;
+		}
 		m_DepthAttachmentID = 0;
 	}
 
-	void OpenGLFramebuffer::Invalidate()
+	void OpenGLFramebuffer::Clear()
 	{
-		if (m_RendererID)
+		Renderer::ClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
+		Renderer::CleanBuffers();
+
+		ClearAttachment(Attachment::RED_INTEGER, -1);
+	}
+
+	void OpenGLFramebuffer::Refresh()
+	{
+		if (m_Config.RendererID)
 		{
 			Clean();
 		}
 
-		glCreateFramebuffers(1, &m_RendererID);
-		glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
+		glCreateFramebuffers(1, &m_Config.RendererID);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_Config.RendererID);
 
 		// Attachments 
-		bool multisample = p_Config.Samples > 1;
-		if (m_ColorAttachmentSpecs.size())
+		bool multisample = m_Config.Samples > 1;
+		for (auto& [format, id] : m_Config.Attachments)
 		{
-			m_ColorAttachmentsID.resize(m_ColorAttachmentSpecs.size());
-			CreateTextures(multisample, m_ColorAttachmentsID.data(), (uint32_t)m_ColorAttachmentsID.size());
+			CreateTextures(multisample, &id, 1);
+			BindTexture(multisample, id);
 
-			for (uint32_t i = 0; i < m_ColorAttachmentsID.size(); i++)
+			switch (format)
 			{
-				BindTexture(multisample, m_ColorAttachmentsID[i]);
-				switch (m_ColorAttachmentSpecs[i].TextureFormat)
-				{
-				case Framebuffer::TextureFormat::RGBA8:
-					AttachColorTexture(GL_RGBA8, GL_RGBA, m_ColorAttachmentsID[i], p_Config.Samples, p_Config.Width, p_Config.Height, i);
-					break;
-				case Framebuffer::TextureFormat::RED_INTEGER:
-					AttachColorTexture(GL_R32I, GL_RED_INTEGER, m_ColorAttachmentsID[i], p_Config.Samples, p_Config.Width, p_Config.Height, i);
-					break;
-				default:
-					GE_ERROR("Unsupported Texture InternalFormat");
-					break;
-				}
-			}
-		}
-
-		if (m_DepthAttachmentSpec.TextureFormat != Framebuffer::TextureFormat::None)
-		{
-			CreateTextures(multisample, &m_DepthAttachmentID, 1);
-			BindTexture(multisample, m_DepthAttachmentID);
-			switch (m_DepthAttachmentSpec.TextureFormat)
-			{
-			case Framebuffer::TextureFormat::DEPTH24STENCIL8:
-				AttachDepthTexture(GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL_ATTACHMENT, m_DepthAttachmentID, p_Config.Samples, p_Config.Width, p_Config.Height);
+			case Attachment::RGBA8:
+				AttachColorTexture(GL_RGBA8, GL_RGBA, id, m_Config.Samples, m_Config.Width, m_Config.Height, 0);
+				break;
+			case Attachment::RED_INTEGER:
+				AttachColorTexture(GL_R32I, GL_RED_INTEGER, id, m_Config.Samples, m_Config.Width, m_Config.Height, 1);
+				break;
+			case Attachment::GREEN_INTEGER:
+				AttachColorTexture(GL_R32I, GL_GREEN_INTEGER, id, m_Config.Samples, m_Config.Width, m_Config.Height, 2);
+				break;
+			case Attachment::BLUE_INTEGER:
+				AttachColorTexture(GL_R32I, GL_BLUE_INTEGER, id, m_Config.Samples, m_Config.Width, m_Config.Height, 3);
+				break;
+			case Attachment::DEPTH24STENCIL8:
+				AttachDepthTexture(GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL_ATTACHMENT, id, m_Config.Samples, m_Config.Width, m_Config.Height);
+				m_DepthAttachmentID = id;
+				break;
+			default:
+				GE_ERROR("Unsupported Framebuffer Attachment");
 				break;
 			}
 		}
 
-		if (m_ColorAttachmentsID.size() > 1)
+		uint64_t count = m_Config.Attachments.size() - (m_DepthAttachmentID != 0 ? 1 : 0);
+		if (count > 1)
 		{
-			GE_CORE_ASSERT(m_ColorAttachmentsID.size() <= 4, "Four(4) or more color attachments present.");
+			GE_CORE_ASSERT(count <= 4, "Four(4) or more color attachments present.");
 			GLenum buffers[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
 									GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
-			glDrawBuffers((GLsizei)m_ColorAttachmentsID.size(), buffers);
+			glDrawBuffers((GLsizei)count, buffers);
 		}
-		else if (m_ColorAttachmentsID.empty()) // Depth-pass only
+		else if (m_DepthAttachmentID != 0 && count == 1) // Depth-pass only
 		{
 			glDrawBuffer(GL_NONE);
 		}
 
 		GE_CORE_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Framebuffer Status Incomplete!");
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		Clear();
 	}
 
-	void OpenGLFramebuffer::ClearAttachment(uint32_t attachmentIndex, int value)
+	void OpenGLFramebuffer::ClearAttachment(Attachment format, int value)
 	{
-		GE_CORE_ASSERT(attachmentIndex < m_ColorAttachmentsID.size(),
+		GE_CORE_ASSERT(m_Config.Attachments.find(format) != m_Config.Attachments.end(),
 			"Framebuffer Attachment Index is out of range.");
-		auto& spec = m_ColorAttachmentSpecs[attachmentIndex];
-		
-		glClearTexImage(m_ColorAttachmentsID[attachmentIndex], 0,
-			FBTextureFormatToGL(spec.TextureFormat), GL_INT, &value);
+
+		glClearTexImage(m_Config.Attachments.at(format), 0,
+			FBFormatToGL(format), GL_INT, &value);
 		
 	}
 
-	int OpenGLFramebuffer::ReadPixel(uint32_t attachmentIndex, int x, int y)
+	int OpenGLFramebuffer::ReadPixel(Attachment format, int x, int y)
 	{
-		GE_CORE_ASSERT(attachmentIndex < m_ColorAttachmentsID.size(),
+		this->Bind();
+		GE_CORE_ASSERT(m_Config.Attachments.find(format) != m_Config.Attachments.end(),
 			"Framebuffer Attachment Index is out of range.");
-		glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentIndex);
-		int pixelData;
-		glReadPixels(x, y, 1, 1, GL_RED_INTEGER, GL_INT, &pixelData);
+		GLenum formatIndex = (uint32_t)format - 1;
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + formatIndex);
+		int pixelData = -1;
+		glReadPixels(x, y, 1, 1, FBFormatToGL(format), GL_INT, &pixelData);
 		return pixelData;
 	}
 

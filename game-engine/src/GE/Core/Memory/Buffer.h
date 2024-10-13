@@ -5,6 +5,17 @@
 namespace GE
 {
 	/*
+	* Converts data to given type using memcpy
+	*/
+	template<typename T>
+	static T convert(char* data, size_t len)
+	{
+		T convertedData = T();
+		std::memcpy(&convertedData, data, len);
+		return convertedData;
+	}
+
+	/*
 	* Based on CPU
 	*/
 	constexpr auto BYTE_ALIGNMENT = (sizeof(void*));
@@ -13,6 +24,7 @@ namespace GE
 	* Returns an aligned size for dataSize
 	* if dataSize is divisible by BYTE_ALIGNMENT, add the remaining size
 	* else, add 0
+	* @param dataSize : example sizeof(uint8_t)
 	*/
 	template<typename T>
 	static inline T GetAligned(T dataSize)
@@ -27,6 +39,11 @@ namespace GE
 		return dataSize;
 	}
 
+	/*
+	* Returns an aligned size equal to the length of an array + (dataSize * sizeof(T)).
+	* 
+	* @param dataSize : example vector.size()
+	*/
 	template<typename T>
 	static inline size_t GetAlignedOfArray(size_t dataSize)
 	{
@@ -64,7 +81,10 @@ namespace GE
 	}
 
 	/*
-	* Write primitive type(var) to pointer
+	* Write primitive type to pointer
+	* 
+	* @param p : write pointer
+	* @param var : variable to write
 	*/
 	template<class T>
 	static inline void WriteAligned(uint8_t*& p, const T& var)
@@ -78,6 +98,10 @@ namespace GE
 	*  Example
 	*	const char* : STL str.cstr()
 	*	const uint8_t* : Buffer.Data
+	* 
+	* @param p : write pointer
+	* @param var : array to write
+	* @param size : size of var
 	*/
 	template<class T>
 	static inline void WriteAlignedArray(uint8_t*& p, const T*& var, size_t size)
@@ -123,7 +147,11 @@ namespace GE
 	}
 
 	/*
-	* Reads Aligned primitive data from pointer(p) until end-of-pointer(pEnd) for T type(var)
+	* Reads Aligned primitive data from pointer until end-of-pointer for type
+	* 
+	* @param p : read pointer
+	* @param pEnd : end of pointer
+	* @param var : variable to fill
 	*/
 	template<typename T>
 	static inline bool ReadAligned(const uint8_t*& p, const uint8_t* pEnd, T& var)
@@ -145,6 +173,11 @@ namespace GE
 	* for T type(var) of max size(size)
 	* Use ReadAligned() for size
 	* Uses malloc to allocate var using size * sizeof(T)
+	* 
+	* @param p : read pointer
+	* @param pEnd : end of pointer
+	* @param var : array to fill
+	* @param size : size of data
 	*/
 	template<class T>
 	static inline bool ReadAlignedArray(const uint8_t*& p, const uint8_t* pEnd, T*& var, const size_t& size)
@@ -216,8 +249,8 @@ namespace GE
 			Release();
 
 			m_Data = (uint8_t*)malloc(size * sizeof(uint8_t));
-			memset(m_Data, 0, size);
 			m_Size = size;
+			memset(As<void>(), 0, size);
 		}
 
 		void Release()

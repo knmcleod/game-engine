@@ -13,22 +13,27 @@ namespace GE
 		WindowsWindow(const Config& config);
 		~WindowsWindow() override;
 
-		void OnUpdate() override;
-
 		inline float GetTime() const override { return (float)glfwGetTime(); }
-		inline unsigned int GetWidth() const override { return m_Config.Width; }
-		inline unsigned int GetHeight() const override { return m_Config.Height; }
+		inline const uint64_t& GetWidth() const override { return m_Config.Width; }
+		inline const uint64_t& GetHeight() const override { return m_Config.Height; }
 
 		inline void* GetNativeWindow() const override { return m_Window;  }
 
-		//Window attributes
 		inline void SetEventCallback(const EventCallbackFn& callback) override { m_Config.EventCallback = callback; }
+
 		void SetVSync(bool enabled) override;
 		bool IsVSync() const override;
+
 		void SetFullscreen(bool fs) const override;
 		bool IsFullscreen() const override;
 
+		void OnUpdate() override;
+
+	private:
 		void Init(const Config& props) override;
+		/*
+		* Destroys Window & terminates GLFW
+		*/
 		void Shutdown() override;
 	private:
 		Config m_Config;

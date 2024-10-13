@@ -18,8 +18,8 @@
     <DebugType>portable</DebugType>
     <DebugSymbols>true</DebugSymbols>
     <Optimize>false</Optimize>
-    <OutputPath>Resources\Binaries\</OutputPath>
-    <BaseIntermediateOutputPath>Resources\Intermediates\Debug\</BaseIntermediateOutputPath>
+    <OutputPath>bin\</OutputPath>
+    <BaseIntermediateOutputPath>bin-int\Debug\</BaseIntermediateOutputPath>
     <IntermediateOutputPath>$(BaseIntermediateOutputPath)</IntermediateOutputPath>
     <DefineConstants></DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -30,8 +30,8 @@
     <DebugType>portable</DebugType>
     <DebugSymbols>true</DebugSymbols>
     <Optimize>true</Optimize>
-    <OutputPath>Resources\Binaries\</OutputPath>
-    <BaseIntermediateOutputPath>Resources\Intermediates\Release\</BaseIntermediateOutputPath>
+    <OutputPath>bin\</OutputPath>
+    <BaseIntermediateOutputPath>bin-int\Release\</BaseIntermediateOutputPath>
     <IntermediateOutputPath>$(BaseIntermediateOutputPath)</IntermediateOutputPath>
     <DefineConstants></DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -42,8 +42,8 @@
     <DebugType>portable</DebugType>
     <DebugSymbols>true</DebugSymbols>
     <Optimize>true</Optimize>
-    <OutputPath>Resources\Binaries\</OutputPath>
-    <BaseIntermediateOutputPath>Resources\Intermediates\Dist\</BaseIntermediateOutputPath>
+    <OutputPath>bin\</OutputPath>
+    <BaseIntermediateOutputPath>bin-int\Dist\</BaseIntermediateOutputPath>
     <IntermediateOutputPath>$(BaseIntermediateOutputPath)</IntermediateOutputPath>
     <DefineConstants></DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -56,11 +56,11 @@
   <ItemGroup Condition=" '$(Configuration)|$(Platform)' == 'Dist|x64' ">
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Source\Camera.cs" />
-    <Compile Include="Source\Player.cs" />
+    <Compile Include="src\demo\Camera.cs" />
+    <Compile Include="src\demo\Player.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\GE-ScriptCore\GE-ScriptCore.csproj">
+    <ProjectReference Include="core\GE-ScriptCore\GE-ScriptCore.csproj">
       <Project>{7CFD5644-E8BD-D27A-B1F8-1BF81D781757}</Project>
       <Name>GE-ScriptCore</Name>
     </ProjectReference>

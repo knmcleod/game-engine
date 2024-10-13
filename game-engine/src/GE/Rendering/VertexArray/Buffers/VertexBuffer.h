@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GE/Core/Math/Math.h"
 #include "GE/Rendering/Shader/Shader.h"
 
 namespace GE
@@ -11,14 +12,14 @@ namespace GE
 		struct Elements
 		{
 			std::string Name = "BufferElement";
-			Shader::DataType Type;
+			Math::Type Type;
 			uint32_t Count = 0;
 			uint32_t Offset = 0;
 			uint32_t Size = 0;
 			bool Normalized = false;
 
-			Elements(Shader::DataType type, const std::string& name) 
-				: Name(name), Type(type), Size(Shader::GetDataTypeSize(type)), Offset(0), Normalized(false)
+			Elements(Math::Type type, const std::string& name) 
+				: Name(name), Type(type), Size(Math::GetTypeSize(type)), Offset(0), Normalized(false)
 			{
 
 			}
@@ -27,27 +28,27 @@ namespace GE
 			{
 				switch (Type)
 				{
-				case Shader::DataType::Float:
+				case Math::Type::Float:
 					return 1;
-				case Shader::DataType::Float2:
+				case Math::Type::Float2:
 					return 2;
-				case Shader::DataType::Float3:
+				case Math::Type::Float3:
 					return 3;
-				case Shader::DataType::Float4:
+				case Math::Type::Float4:
 					return 4;
-				case Shader::DataType::Mat3:
+				case Math::Type::Mat3:
 					return 3 * 3;
-				case Shader::DataType::Mat4:
+				case Math::Type::Mat4:
 					return 4 * 4;
-				case Shader::DataType::Int:
+				case Math::Type::Int:
 					return 1;
-				case Shader::DataType::Int2:
+				case Math::Type::Int2:
 					return 2;
-				case Shader::DataType::Int3:
+				case Math::Type::Int3:
 					return 3;
-				case Shader::DataType::Int4:
+				case Math::Type::Int4:
 					return 4;
-				case Shader::DataType::Bool:
+				case Math::Type::Bool:
 					return 1;
 				}
 				GE_CORE_ASSERT(false, "Unknown DataType!");

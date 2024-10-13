@@ -14,6 +14,12 @@ AssetRegistry:
   - Handle: 12083958930263244828
     FilePath: audio/LittleRobotSoundFactory/8-Bit/Wav/Jump_00.wav
     Type: Audio
+  - Handle: 12345127586763726501
+    FilePath: demo/Player.cs
+    Type: Script
+  - Handle: 13426698827862289058
+    FilePath: demo/Camera.cs
+    Type: Script
   - Handle: 16203209201710611844
     FilePath: textures/Stop_Button.png
     Type: Texture2D

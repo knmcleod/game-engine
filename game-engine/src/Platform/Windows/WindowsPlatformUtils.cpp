@@ -12,7 +12,7 @@ namespace GE
 {
 	bool Input::IsKeyPressed(int keycode)
 	{
-		auto window = static_cast<GLFWwindow*>(Application::GetApp().GetWindow().GetNativeWindow());
+		auto window = static_cast<GLFWwindow*>(Application::GetNativeWindow());
 
 		auto state = glfwGetKey(window, keycode);
 
@@ -21,7 +21,7 @@ namespace GE
 
 	bool Input::IsMouseButtonPressed(int button)
 	{
-		auto window = static_cast<GLFWwindow*>(Application::GetApp().GetWindow().GetNativeWindow());
+		auto window = static_cast<GLFWwindow*>(Application::GetNativeWindow());
 
 		auto state = glfwGetMouseButton(window, button);
 		return state == GLFW_PRESS;
@@ -43,7 +43,7 @@ namespace GE
 
 	std::pair<float, float> Input::GetMousePosition()
 	{
-		auto window = static_cast<GLFWwindow*>(Application::GetApp().GetWindow().GetNativeWindow());
+		auto window = static_cast<GLFWwindow*>(Application::GetNativeWindow());
 		double xpos, ypos;
 		glfwGetCursorPos(window, &xpos, &ypos);
 
@@ -56,7 +56,7 @@ namespace GE
 		CHAR szFile[260] = { 0 };
 		ZeroMemory(&ofn, sizeof(OPENFILENAME));
 		ofn.lStructSize = sizeof(OPENFILENAME);
-		ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)Application::GetApp().GetWindow().GetNativeWindow());
+		ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)Application::GetNativeWindow());
 		ofn.lpstrFile = szFile;
 		ofn.nMaxFile = sizeof(szFile);
 		ofn.lpstrFilter = filter;
@@ -75,7 +75,7 @@ namespace GE
 		CHAR szFile[260] = { 0 };
 		ZeroMemory(&ofn, sizeof(OPENFILENAME));
 		ofn.lStructSize = sizeof(OPENFILENAME);
-		ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)Application::GetApp().GetWindow().GetNativeWindow());
+		ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)Application::GetNativeWindow());
 		ofn.lpstrFile = szFile;
 		ofn.nMaxFile = sizeof(szFile);
 		ofn.lpstrFilter = filter;

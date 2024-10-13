@@ -24,7 +24,7 @@ IncludeDir["msdf_atlas_gen"] = "game-engine/vender/msdf-atlas-gen"
 IncludeDir["msdf_gen"] = "game-engine/vender/msdf-atlas-gen/msdfgen"
 IncludeDir["OpenAL"] = "game-engine/vender/OpenAL/OpenAL1.1/include"
 IncludeDir["spdlog"] = "game-engine/vender/spdlog/include"
-IncludeDir["stb"] = "game-engine/vender/stb_image"
+IncludeDir["stbi"] = "game-engine/vender/stb_image"
 IncludeDir["yaml_cpp"] = "game-engine/vender/yaml-cpp/include"
 
 Library = {}
@@ -95,7 +95,7 @@ project "game-engine"
 		"%{IncludeDir.msdf_gen}",
 		"%{IncludeDir.OpenAL}",
 		"%{IncludeDir.spdlog}",
-		"%{IncludeDir.stb}",
+		"%{IncludeDir.stbi}",
 		"%{IncludeDir.yaml_cpp}"
 	}
 
@@ -161,6 +161,8 @@ project "editor"
 		"game-engine/vender",
 		"%{IncludeDir.entt}",
 		"%{IncludeDir.filewatch}",
+		"%{IncludeDir.GLAD}",
+		"%{IncludeDir.glfw}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.mono}",

@@ -34,9 +34,9 @@ namespace GE
 			MouseButton = BIT(4)
 		};
 
-		virtual Type GetEventType() const = 0;
-		virtual const char* GetName() const = 0;
-		virtual int GetCategoryFlags() const = 0;
+		virtual Type GetEventType() const { return Type::None; }
+		virtual const char* GetName() const { return nullptr; }
+		virtual int GetCategoryFlags() const { return Category::None; }
 		virtual std::string ToString() const { return GetName(); }
 
 		inline bool IsInCategory(Category category) const

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "GE/Core/Math/Math.h"
+
 #include "GE/Rendering/Shader/Shader.h"
 
 #include <glm/glm.hpp>
@@ -11,42 +13,46 @@ namespace GE
 	class OpenGLShader : public Shader
 	{
 	public:
-		// Converts Shader data type to OpenGL type
-		static GLenum ShaderDataTypeToOpenGLBaseType(Shader::DataType type)
+		/*
+		* Converts Math::Type to OpenGL::GLenum
+		* 
+		* @param type : type to convert
+		*/
+		static GLenum MathTypeToOpenGLBaseType(Math::Type type)
 		{
 			switch (type)
 			{
-			case Shader::DataType::Float:
+			case Math::Type::Float:
 				return GL_FLOAT;
 				break;
-			case Shader::DataType::Float2:
+			case Math::Type::Float2:
 				return GL_FLOAT;
 				break;
-			case Shader::DataType::Float3:
+			case Math::Type::Float3:
 				return GL_FLOAT;
 				break;
-			case Shader::DataType::Float4:
+			case Math::Type::Float4:
 				return GL_FLOAT;
 				break;
-			case Shader::DataType::Mat3:
+			case Math::Type::Mat3:
 				return GL_FLOAT;
 				break;
-			case Shader::DataType::Mat4:
+			case Math::Type::Mat4:
 				return GL_FLOAT;
 				break;
-			case Shader::DataType::Int:
+			case Math::Type::Int:
 				return GL_INT;
 				break;
-			case Shader::DataType::Int2:
+			case Math::Type::Int2:
 				return GL_INT;
 				break;
-			case Shader::DataType::Int3:
+			case Math::Type::Int3:
 				return GL_INT;
 				break;
-			case Shader::DataType::Int4:
+			case Math::Type::Int4:
 				return GL_INT;
 				break;
-			case Shader::DataType::Bool:
+			case Math::Type::Bool:
 				return GL_BOOL;
 				break;
 			}
@@ -54,7 +60,10 @@ namespace GE
 			return 0;
 		}
 
-		//
+		/*
+		* Converts type to internally compatible Vertex || Fragment type.
+		* If failed, will return 0.
+		*/
 		static GLenum ShaderDataTypeFromString(const std::string& type)
 		{
 			if (type == "vertex")
@@ -94,45 +103,73 @@ namespace GE
 		void Unbind() const override;
 		
 	private:
+		/*
+		* Returns string containing data.
+		* 
+		* @param path : filePath to read from.
+		*/
 		std::string ReadFile(const std::string& path);
 
-		std::unordered_map<GLenum, std::string> Preprocess(const std::string& src);
+		/*
+		* Returns unordered_map<Type, src>.
+		* 
+		* @param shaderSrc : src code from ReadFile(const std::string&)
+		*/
+		std::unordered_map<GLenum, std::string> Preprocess(const std::string& shaderSrc);
 
-		// Compiles shader using OpenGL
-		void Compile(const std::unordered_map<GLenum, std::string>& shaderSrc);
+		/*
+		* Creates program using glCreateProgram().
+		* Creates & complies upp to two shaders 
+		* @param processedSrc : from Preprocess(const std::string&)
+		*/
+		void Compile(const std::unordered_map<GLenum, std::string>& processedSrc);
 		
-		// Uploads uniform int array to renderer using OpenGL
-		// Bind and Unbind handled
+		/*
+		* Uploads uniform int array to renderer using OpenGL
+		* Bind and Unbind handled
+		*/ 
 		void UploadUniformIntArray(const std::string& name,
 			const int* values, uint32_t count);
 
-		// Uploads uniform int to renderer using OpenGL
-		// Bind and Unbind handled
+		/*
+		* Uploads uniform int to renderer using OpenGL
+		* Bind and Unbind handled
+		*/
 		void UploadUniformInt(const std::string& name,
 			int value);
 
-		// Uploads uniform float to renderer using OpenGL
-		// Bind and Unbind handled
+		/*
+		* Uploads uniform float to renderer using OpenGL
+		* Bind and Unbind handled
+		*/
 		void UploadUniformFloat(const std::string& name,
 			const float& vector);
 
-		// Uploads uniform 2d float to renderer using OpenGL
-		// Bind and Unbind handled
+		/*
+		* Uploads uniform 2d float to renderer using OpenGL
+		* Bind and Unbind handled
+		*/
 		void UploadUniformFloat2(const std::string& name,
 			const glm::vec2& vector);
 
-		// Uploads uniform 3d float to renderer using OpenGL
-		// Bind and Unbind handled
+		/*
+		* Uploads uniform 3d float to renderer using OpenGL
+		* Bind and Unbind handled
+		*/
 		void UploadUniformFloat3(const std::string& name,
 			const glm::vec3& vector);
 
-		// Uploads uniform 4d float to renderer using OpenGL
-		// Bind and Unbind handled
+		/*
+		* Uploads uniform 4d float to renderer using OpenGL
+		* Bind and Unbind handled
+		*/
 		void UploadUniformFloat4(const std::string& name,
 			const glm::vec4& vector);
 
-		// Uploads uniform 4x4 matrix to renderer using OpenGL
-		// Bind and Unbind handled
+		/*
+		* Uploads uniform 4x4 matrix to renderer using OpenGL
+		* Bind and Unbind handled
+		*/
 		void UploadUniformMat4(const std::string& name,
 			const glm::mat4& matrix);
 	private:

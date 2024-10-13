@@ -16,9 +16,11 @@ namespace GE
 			{ ".png",	Asset::Type::Texture2D		},
 			{ ".jpg",	Asset::Type::Texture2D		},
 			{ ".ttf",	Asset::Type::Font			},
-			{ ".wav",	Asset::Type::Audio			}
-			// { ".mp3",	Asset::Type::Audio			}
-			// { ".ogg",	Asset::Type::Audio			}
+			{ ".wav",	Asset::Type::Audio			},
+			{ ".cs",	Asset::Type::Script			}
+			// { ".mp3",	Asset::Type::Audio			},
+			// { ".ogg",	Asset::Type::Audio			},
+
 		};
 
 		static Asset::Type AssetTypeFromFileExtension(const std::filesystem::path& extension)
@@ -42,11 +44,13 @@ namespace GE
 
 		AssetMetadata() = default;
 
-		AssetMetadata(UUID handle, const std::filesystem::path& filePath = std::filesystem::path())
+		AssetMetadata(UUID handle, const std::filesystem::path& filePath)
 			: FilePath(filePath), Handle(handle)
 		{
-			if(!FilePath.empty())
+			if (!FilePath.empty())
+			{
 				Type = AssetUtils::AssetTypeFromFileExtension(FilePath.extension());
+			}
 		}
 	};
 }

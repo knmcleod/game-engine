@@ -1,128 +1,28 @@
 #pragma once
 
+#include "Entity.h"
+
 #include "GE/Asset/Assets/Asset.h"
 
-#include "GE/Rendering/Camera/Camera.h"
-
-#include <entt/entt.hpp>
+#include "GE/Core/Events/Event.h"
 
 class b2World;
 
 namespace GE
 {
-	class Scene;
-
-	class Entity
-	{
-		friend class Scene;
-	public:
-		operator entt::entity() const { return m_EntityID; }
-		operator bool() const { return m_EntityID != entt::null; }
-		operator uint32_t() const { return (uint32_t)m_EntityID; }
-
-		bool operator ==(const Entity& other) const { return m_EntityID == other.m_EntityID; }
-		bool operator !=(const Entity& other) const { return !operator==(other); }
-
-		template<typename T>
-		void OnComponentAdded();
-
-		template<typename T, typename... Args>
-		T& AddOrReplaceComponent(Args&&... args)
-		{
-			GE_CORE_ASSERT(m_Scene, "Entity doesn't have Scene.");
-			return m_Scene->AddOrReplaceComponent<T, Args...>(*this, args...);
-		}
-
-		template<typename T, typename... Args>
-		T& AddComponent(Args&&... args)
-		{
-			GE_CORE_ASSERT(m_Scene, "Entity doesn't have Scene.");
-			return m_Scene->AddComponent<T, Args...>(*this, args...);
-		}
-
-		template<typename T>
-		T& GetComponent() const
-		{
-			GE_CORE_ASSERT(m_Scene, "Entity doesn't have Scene.");
-			return m_Scene->GetComponent<T>(*this);
-		}
-
-		template<typename T, typename... Args>
-		T& GetOrAddComponent(Args&&... args)
-		{
-			if (!HasComponent<T>())
-				return AddComponent<T>();
-			return GetComponent<T>();
-		}
-
-		template<typename T>
-		void RemoveComponent()
-		{
-			GE_CORE_ASSERT(m_Scene, "Entity doesn't have Scene.");
-			m_Scene->RemoveComponent<T>(*this);
-		}
-
-		template<typename T>
-		bool HasComponent() const
-		{
-			GE_CORE_ASSERT(m_Scene, "Entity doesn't have Scene.");
-			return m_Scene->HasComponent<T>(*this);
-		}
-
-		Entity() = default;
-		Entity(entt::entity entityID, Scene* scene = nullptr);
-		virtual ~Entity();
-
-		const uint32_t GetEntityID() const { return (uint32_t)m_EntityID; }
-		const Scene* GetScene() { return m_Scene; }
-	protected:
-		void ClearEntityID() { m_EntityID = entt::null; }
-	protected:
-		entt::entity m_EntityID{ entt::null };
-		Scene* m_Scene = nullptr;
-	};
-
-	class ScriptableEntity : public Entity
-	{
-		friend class Scene;
-	public:
-		operator entt::entity() const { return m_EntityID; }
-		operator bool() const { return m_EntityID != entt::null; }
-		operator uint32_t() const { return (uint32_t)m_EntityID; }
-
-		bool operator ==(const Entity& other) const { return this->operator==(other); }
-		bool operator !=(const Entity& other) const { return !operator==(other); }
-
-		ScriptableEntity(entt::entity id, Scene* scene) : Entity(id, scene)
-		{
-
-		}
-
-		virtual ~ScriptableEntity() override = 0;
-
-		void SetID(uint32_t id, Ref<Scene> scene = nullptr)
-		{
-			m_EntityID = (entt::entity)id;
-			if (scene != nullptr && m_Scene != scene.get())
-				m_Scene = scene.get();
-		}
-
-	protected:
-		virtual void OnCreate() = 0;
-		virtual void OnDestroy() = 0;
-		virtual void OnUpdate(Timestep ts) = 0;
-	};
+	// Forward declarations
+	class Camera;
+	class Project;
 
 	class Scene : public Asset
 	{
-		friend class AssetSerializer;
+		friend class Project;
 	public:
 		enum class State
 		{
-			Run = 0,
-			Simulate = 1,
-			Stop = 2,
-			Pause = 3 // Set during Run or Simulate
+			Stop = 0,
+			Run = 1,
+			Pause = 2,  // Set during Run
 		};
 
 		/*
@@ -134,24 +34,48 @@ namespace GE
 		*/
 		struct Config
 		{
-			// Remove. Use AssetMetadata.FilePath.Name instead
-			std::string Name = "NewScene";
+		public:
+			Config() = default;
+			Config(State state, const uint32_t& w, const uint32_t& h) : CurrentState(state)
+			{
+				SetViewport(w, h);
+			}
+
+			void SetViewport(const uint32_t& w, const uint32_t& h)
+			{
+				if ((w == 0 || h == 0) || (w == ViewportWidth && h == ViewportHeight)) return;
+				ViewportWidth = w; ViewportHeight = h;
+			}
+		public:
 			uint32_t ViewportWidth = 1280, ViewportHeight = 720;
 			State CurrentState = State::Stop;
 			uint64_t StepFrames = 0;
 		};
 
+		/*
+		* Returns all Entities in Scene with Components
+		*/
 		template<typename... Components>
-		auto GetAllEntitiesWith()
+		std::vector<Entity> GetAllEntitiesWith()
 		{
-			return m_Registry.view<Components...>();
+			std::vector<Entity> entities = std::vector<Entity>();
+			auto& view = m_Registry.view<Components...>();
+			for (entt::entity internalEntity : view)
+			{
+				Entity entity = Entity((uint32_t)internalEntity, this);
+				entities.push_back(entity);
+			}
+			return entities;
 		}
 
+		/*
+		* Adds or replaces Component of type T using args
+		*/
 		template<typename T, typename... Args>
 		T& AddOrReplaceComponent(Entity entity, Args&&... args)
 		{
 			T& component = m_Registry.emplace_or_replace<T>(entity, std::forward<Args>(args)...);
-			entity.OnComponentAdded<T>();
+			OnEntityComponentAdded<T>(entity);
 			return component;
 		}
 
@@ -166,7 +90,7 @@ namespace GE
 		{
 			GE_CORE_ASSERT(!HasComponent<T>(entity), "Component already exists on Entity!");
 			T& component = m_Registry.emplace<T>(entity, std::forward<Args>(args)...);
-			entity.OnComponentAdded<T>();
+			OnEntityComponentAdded<T>(entity);
 			return component;
 		}
 
@@ -192,39 +116,40 @@ namespace GE
 			m_Registry.remove<T>(entity);
 		}
 
-		Scene();
+		template<typename T>
+		void OnEntityComponentAdded(Entity e);
+
+		Scene() = default;
 		Scene(UUID handle, const Config& config = Config());
 		~Scene() override;
 
 		/*
-		*	Returns Copy of Asset by CreateRef<this>()
-		*	By default, returns nullptr.
-		*	Implement per inherited Asset
+		*	Returns Copy of Scene Asset by CreateRef<Scene>()
 		*/
 		Ref<Asset> GetCopy() override;
-		
+
+		const entt::registry& GetRegistry() { return m_Registry; }
+
+		const Config& GetConfig() const { return m_Config; }
+		const State& GetState() const { return m_Config.CurrentState; }
+
 		// Returns true if the scenes state is Run. Does not account for Simulation
 		bool IsRunning() const { return m_Config.CurrentState == State::Run; }
 		bool IsPaused() const { return m_Config.CurrentState == State::Pause; }
 		bool IsStopped() const { return m_Config.CurrentState == State::Stop; }
 
-		const Config& GetConfig() const { return m_Config; }
-		const std::string& GetName() const { return m_Config.Name; }
-		const State& GetState() const { return m_Config.CurrentState; }
-
-		const entt::registry& GetRegistry() { return m_Registry; }
-
-		Entity GetPrimaryCameraEntity();
-		Entity GetEntityByUUID(UUID uuid);
-		Entity GetEntityByTag(const std::string& tag);
-
+		bool EntityExists(Entity e);
 		/*
-		* Sets Entity Camera viewport to match Scene
+		* Returns first primary Camera Entity that handles given LayerID
+		*	otherwise, returns empty Entity
 		*/
-		void SetEntityCamera(Camera* camera);
+		Entity GetPrimaryCameraEntity(uint64_t layerID);
+		Entity GetEntityByUUID(UUID uuid);
+		Entity GetEntityByName(const std::string& name);
 
-		Entity CreateEntity(const std::string& name);
-		Entity CreateEntityWithUUID(UUID uuid, const std::string& name);
+		Entity CreateEntity(const std::string& name, uint32_t tagID);
+		Entity CreateEntityWithUUID(UUID uuid, const std::string& name, uint32_t tagID);
+
 		/*
 		* returns duplicated Entity.
 		* Will not share UUID
@@ -237,36 +162,40 @@ namespace GE
 		Entity CopyEntity(Entity entity);
 		void DestroyEntity(Entity entity);
 
-		void OnStart(State state, uint32_t viewportWidth = 0, uint32_t viewportHeight = 0);
-		void OnUpdate(Timestep ts, Camera* camera = nullptr);
+	private:
+		/*
+		* Gets all Entities with RenderComponent & sets Rendered to false
+		* Meant to be called prior to Layer::OnUpdate()
+		*/
+		void ResetEntityRenderComponents();
+		/*
+		* Sets Entity Camera viewport to match Scene viewport
+		*/
+		void SyncEntityCamera(Camera* camera) const;
+
+		/*
+		* Resizes Scene viewport & all Entity Camera viewports
+		*/
+		void OnResizeViewport(uint32_t width, uint32_t height);
+
 		void OnStop();
 		void OnStep(int steps);
+		/*
+		* Calls Scripting Event for Entity if Scene is Running || Paused.
+		* Returns if Event is handled by GE-ScriptCore::Entity::OnEvent(Event&)
+		* @param e : event to handle
+		* @param entity : entity to call scripting events for
+		*/
+		bool OnEvent(Event& e, Entity entity) const;
 
-	private:
-		void OnResizeViewport(uint32_t width, uint32_t height);
+		void OnStart(State state, uint32_t viewportWidth = 0, uint32_t viewportHeight = 0);
+		void OnUpdate(Timestep ts);
 
 		void OnRuntimeStart();
 		void OnRuntimeUpdate(Timestep ts);
 
-		void OnSimulationStart();
-		void OnSimulationUpdate(Timestep ts, Camera* camera = nullptr);
-
 		void OnPauseStart();
-		void OnPauseUpdate(Timestep ts, Camera* camera = nullptr);
-
-		/*
-		* Updates camera and calls Render
-		*/
-		void OnEditorUpdate(Timestep ts, Camera* camera = nullptr);
-
-		/*
-		* Renders using first found Primary Camera via Component
-		*/
-		void Render();
-		/*
-		* Updates scene viewport using camera and Renders
-		*/
-		void Render(Camera* camera);
+		void OnPauseUpdate(Timestep ts);
 
 		void InitializePhysics2D();
 		void UpdatePhysics2D(Timestep ts);
@@ -293,14 +222,12 @@ namespace GE
 		{
 			switch (state)
 			{
-			case Scene::State::Run:
-				return "Run";
-			case Scene::State::Simulate:
-				return "Simulate";
-			case Scene::State::Pause:
-				return "Pause";
 			case Scene::State::Stop:
 				return "Stop";
+			case Scene::State::Run:
+				return "Run";
+			case Scene::State::Pause:
+				return "Pause";
 			}
 
 			GE_CORE_ERROR("Invalid Scene Type.");

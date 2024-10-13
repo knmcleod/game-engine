@@ -2,7 +2,7 @@
 
 #include "VertexArray.h"
 
-#include "GE/Rendering/RenderAPI.h"
+#include "GE/Rendering/Renderer/Renderer.h"
 
 #include "Platform/OpenGL/VertexArray/OpenGLVertexArray.h"
 
@@ -10,18 +10,17 @@ namespace GE
 {
 	Ref<VertexArray> VertexArray::Create()
 	{
-		switch (RenderAPI::GetAPI())
+		switch (Renderer::Get()->GetAPI())
 		{
-		case RenderAPI::API::None:
-			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");
-			return nullptr;
+		case Renderer::API::None:
+			GE_CORE_ASSERT(false, "No Renderer API given!");
 			break;
-		case RenderAPI::API::OpenGL:
+		case Renderer::API::OpenGL:
 			return CreateRef<OpenGLVertexArray>();
 			break;
 		}
 
-		GE_CORE_ASSERT(false, "Unknown RendererAPI!");
+		GE_CORE_ASSERT(false, "Unknown Renderer API!");
 		return nullptr;
 	}
 

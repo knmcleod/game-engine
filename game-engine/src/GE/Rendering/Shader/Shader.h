@@ -7,50 +7,23 @@ namespace GE
 	class Shader
 	{
 	public:
-		// TODO: Math wrapper
-		enum class DataType
-		{
-			None,
-			Float, Float2, Float3, Float4,
-			Mat3, Mat4,
-			Int, Int2, Int3, Int4,
-			Bool
-		};
-
-		static uint32_t GetDataTypeSize(DataType type)
-		{
-			switch (type)
-			{
-			case DataType::Float:
-				return 4;
-			case DataType::Float2:
-				return 4 * 2;
-			case DataType::Float3:
-				return 4 * 3;
-			case DataType::Float4:
-				return 4 * 4;
-			case DataType::Mat3:
-				return 4 * 3 * 3;
-			case DataType::Mat4:
-				return 4 * 4 * 4;
-			case DataType::Int:
-				return 4;
-			case DataType::Int2:
-				return 4 * 2;
-			case DataType::Int3:
-				return 4 * 3;
-			case DataType::Int4:
-				return 4 * 4;
-			case DataType::Bool:
-				return 1;
-			}
-
-			GE_CORE_ASSERT(false, "Unknown DataType!");
-			return 0;
-		}
-
+		/*
+		* Returns created Ref<Shader>. 
+		* Uses Renderer::API to determine type. Default OpenGL.
+		* 
+		* @param name : shader name
+		* @param vertexSrc : vertex source code
+		* @param fragmentSrc : fragment source code
+		*/
 		static Ref<Shader> Create(const std::string& name, 
 			const std::string& vertexSrc, const std::string& fragmentSrc);
+
+		/*
+		* Returns created Ref<Shader>.
+		* Uses Renderer::API to determine type. Default OpenGL.
+		*
+		* @param path : filePath to shader file
+		*/
 		static Ref<Shader> Create(const std::string& path);
 
 		virtual ~Shader() = default;

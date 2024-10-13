@@ -5,13 +5,12 @@
 #include "GE/Asset/Assets/Audio/Audio.h"
 #include "GE/Asset/Assets/Font/Font.h"
 #include "GE/Asset/Assets/Scene/Scene.h"
-#include "GE/Asset/Assets/Scene/Components/Components.h"
+#include "GE/Asset/Assets/Script/Script.h"
 #include "GE/Asset/Assets/Textures/Texture.h"
 
 #include "GE/Asset/Pack/AssetPack.h"
 #include "GE/Asset/Registry/AssetRegistry.h"
 
-#include "GE/Asset/AssetManager.h"
 #include "GE/Asset/RuntimeAssetManager.h"
 #pragma endregion
 
@@ -26,8 +25,6 @@
 
 //	--	Application	--
 #include "GE/Core/Application/Application.h"
-#include "GE/Core/Application/Layers/Layer.h"
-#include "GE/Core/Application/Layers/LayerStack.h"
 
 //	--	Events	--
 #include "GE/Core/Events/Event.h"
@@ -50,21 +47,22 @@
 #pragma endregion
 
 #pragma region Rendering
-//	--	Renderer	--
-#include "GE/Rendering/RenderCommand.h"
-#include "GE/Rendering/Renderer/2D/Renderer2D.h"
-
-#include "GE/Rendering/Framebuffers/Framebuffer.h"
-
-//	--	Shader	--
-#include "GE/Rendering/Shader/Shader.h"
-#include "GE/Rendering/VertexArray/VertexArray.h"
-#include "GE/Rendering/VertexArray/Buffers/VertexBuffer.h"
-#include "GE/Rendering/VertexArray/Buffers/IndexBuffer.h"
-
 //	--	Camera	--
 #include "GE/Rendering/Camera/Camera.h"
 #include "GE/Rendering/Camera/Controller/CameraController.h"
+
+//	--	Framebuffer	--
+#include "GE/Rendering/Framebuffers/Framebuffer.h"
+
+//	--	Renderer	--
+#include "GE/Rendering/Renderer/Renderer.h"
+
+//	--	Shader	--
+#include "GE/Rendering/Shader/Shader.h"
+
+//	--	VertexArray	--
+#include "GE/Rendering/VertexArray/VertexArray.h"
+
 #pragma endregion
 
 #pragma region Scripting

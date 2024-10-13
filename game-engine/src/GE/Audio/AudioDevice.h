@@ -1,5 +1,7 @@
 #pragma once
 
+#include "GE/Core/Core.h"
+
 namespace GE
 {
 	class AudioDevice

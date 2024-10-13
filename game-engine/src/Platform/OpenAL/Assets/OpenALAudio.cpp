@@ -36,7 +36,7 @@ namespace GE
             alGetBufferi(id, AL_CHANNELS, &channels);
             alGetBufferi(id, AL_BITS, &bits);
 
-            float lengthInSamples = sizeInBytes * 8 / (channels * bits);
+            float lengthInSamples = sizeInBytes * 8.0f / (channels * bits);
 
             ALint frequency;
 
@@ -48,7 +48,7 @@ namespace GE
         return totalDuration;
     }
 
-    const uint32_t OpenALAudio::GetBufferCount() const
+    const uint64_t OpenALAudio::GetBufferCount() const
     {
         return m_Config.DataBuffer.GetSize() > AudioManager::BUFFER_SIZE ? (m_Config.DataBuffer.GetSize() / AudioManager::BUFFER_SIZE) + 1 : 1;
     }
@@ -56,7 +56,7 @@ namespace GE
     const std::vector<uint32_t>& OpenALAudio::GenerateBuffers(const uint32_t& count)
     {
         ClearBuffers();
-        for (int i = 0; i < count; i++)
+        for (uint32_t i = 0; i < count; i++)
         {
             ALuint newBufferID = 0;
             alGenBuffers(1, &newBufferID);
@@ -80,7 +80,7 @@ namespace GE
 
     void OpenALAudio::ClearBuffers()
     {
-        alDeleteBuffers(m_Config.BufferIDs.size(), m_Config.BufferIDs.data());
+        alDeleteBuffers((ALsizei)m_Config.BufferIDs.size(), m_Config.BufferIDs.data());
         m_Config.BufferIDs.clear();
     }
 

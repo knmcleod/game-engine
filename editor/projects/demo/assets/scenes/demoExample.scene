@@ -1,12 +1,20 @@
-Scene: demoExample
+Scene: demoExample.scene
 Entities:
   - Entity: 12357236579428767702
     TagComponent:
-      Tag: Ball
+      Tag: Default
+      ID: 0
+    NameComponent:
+      Name: Ball
     TransformComponent:
       Translation: [0.5, 1, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
+    RenderComponent:
+      IDs:
+        - Loadable: false
+          Name: EditorLayer
+          ID: 0
     CircleRendererComponent:
       Color: [1, 1, 1, 1]
       Radius: 0.5
@@ -25,11 +33,19 @@ Entities:
       Show: false
   - Entity: 12165168401523622704
     TagComponent:
-      Tag: Left Floor
+      Tag: Default
+      ID: 0
+    NameComponent:
+      Name: Left Floor
     TransformComponent:
       Translation: [-5, 2.5, 0]
       Rotation: [0, 0, 0]
       Scale: [5, 1, 1]
+    RenderComponent:
+      IDs:
+        - Loadable: false
+          Name: EditorLayer
+          ID: 0
     SpriteRendererComponent:
       Color: [0.0352941193, 0.290196091, 0, 1]
       TilingFactor: 1
@@ -46,11 +62,19 @@ Entities:
       Show: false
   - Entity: 1129467347664604248
     TagComponent:
-      Tag: Right Floor
+      Tag: Default
+      ID: 0
+    NameComponent:
+      Name: Right Floor
     TransformComponent:
       Translation: [5, 5, 0]
       Rotation: [0, 0, 0]
       Scale: [5, 1, 1]
+    RenderComponent:
+      IDs:
+        - Loadable: false
+          Name: EditorLayer
+          ID: 0
     SpriteRendererComponent:
       Color: [0.0352941193, 0.290196091, 0, 1]
       TilingFactor: 1
@@ -67,11 +91,19 @@ Entities:
       Show: false
   - Entity: 5337912456677767708
     TagComponent:
-      Tag: End Floor
+      Tag: Default
+      ID: 0
+    NameComponent:
+      Name: End Floor
     TransformComponent:
       Translation: [0, 10, 0]
       Rotation: [0, 0, 0]
       Scale: [5, 1, 1]
+    RenderComponent:
+      IDs:
+        - Loadable: false
+          Name: EditorLayer
+          ID: 0
     SpriteRendererComponent:
       Color: [0.0352941193, 0.290196091, 0, 1]
       TilingFactor: 1
@@ -88,11 +120,22 @@ Entities:
       Show: false
   - Entity: 11325243841916185303
     TagComponent:
-      Tag: Start Floor
+      Tag: Default
+      ID: 0
+    NameComponent:
+      Name: Start Floor
     TransformComponent:
       Translation: [0, 0, 0]
       Rotation: [0, 0, 0]
       Scale: [5, 1, 1]
+    RenderComponent:
+      IDs:
+        - Loadable: false
+          Name: EditorLayer
+          ID: 0
+        - Loadable: true
+          Name: GameLayer
+          ID: 1
     SpriteRendererComponent:
       Color: [0.0340253711, 0.289215684, 0, 1]
       TilingFactor: 1
@@ -110,6 +153,9 @@ Entities:
   - Entity: 7684260973497798982
     TagComponent:
       Tag: Player
+      ID: 1
+    NameComponent:
+      Name: Player
     TransformComponent:
       Translation: [0, 2, 0]
       Rotation: [0, 0, 0]
@@ -119,6 +165,13 @@ Entities:
       Gain: 1
       Pitch: 1
       Loop: false
+    AudioListenerComponent:
+      {}
+    RenderComponent:
+      IDs:
+        - Loadable: true
+          Name: GameLayer
+          ID: 1
     SpriteRendererComponent:
       Color: [1, 0, 1, 1]
       TilingFactor: 1
@@ -130,11 +183,11 @@ Entities:
       Text: Text
       AssetHandle: 18334408789933592280
     ScriptComponent:
-      ClassName: demo.Player
+      AssetHandle: 12345127586763726501
       ScriptFields:
         - Name: Speed
           Type: Float
-          Data: 25
+          Data: 20
     Rigidbody2DComponent:
       Type: Dynamic
       FixedRotation: false
@@ -149,10 +202,18 @@ Entities:
   - Entity: 11677086725533177951
     TagComponent:
       Tag: Camera
+      ID: 2
+    NameComponent:
+      Name: Camera
     TransformComponent:
       Translation: [0, 0, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
+    RenderComponent:
+      IDs:
+        - Loadable: true
+          Name: GameLayer
+          ID: 1
     CameraComponent:
       FixedAspectRatio: false
       Primary: true
@@ -162,11 +223,17 @@ Entities:
         FOV: 10
         Type: 1
     ScriptComponent:
-      ClassName: demo.Camera
+      AssetHandle: 13426698827862289058
       ScriptFields:
         - Name: FollowDistance
           Type: Float
           Data: 1
         - Name: FollowEntity
           Type: Entity
+          Data: 10063102736654795519
+        - Name: HeightOffset
+          Type: Float
+          Data: 3
+        - Name: WidthOffset
+          Type: Float
           Data: 0

@@ -22,7 +22,7 @@ namespace GE
         for (const auto& id : s_Sources.m_IDBuffer)
             Stop(id);
 
-        alDeleteSources(s_Sources.GetSize(), s_Sources);
+        alDeleteSources((ALsizei)s_Sources.GetSize(), s_Sources);
        
     }
 
@@ -43,9 +43,15 @@ namespace GE
        
     }
 
-    void AudioManager::Update(const AudioSourceComponent& asc, const glm::vec3& position, const glm::vec3& velocity)
+    void AudioManager::UpdateSource(const AudioSourceComponent& asc, const glm::vec3& position, const glm::vec3& velocity)
     {
         SetSourceValues(asc.ID, asc.Loop, asc.Pitch, asc.Gain, position, velocity);
+    }
+
+    void AudioManager::UpdateListener(const AudioListenerComponent& alc, const glm::vec3& position, const glm::vec3& velocity)
+    {
+        if(alc.Device)
+            SetListenerValues(position, velocity);
     }
 
     void AudioManager::Play(const uint32_t& sourceID)
@@ -97,7 +103,7 @@ namespace GE
     {
         ALint state = AL_STOPPED;
         alGetSourcei(id, AL_SOURCE_STATE, &state);
-        return state == AL_PLAYING ? true : false;
+        return state == AL_PLAYING;
     }
 
     bool AudioManager::GenerateSource(uint32_t& id, const bool loop, const float pitch, const float gain, const glm::vec3& position, const glm::vec3& velocity)
@@ -136,8 +142,7 @@ namespace GE
 
     void AudioManager::QueueBuffers(const uint32_t& sourceID, const std::vector<uint32_t> ids)
     {
-        alSourceQueueBuffers(sourceID, ids.size(), ids.data());
-       
+        alSourceQueueBuffers(sourceID, (ALsizei)ids.size(), ids.data());   
     }
 
     void AudioManager::BindBuffer(const uint32_t& sourceID, const uint32_t& bufferID)

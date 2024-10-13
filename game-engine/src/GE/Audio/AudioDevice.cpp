@@ -12,6 +12,7 @@ namespace GE
         switch (AudioManager::GetAPI())
         {
         case AudioManager::API::None:
+            GE_CORE_WARN("Could not create AudioDevice. No Audio API is set.");
             break;
         case AudioManager::API::OpenAL:
             return CreateRef<OpenALAudioDevice>();

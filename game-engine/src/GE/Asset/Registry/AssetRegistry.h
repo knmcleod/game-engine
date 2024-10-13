@@ -6,11 +6,11 @@ namespace GE
 {
 	class AssetRegistry
 	{
-		friend class AssetSerializer;
 		friend class AssetManager;
 	public:
 		AssetRegistry(const std::filesystem::path& filePath = "assetRegistry.gar");
 		
+		inline void Clear() { m_AssetRegistry.clear(); m_AssetRegistry = std::map<UUID, AssetMetadata>(); }
 		inline const std::map<UUID, AssetMetadata>& GetRegistry() { return m_AssetRegistry; }
 		inline const std::filesystem::path& GetFilePath() { return m_FilePath; }
 		void SetFilePath(const std::filesystem::path& filePath);

@@ -2,16 +2,15 @@
 
 #include "../Asset.h"
 
+#include "GE/Core/Memory/Buffer.h"
+
 namespace GE
 {
 	class Audio : public Asset
 	{
-		friend class AssetSerializer;
 	public:
 		struct Config
 		{
-			// Remove. Use AssetMetadata.FilePath.Name instead
-			std::string Name = std::string("NewAudio");
 			std::vector<uint32_t> BufferIDs;
 
 			uint32_t Channels = 2;
@@ -22,8 +21,24 @@ namespace GE
 			Buffer DataBuffer = 0;
 
 			Config() = default;
-			Config(const Config& config);
-			Config(const std::string& name, uint32_t channels, uint32_t sampleRate, uint32_t bps, const Buffer& buffer = Buffer());
+			Config(const Config& config) : Config(config.Channels, config.SampleRate, config.BPS, config.DataBuffer)
+			{
+				Format = config.Format;
+				BufferIDs = config.BufferIDs;
+			}
+			Config(uint32_t channels, uint32_t sampleRate, uint32_t bps, const Buffer& buffer /*= Buffer()*/)
+			{
+				BufferIDs = std::vector<uint32_t>();
+
+				Channels = channels;
+				SampleRate = sampleRate;
+				BPS = bps;
+
+				CalculateFormat();
+
+				if (buffer)
+					SetData(buffer);
+			}
 			~Config() = default;
 
 			void SetData(const Buffer buffer)
@@ -48,7 +63,7 @@ namespace GE
 
 		virtual const uint32_t& GetID() const = 0;
 		virtual const Config& GetConfig() const = 0;
-		virtual const uint32_t GetBufferCount() const = 0;
+		virtual const uint64_t GetBufferCount() const = 0;
 		virtual const float GetDurationInSeconds() = 0;
 
 		virtual const std::vector<uint32_t>& GenerateBuffers(const uint32_t& count = 1) = 0;

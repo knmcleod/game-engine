@@ -5,37 +5,39 @@ namespace GE
 {
 	class OpenGLFramebuffer : public Framebuffer
 	{
+		friend class Application;
 	public:
 		OpenGLFramebuffer(const Config& spec);
 		~OpenGLFramebuffer() override;
 
-		inline const Config& GetConfig() override { return p_Config; }
-		inline const uint32_t& GetWidth() override { return p_Config.Width; }
-		inline const uint32_t& GetHeight() override { return p_Config.Height; }
+		inline const Config& GetConfig() const override { return m_Config; }
+		inline const uint32_t& GetWidth() const override { return m_Config.Width; }
+		inline const uint32_t& GetHeight() const override { return m_Config.Height; }
 
-		inline const uint32_t GetColorAttachmentID(uint32_t index = 0) override
+		inline const glm::vec2& GetMinBounds() const override { return m_Config.Bounds[0]; }
+		inline const glm::vec2& GetMaxBounds() const override { return m_Config.Bounds[1]; }
+
+		inline const uint32_t& GetAttachmentID(Attachment format) override
 		{ 
-			GE_CORE_ASSERT(index < m_ColorAttachmentsID.size(), "Framebuffer Color Attachment index out of range."); 
-			return m_ColorAttachmentsID[index];
+			GE_CORE_ASSERT(m_Config.Attachments.find(format) != m_Config.Attachments.end(), "Framebuffer Color Attachment index out of range.");
+			return m_Config.Attachments.at(format);
 		}
 
+		void Resize(uint32_t width, uint32_t height, const glm::vec2& min, const glm::vec2& max) override;
+
+	private:
 		void Bind() override;
 		void Unbind() override;
 
-		void Resize(uint32_t width, uint32_t height) override;
 		void Clean() override;
-		void Invalidate() override;
-		void ClearAttachment(uint32_t attachmentIndex, int value) override;
-
-		int ReadPixel(uint32_t attachmentIndex, int x, int y) override;
+		void Clear() override;
+		void Refresh() override;
+		void ClearAttachment(Attachment format, int value) override;
+		int ReadPixel(Attachment format, int x, int y) override;
 	private:
-		uint32_t m_RendererID = 0;
+		Config m_Config;
 
-		std::vector<uint32_t> m_ColorAttachmentsID;
 		uint32_t m_DepthAttachmentID = 0;
 
-		Config p_Config;
-		std::vector<TextureSpecification> m_ColorAttachmentSpecs;
-		TextureSpecification m_DepthAttachmentSpec;
 	};
 }

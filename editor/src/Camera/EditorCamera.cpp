@@ -1,22 +1,28 @@
 #include "EditorCamera.h"
 
 #include <GE/Core/Input/Input.h>
-#include <GE/Rendering/Renderer/2D/Renderer2D.h>
+#include <GE/Project/Project.h>
+#include <GE/Rendering/Renderer/Renderer.h>
+
+#include <glm/gtc/matrix_transform.hpp>
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
 
 namespace GE
 {
-	EditorCamera::EditorCamera(float fov, float nearClip, float farClip, float aspectRatio) : Camera(glm::perspective(glm::radians(fov), aspectRatio, nearClip, farClip)),
-		m_FOV(fov), m_NearClip(nearClip), m_FarClip(farClip), m_AspectRatio(aspectRatio)
+	EditorCamera::EditorCamera(float fov, float nearClip, float farClip, float aspectRatio) 
+		: SceneCamera(fov, nearClip, farClip, aspectRatio)
 	{
-		UpdateView();
+		p_ProjectionType = ProjectionType::Perspective;
 	}
 
 	std::pair<float, float> EditorCamera::GetPanSpeed() const
 	{
-		float x = std::min(m_ViewportWidth / 1000.0f, 2.4f); // max = 2.4f
+		float x = std::min(p_ViewportWidth / 1000.0f, 2.4f); // max = 2.4f
 		float xFactor = 0.0366f * (x * x) - 0.1778f * x + 0.3021f;
 
-		float y = std::min(m_ViewportHeight / 1000.0f, 2.4f); // max = 2.4f
+		float y = std::min(p_ViewportHeight / 1000.0f, 2.4f); // max = 2.4f
 		float yFactor = 0.0366f * (y * y) - 0.1778f * y + 0.3021f;
 
 		return { xFactor, yFactor };
@@ -30,11 +36,6 @@ namespace GE
 		float speed = distance * distance;
 		speed = std::min(speed, 100.0f); // max = 100.0f
 		return speed;
-	}
-
-	glm::quat EditorCamera::GetOrientation() const
-	{
-		return glm::quat(glm::vec3(-m_Pitch, -m_Yaw, 0.0f));
 	}
 
 	glm::vec3 EditorCamera::GetVertical() const
@@ -52,42 +53,6 @@ namespace GE
 		return glm::rotate(GetOrientation(), glm::vec3(0.0f, 0.0f, -1.0f));
 	}
 	
-	void EditorCamera::SetInfo(float fov, float nearClip, float farClip)
-	{
-		m_FOV = fov;
-		m_NearClip = nearClip;
-		m_FarClip = farClip;
-
-		UpdateProjection();
-	}
-
-	void EditorCamera::SetViewport(uint32_t width, uint32_t height)
-	{ 
-		if (m_ViewportWidth == width && m_ViewportHeight == height)
-			return;
-
-		m_ViewportWidth = width; 
-		m_ViewportHeight = height; 
-		UpdateView(); 
-	}
-
-	void EditorCamera::UpdateProjection()
-	{
-		m_AspectRatio = (float)m_ViewportWidth / (float)m_ViewportHeight;
-		p_Projection = glm::perspective(glm::radians(m_FOV), m_AspectRatio, m_NearClip, m_FarClip);
-	}
-
-	void EditorCamera::UpdateView()
-	{
-		UpdateProjection();
-
-		m_Position = CalculatePosition();
-		glm::quat orientation = GetOrientation();
-		m_ViewMatrix = glm::translate(Renderer2D::GetIdentityMat4(), m_Position) * glm::mat4(orientation);
-
-		m_ViewProjection = p_Projection * glm::inverse(m_ViewMatrix);
-	}
-
 	void EditorCamera::OnUpdate(Timestep ts)
 	{
 		if (Input::IsKeyPressed(Input::KEY_LEFT_ALT))
@@ -103,7 +68,7 @@ namespace GE
 				MouseZoom(delta.y);
 		}
 
-		UpdateView();
+		SceneCamera::OnUpdate(ts);
 	}
 	
 	void EditorCamera::OnEvent(Event& e)
@@ -116,7 +81,6 @@ namespace GE
 	{
 		float delta = e.GetYOffset() * 0.1f;
 		MouseZoom(delta);
-		UpdateView();
 		return false;
 	}
 
@@ -130,8 +94,8 @@ namespace GE
 	void EditorCamera::MouseOrbit(const glm::vec2& delta)
 	{
 		float yawSign = GetVertical().y < 0 ? -1.0f : 1.0f;
-		m_Yaw += yawSign * delta.x * GetRotationSpeed();
-		m_Pitch += delta.y * GetRotationSpeed();
+		p_Yaw += yawSign * delta.x * GetRotationSpeed();
+		p_Pitch += delta.y * GetRotationSpeed();
 	}
 
 	void EditorCamera::MouseZoom(float delta)

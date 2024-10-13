@@ -10,7 +10,6 @@ namespace GE
 {
 	class AssetPack
 	{
-		friend class AssetSerializer;
 		friend class RuntimeAssetManager;
 	public:
 		struct File
@@ -86,6 +85,7 @@ namespace GE
 		// All currently added asset & entity handles, including Scenes
 		std::unordered_set<UUID> m_HandleIndex;
 
+		AssetInfo m_EmptyAssetInfo = AssetInfo();
 	};
 }
 

@@ -7,8 +7,7 @@ namespace GE
 {
 	class Asset
 	{
-		friend class AssetManger;
-		friend class AssetSerializer;
+		friend class RuntimeAssetManager;
 	public:
 		enum class Type
 		{
@@ -16,8 +15,8 @@ namespace GE
 			Scene,
 			Texture2D,
 			Font,
-			Audio
-			// Script
+			Audio,
+			Script
 			// Prefab
 		};
 
@@ -40,7 +39,7 @@ namespace GE
 		*/
 		virtual inline Ref<Asset> GetCopy() { return nullptr; }
 		
-		inline const Type GetType() const { return p_Type; }
+		inline const Type& GetType() const { return p_Type; }
 		inline const UUID& GetHandle() const { return p_Handle; }
 		inline const Status& GetStatus() const { return p_Status; }
 	protected:

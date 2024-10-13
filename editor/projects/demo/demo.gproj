@@ -1,8 +1,10 @@
 Project:
   Name: demo
   Width: 1920
-  Height: 1057
+  Height: 1046
+  SceneHandle: 8321772525370642796
   ProjectPath: projects/demo
   AssetPath: assets
-  SceneHandle: 8321772525370642796
-  ScriptPath: scripts/Resources/Binaries/demo.dll
+  ScriptAssetPath: scripts/src
+  ScriptCorePath: scripts/bin/GE-ScriptCore.dll
+  ScriptAppPath: scripts/bin/demo.dll

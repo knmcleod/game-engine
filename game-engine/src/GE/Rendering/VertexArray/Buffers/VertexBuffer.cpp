@@ -2,7 +2,7 @@
 
 #include "VertexBuffer.h"
 
-#include "GE/Rendering/RenderAPI.h"
+#include "GE/Rendering/Renderer/Renderer.h"
 
 #include "Platform/OpenGL/VertexArray/Buffers/OpenGLVertexBuffer.h"
 
@@ -10,13 +10,13 @@ namespace GE
 {
 	Ref<VertexBuffer> VertexBuffer::Create(uint32_t size)
 	{
-		switch (RenderAPI::GetAPI())
+		switch (Renderer::Get()->GetAPI())
 		{
-		case RenderAPI::API::None:
-			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");
+		case Renderer::API::None:
+			GE_CORE_ASSERT(false, "No Renderer API given!");
 			return nullptr;
 			break;
-		case RenderAPI::API::OpenGL:
+		case Renderer::API::OpenGL:
 			return CreateRef<OpenGLVertexBuffer>(size);
 			break;
 		}
@@ -26,13 +26,13 @@ namespace GE
 
 	Ref<VertexBuffer> VertexBuffer::Create(uint32_t size, float* vertices)
 	{
-		switch (RenderAPI::GetAPI())
+		switch (Renderer::Get()->GetAPI())
 		{
-		case RenderAPI::API::None:
-			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");
+		case Renderer::API::None:
+			GE_CORE_ASSERT(false, "No Renderer API given!");
 			return nullptr;
 			break;
-		case RenderAPI::API::OpenGL:
+		case Renderer::API::OpenGL:
 			return CreateRef<OpenGLVertexBuffer>(size, vertices);
 			break;
 		}

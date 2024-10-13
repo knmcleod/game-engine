@@ -78,7 +78,8 @@ namespace GE
 
 		static void Stop(const uint32_t& sourceID);
 		static void Pause(const uint32_t& sourceID);
-		static void Update(const AudioSourceComponent& asc, const glm::vec3& position, const glm::vec3& velocity);
+		static void UpdateSource(const AudioSourceComponent& asc, const glm::vec3& position, const glm::vec3& velocity);
+		static void UpdateListener(const AudioListenerComponent& asc, const glm::vec3& position, const glm::vec3& velocity);
 
 		static void Play(const uint32_t& sourceID);
 		static void Play(const uint32_t& sourceID, const uint32_t& bufferID);

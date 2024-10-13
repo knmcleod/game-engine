@@ -2,7 +2,7 @@
 
 #include "Framebuffer.h"
 
-#include "GE/Rendering/RenderAPI.h"
+#include "GE/Rendering/Renderer/Renderer.h"
 
 #include "Platform/OpenGL/Framebuffers/OpenGLFramebuffer.h"
 
@@ -10,13 +10,13 @@ namespace GE
 {
 	Ref<Framebuffer> Framebuffer::Create(const Framebuffer::Config& spec)
 	{
-		switch (RenderAPI::GetAPI())
+		switch (Renderer::Get()->GetAPI())
 		{
-		case RenderAPI::API::None:
-			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");
+		case Renderer::API::None:
+			GE_CORE_ASSERT(false, "No Renderer API given!");
 			return nullptr;
 			break;
-		case RenderAPI::API::OpenGL:
+		case Renderer::API::OpenGL:
 			return CreateRef<OpenGLFramebuffer>(spec);
 			break;
 		}

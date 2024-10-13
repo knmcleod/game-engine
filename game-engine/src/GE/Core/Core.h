@@ -116,7 +116,7 @@
 
 #define BIT(x) (1 << x)
 
-#define GE_BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
+#define GE_BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return fn(std::forward<decltype(args)>(args)...); }
 
 namespace GE
 {
@@ -136,6 +136,9 @@ namespace GE
 		return std::make_shared<T>(std::forward<Args>(args)...);
 	}
 
+	/*
+	* Makes no runtime check to ensure T is derived from U(base)
+	*/
 	template<class T, class U>
 	Ref<T> static_ref_cast(const Ref<U>& r) noexcept
 	{
@@ -143,6 +146,9 @@ namespace GE
 		return Ref<T>{r, p};
 	}
 
+	/*
+	* Provides safe downcasts, i.e. base(U) to derived(T)
+	*/
 	template<class T, class U>
 	constexpr Ref<T> dynamic_ref_cast(const Ref<U>& r) noexcept
 	{

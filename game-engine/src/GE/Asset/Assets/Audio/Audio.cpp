@@ -10,27 +10,6 @@
 
 namespace GE
 {
-	Audio::Config::Config(const Config& config) : Config(config.Name, config.Channels, config.SampleRate, config.BPS, config.DataBuffer)
-	{
-		Format = config.Format;
-		BufferIDs = config.BufferIDs;
-	}
-
-	Audio::Config::Config(const std::string& name, uint32_t channels, uint32_t sampleRate, uint32_t bps, const Buffer& buffer /*= Buffer()*/)
-	{
-		Name = name;
-		BufferIDs = std::vector<uint32_t>();
-
-		Channels = channels;
-		SampleRate = sampleRate;
-		BPS = bps;
-
-		CalculateFormat();
-
-		if (buffer)
-			SetData(buffer);
-	}
-
 	void Audio::Config::CalculateFormat()
 	{
 		if (Channels == 1 && BPS == 8)

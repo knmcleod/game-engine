@@ -35,10 +35,12 @@ namespace GE
 			out << YAML::Key << "Name" << YAML::Value << m_Project->m_Config.Name;
 			out << YAML::Key << "Width" << YAML::Value << m_Project->m_Config.Width;
 			out << YAML::Key << "Height" << YAML::Value << m_Project->m_Config.Height;
+			out << YAML::Key << "SceneHandle" << YAML::Value << m_Project->m_Config.SceneHandle;
 			out << YAML::Key << "ProjectPath" << YAML::Value << m_Project->m_Config.ProjectPath.string();
 			out << YAML::Key << "AssetPath" << YAML::Value << m_Project->m_Config.AssetPath.string();
-			out << YAML::Key << "SceneHandle" << YAML::Value << m_Project->m_Config.SceneHandle;
-			out << YAML::Key << "ScriptPath" << YAML::Value << m_Project->m_Config.ScriptPath.string();
+			out << YAML::Key << "ScriptAssetPath" << YAML::Value << m_Project->m_Config.ScriptAssetPath.string();
+			out << YAML::Key << "ScriptCorePath" << YAML::Value << m_Project->m_Config.ScriptCorePath.string();
+			out << YAML::Key << "ScriptAppPath" << YAML::Value << m_Project->m_Config.ScriptAppPath.string();
 
 			out << YAML::EndMap;
 		}
@@ -84,14 +86,19 @@ namespace GE
 
 		m_Project->m_Config.Width = projectData["Width"].as<uint32_t>();
 		m_Project->m_Config.Height = projectData["Height"].as<uint32_t>();
-		//projects/demo
-		m_Project->m_Config.ProjectPath = projectData["ProjectPath"].as<std::string>(); // equivalent to filePath.parent_path()
-		//assets
-		m_Project->m_Config.AssetPath = projectData["AssetPath"].as<std::string>();
-		//UUID. See AssetManager
+		// UUID. See AssetManager
 		m_Project->m_Config.SceneHandle = projectData["SceneHandle"].as<uint64_t>();
-		//scripts/Resources/Binaries/demo.dll
-		m_Project->m_Config.ScriptPath = projectData["ScriptPath"].as<std::string>();
+		// Example = projects/demo
+		m_Project->m_Config.ProjectPath = projectData["ProjectPath"].as<std::string>(); // equivalent to filePath.parent_path()
+		// Example = assets
+		m_Project->m_Config.AssetPath = projectData["AssetPath"].as<std::string>();
+		// Example = scripts/src, relative to AssetPath
+		m_Project->m_Config.ScriptAssetPath = projectData["ScriptAssetPath"].as<std::string>();
+
+		// Example = scripts/bin/GE-ScriptCore.dll
+		m_Project->m_Config.ScriptCorePath = projectData["ScriptCorePath"].as<std::string>();
+		// Example = scripts/bin/projName.dll
+		m_Project->m_Config.ScriptAppPath = projectData["ScriptAppPath"].as<std::string>();
 
 		return true;
 	}

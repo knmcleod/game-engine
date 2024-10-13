@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "GE/Core/Memory/Buffer.h"
+
 namespace GE
 {
 	/*
@@ -19,7 +21,6 @@ namespace GE
 	struct AssetInfo
 	{
 		friend class AssetPack;
-		friend class AssetSerializer;
 	public:
 		/*
 		* Compares type of Asset
@@ -73,7 +74,6 @@ namespace GE
 	struct SceneInfo : public AssetInfo
 	{
 		friend class AssetPack;
-		friend class AssetSerializer;
 	public:
 		/*
 		* Contains
@@ -168,13 +168,13 @@ namespace GE
 		{
 			Type = 1; // See Asset::Type
 
-			for (auto& [uuid, assetInfo] : sceneInfo.m_Assets)
+			for (auto& [uuid, assetInfo] : sceneInfo.Assets)
 			{
-				m_Assets[uuid] = AssetInfo(assetInfo);
+				Assets[uuid] = AssetInfo(assetInfo);
 			}
-			for (auto& [uuid, entityInfo] : sceneInfo.m_Entities)
+			for (auto& [uuid, entityInfo] : sceneInfo.Entities)
 			{
-				m_Entities[uuid] = EntityInfo(entityInfo);
+				Entities[uuid] = EntityInfo(entityInfo);
 			}
 		}
 
@@ -183,22 +183,22 @@ namespace GE
 			DataBuffer.Release();
 			DataBuffer = 0;
 
-			for (auto& [uuid, assetInfo] : m_Assets)
+			for (auto& [uuid, assetInfo] : Entities)
 			{
 				assetInfo.DataBuffer.Release();
 				assetInfo.DataBuffer = 0;
 			}
 
-			for (auto& [uuid, entityInfo] : m_Entities)
+			for (auto& [uuid, entityInfo] : Entities)
 			{
 				entityInfo.DataBuffer.Release();
 				entityInfo.DataBuffer = 0;
 			}
 		}
-
-	private:
+	
+	public:
 		// Set using AssetInfo::Data
-		std::map<uint64_t, AssetInfo> m_Assets = std::map<uint64_t, AssetInfo>(); // UUID, AssetInfo
-		std::map<uint64_t, EntityInfo> m_Entities = std::map<uint64_t, EntityInfo>(); // UUID, EntityInfo
+		std::map<uint64_t, AssetInfo> Assets = std::map<uint64_t, AssetInfo>(); // UUID, AssetInfo
+		std::map<uint64_t, EntityInfo> Entities = std::map<uint64_t, EntityInfo>(); // UUID, EntityInfo
 	};
 }

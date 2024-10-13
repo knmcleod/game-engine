@@ -31,20 +31,6 @@ namespace GE
 		glDeleteProgram(m_RendererID);
 	}
 
-	void OpenGLShader::Bind() const
-	{
-		GE_PROFILE_FUNCTION();
-
-		glUseProgram(m_RendererID);
-	}
-
-	void OpenGLShader::Unbind() const
-	{
-		GE_PROFILE_FUNCTION();
-
-		glUseProgram(0);
-	}
-
 	void OpenGLShader::SetMat4(const std::string& name, const glm::mat4& value)
 	{
 		GE_PROFILE_FUNCTION();
@@ -94,11 +80,25 @@ namespace GE
 		UploadUniformIntArray(name, values, count);
 	}
 
+	void OpenGLShader::Bind() const
+	{
+		GE_PROFILE_FUNCTION();
+
+		glUseProgram(m_RendererID);
+	}
+
+	void OpenGLShader::Unbind() const
+	{
+		GE_PROFILE_FUNCTION();
+
+		glUseProgram(0);
+	}
+
 	std::string OpenGLShader::ReadFile(const std::string& path)
 	{
 		GE_PROFILE_FUNCTION();
 
-		std::string result;
+		std::string result = std::string();
 		std::ifstream in(path, std::ios::in | std::ios::binary);
 
 		if (in)
@@ -119,55 +119,52 @@ namespace GE
 		return result;
 	}
 
-	std::unordered_map<GLenum, std::string> OpenGLShader::Preprocess(const std::string& src)
+	std::unordered_map<GLenum, std::string> OpenGLShader::Preprocess(const std::string& shaderSrc)
 	{
 		GE_PROFILE_FUNCTION();
-		std::unordered_map<GLenum, std::string> shaderSrc;
+		std::unordered_map<GLenum, std::string> processedSrc;
 
 		const char* typeToken = "#type";
 		size_t typeTokenLength = strlen(typeToken);
-		size_t position = src.find(typeToken, 0);
+		size_t position = shaderSrc.find(typeToken, 0);
 
 		while (position != std::string::npos)
 		{
-			size_t eol = src.find_first_of("\r\n", position);
+			size_t eol = shaderSrc.find_first_of("\r\n", position);
 			GE_CORE_ASSERT(eol != std::string::npos, "Syntax error!");
 
 			size_t begin = position + typeTokenLength + 1;
-			std::string type = src.substr(begin, eol - begin);
+			std::string type = shaderSrc.substr(begin, eol - begin);
 			GE_CORE_ASSERT(OpenGLShader::ShaderDataTypeFromString(type), "Invalid shader type specified!");
 
-			size_t nextLinePos = src.find_first_not_of("\r\n", eol);
-			position = src.find(typeToken, nextLinePos);
-			shaderSrc[ShaderDataTypeFromString(type)] = src.substr(nextLinePos,
-				position - (nextLinePos == std::string::npos ? src.size() - 1 : nextLinePos));
+			size_t nextLinePos = shaderSrc.find_first_not_of("\r\n", eol);
+			position = shaderSrc.find(typeToken, nextLinePos);
+			processedSrc[ShaderDataTypeFromString(type)] = shaderSrc.substr(nextLinePos,
+				position - (nextLinePos == std::string::npos ? shaderSrc.size() - 1 : nextLinePos));
 		}
 
-		return shaderSrc;
+		return processedSrc;
 	}
 
-	void OpenGLShader::Compile(const std::unordered_map<GLenum, std::string>& shaderSrc)
+	void OpenGLShader::Compile(const std::unordered_map<GLenum, std::string>& processedSrc)
 	{
 		GE_PROFILE_FUNCTION();
 
 		// Get a program object.
 		GLuint program = glCreateProgram();
 
-		GE_CORE_ASSERT(shaderSrc.size() <= 2, "Only TWO Shaders are supported right now.");
+		GE_CORE_ASSERT(processedSrc.size() <= 2, "Only TWO or less Shaders are supported right now.");
 
 		std::array<GLenum, 2> glShaderIDs;
 		int glShaderIDIndex = 0;
 
-		for (auto& kv : shaderSrc)
+		for (auto& [type, src] : processedSrc)
 		{
-			GLenum shaderType = kv.first;
-			const std::string source = kv.second;
-
-			uint32_t shader = glCreateShader(shaderType);
+			uint32_t shader = glCreateShader(type);
 
 			// Send the vertex shader source code to GL
 			// Note that std::string's .c_str is NULL character terminated.
-			const char* shaderSource = source.c_str();
+			const char* shaderSource = src.c_str();
 			glShaderSource(shader, 1, &shaderSource, 0);
 
 			// Compile the vertex shader

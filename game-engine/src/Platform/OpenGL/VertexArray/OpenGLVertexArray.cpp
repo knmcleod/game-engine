@@ -43,38 +43,38 @@ namespace GE
 		{
 			switch (element.Type)
 			{
-			case Shader::DataType::Float:
-			case Shader::DataType::Float2:
-			case Shader::DataType::Float3:
-			case Shader::DataType::Float4:
+			case Math::Type::Float:
+			case Math::Type::Float2:
+			case Math::Type::Float3:
+			case Math::Type::Float4:
 			{
 				glEnableVertexAttribArray(index);
 				glVertexAttribPointer(index,
 					element.GetComponentCount(),
-					OpenGLShader::ShaderDataTypeToOpenGLBaseType(element.Type),
+					OpenGLShader::MathTypeToOpenGLBaseType(element.Type),
 					element.Normalized ? GL_TRUE : GL_FALSE,
 					layout.GetStride(),
 					(const void*)(UINT_PTR)element.Offset);
 				index++;
 				break;
 			}
-			case Shader::DataType::Int:
-			case Shader::DataType::Int2:
-			case Shader::DataType::Int3:
-			case Shader::DataType::Int4:
-			case Shader::DataType::Bool:
+			case Math::Type::Int:
+			case Math::Type::Int2:
+			case Math::Type::Int3:
+			case Math::Type::Int4:
+			case Math::Type::Bool:
 			{
 				glEnableVertexAttribArray(index);
 				glVertexAttribIPointer(index,
 					element.GetComponentCount(),
-					OpenGLShader::ShaderDataTypeToOpenGLBaseType(element.Type),
+					OpenGLShader::MathTypeToOpenGLBaseType(element.Type),
 					layout.GetStride(),
 					(const void*)(UINT_PTR)element.Offset);
 				index++;
 				break;
 			}
-			case Shader::DataType::Mat3:
-			case Shader::DataType::Mat4:
+			case Math::Type::Mat3:
+			case Math::Type::Mat4:
 			{
 				uint8_t count = element.GetComponentCount();
 				for (uint8_t i = 0; i < count; i++)
@@ -82,7 +82,7 @@ namespace GE
 					glEnableVertexAttribArray(index);
 					glVertexAttribPointer(index,
 						count,
-						OpenGLShader::ShaderDataTypeToOpenGLBaseType(element.Type),
+						OpenGLShader::MathTypeToOpenGLBaseType(element.Type),
 						element.Normalized ? GL_TRUE : GL_FALSE,
 						layout.GetStride(),
 						(const void*)(element.Offset + sizeof(float) * count * i));

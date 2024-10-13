@@ -13,38 +13,38 @@ namespace GE
 {
 	class Font : public Asset
 	{
-		friend class AssetSerializer;
 	public:
 		struct AtlasConfig
 		{
 			Ref<Texture2D> Texture = nullptr;
 
-			// Remove. Use AssetMetadata.FilePath.Name instead
-			std::string Name = std::string("NewFontAtlas");
 			float Scale = 1.0;
 
 			uint64_t Seed = 0;
 			uint32_t ThreadCount = 8;
 			bool ExpensiveColoring = false;
+
+			AtlasConfig() = default;
+			AtlasConfig(const AtlasConfig& config) = default;
 		};
 
 		struct MSDFData
 		{
-			std::vector<msdf_atlas::GlyphGeometry> Glyphs;
+			std::vector<msdf_atlas::GlyphGeometry> Glyphs = std::vector<msdf_atlas::GlyphGeometry>();
 			msdf_atlas::FontGeometry FontGeometry;
 		};
-
-		Font() = default;
-		Font(UUID handle, const AtlasConfig& config = AtlasConfig());
+		
+		Font(UUID handle = UUID(), const AtlasConfig& config = AtlasConfig(), Ref<MSDFData> data = nullptr);
 		~Font() override;
 
 		Ref<Asset> GetCopy() override;
 
 		Ref<MSDFData> GetMSDFData() const { GE_CORE_ASSERT(m_MSDFData, "Font Data does not exist."); return m_MSDFData; }
 		const AtlasConfig& GetAtlasConfig() const { return m_AtlasConfig; }
+		Ref<Texture2D> GetAtlasTexture() const { return m_AtlasConfig.Texture; }
 		const uint32_t& GetWidth() { return m_AtlasConfig.Texture->GetWidth(); }
 		const uint32_t& GetHeight() { return m_AtlasConfig.Texture->GetHeight(); }
-		Ref<Texture2D> GetAtlasTexture() const { return m_AtlasConfig.Texture; }
+
 	private:
 		Ref<MSDFData> m_MSDFData = nullptr;
 		AtlasConfig m_AtlasConfig;

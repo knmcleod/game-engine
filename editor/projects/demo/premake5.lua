@@ -1,5 +1,11 @@
+local GERootDir = os.getenv("game-engine")
+
+group "GE"
+	include (GERootDir)
+group ""
+
+
 project "demo"
-	location "demo"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++17"
@@ -10,22 +16,8 @@ project "demo"
 	
 	files
 	{
-		"%{prj.name}/src/**.h",
-		"%{prj.name}/src/**.cpp"
-	}
-
-	includedirs
-	{
-		"game-engine/src",
-		"game-engine/vender",
-		"%{IncludeDir.entt}",
-		"%{IncludeDir.filewatch}",
-		"%{IncludeDir.glm}",
-		"%{IncludeDir.ImGui}",
-		"%{IncludeDir.msdf_atlas_gen}",
-		"%{IncludeDir.msdf_gen}",
-		"%{IncludeDir.OpenAL}",
-		"%{IncludeDir.spdlog}"	
+		"src/**.h",
+		"src/**.cpp"
 	}
 
 	links

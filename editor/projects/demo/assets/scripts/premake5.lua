@@ -1,5 +1,3 @@
-local GERootDir = os.getenv("GE_DIR")
-
 workspace "demo"
 	architecture "x86_64"
 	startproject "demo"
@@ -17,7 +15,7 @@ workspace "demo"
 	}
 
 group "GE"
-	include (GERootDir .. "/GE-ScriptCore")
+	include ("core/GE-ScriptCore")
 group ""
 
 project "demo"
@@ -26,13 +24,12 @@ project "demo"
 	dotnetframework "4.7.2"
 	staticruntime "on"
 	
-	targetdir ("%{wks.location}/Resources/Binaries")
-	objdir ("%{wks.location}/Resources/Intermediates")
+	targetdir ("bin")
+	objdir ("bin-int")
 
 	files
 	{
-		"Source/**.cs",
-		"Properties/**.cs"
+		"src/demo/**.cs"
 	}
 
 	links

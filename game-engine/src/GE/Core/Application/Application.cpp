@@ -4,12 +4,15 @@
 
 #include "GE/Asset/RuntimeAssetManager.h"
 
+#include "GE/Audio/AudioManager.h"
+
 #include "GE/Core/FileSystem/FileSystem.h"
+#include "GE/Core/Input/Input.h"
 #include "GE/Core/Time/Timestep.h"
 
 #include "GE/Project/Project.h"
 
-#include "GE/Rendering/RenderCommand.h"
+#include "GE/Rendering/Renderer/Renderer.h"
 
 #include "GE/Scripting/Scripting.h"
 
@@ -18,6 +21,38 @@ namespace GE
 #define BIND_EVENT_FN(x) std::bind(&Application::x, s_Instance, std::placeholders::_1)
 	
 	Application* Application::s_Instance = 0;
+
+	Entity Application::GetHoveredEntity(float x, float y, int modifier)
+	{
+		// Calculate mouse position relative to Framebuffer Viewport/Bounds
+		glm::vec2 relativeMouse = GetRelativeMouse(x, y, modifier);
+
+		// AttachmentIndex = 1(RED_INTEGER) = entityID
+		int entityID = s_Instance->GetHovered(Framebuffer::Attachment::RED_INTEGER, (uint32_t)relativeMouse.x, (uint32_t)relativeMouse.y);
+		if (entityID != -1 && Project::GetRuntimeScene())
+			return Entity(entityID, Project::GetRuntimeScene().get());
+		return {};
+	}
+
+	const glm::vec2 Application::GetRelativeMouse(float x, float y, int modifier)
+	{
+		glm::vec2 relativeMouse = glm::vec2(x, y);
+		if (modifier != -1 && modifier != 1)
+		{
+			GE_CORE_WARN("Unsupported Framebuffer RelativeMouse Modifier. Returning unchanged mouse position.");
+			return relativeMouse;
+		}
+
+		if (Ref<Framebuffer> framebuffer = s_Instance->GetFramebuffer())
+		{
+			glm::vec2 modifierMinBounds = glm::vec2(modifier * framebuffer->GetMinBounds().x, modifier * framebuffer->GetMinBounds().y);
+			relativeMouse = glm::vec2({x + modifierMinBounds.x}, {y + modifierMinBounds.y });
+			glm::vec2 viewportSize = framebuffer->GetMaxBounds() - framebuffer->GetMinBounds();
+			relativeMouse.y = viewportSize.y - relativeMouse.y;
+		}
+
+		return relativeMouse;
+	}
 
 	Application::Application(const Application::Config& spec) : p_Config(spec)
 	{
@@ -37,16 +72,29 @@ namespace GE
 			return;
 		}
 
+		AudioManager::Init();
+		Scripting::Init();
 		Project::NewAssetManager<RuntimeAssetManager>();
 
 		// Creates Window and Binds Events
 		p_Window = Window::Create(Window::Config(p_Config.Name, Project::GetWidth(), Project::GetHeight(), true, nullptr));
 		p_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));
-		
-		RenderCommand::Init();
 
-		p_ImGuiLayer = new ImGuiLayer();
-		PushOverlay(p_ImGuiLayer);
+		Renderer::Create();
+
+		{
+			GE_PROFILE_SCOPE("Application() - Framebuffer Setup");
+			Framebuffer::Config framebufferConfig = Framebuffer::Config(Project::GetWidth(), Project::GetHeight(),
+				{	Framebuffer::Attachment::RGBA8,				// 0
+					Framebuffer::Attachment::RED_INTEGER,		// 1
+					Framebuffer::Attachment::GREEN_INTEGER,		// 2 
+					Framebuffer::Attachment::BLUE_INTEGER,		// 3
+					Framebuffer::Attachment::DEPTH24STENCIL8	// 4
+				});
+			p_Framebuffer = Framebuffer::Create(framebufferConfig);
+		}
+
+		p_LayerStack = CreateRef<LayerStack>();
 
 		GE_CORE_INFO("Core Application Constructor Complete.");
 	}
@@ -55,20 +103,11 @@ namespace GE
 	{
 		GE_CORE_INFO("Core Application Destructor Start.");
 		
-		RenderCommand::ShutDown();
+		Scripting::Shutdown();
+		AudioManager::Shutdown();
 		Project::Shutdown();
 		
 		GE_CORE_INFO("Core Application Destructor Complete.");
-	}
-
-	const uint32_t& Application::GetWidth() const
-	{
-		return Project::GetWidth();
-	}
-
-	const uint32_t& Application::GetHeight() const
-	{
-		return Project::GetHeight();
 	}
 
 	void Application::Run()
@@ -78,7 +117,7 @@ namespace GE
 		while (p_Running)
 		{
 			{
-				GE_PROFILE_SCOPE("Time Compilation - Application::Run()");
+				GE_PROFILE_SCOPE("App Time Compilation");
 				float time = p_Window->GetTime();
 				p_TS = time - p_LastFrameTime;
 				p_LastFrameTime = time;
@@ -88,26 +127,26 @@ namespace GE
 
 			if (!p_Minimized)
 			{
-				{ //	Updates Layers
-					GE_PROFILE_SCOPE("LayerStack - Application::Run()");
-					for (Layer* layer : p_LayerStack)
-					{
-						layer->OnUpdate(p_TS);
-					}
+				GE_PROFILE_SCOPE("Updating App");
+
+				// Reset Renderer & Bind Framebuffer
+				Renderer::ResetStats();
+				p_Framebuffer->Bind();
+				
+				// Updates Audio, Physics & Scripting
+				Project::UpdateScene(p_TS);
+
+				//	Updates Rendering
+				for (Ref<Layer> layer : p_LayerStack->p_Layers)
+				{
+					layer->OnUpdate(p_TS);
 				}
-				{ //	Updates ImGui
-					GE_PROFILE_SCOPE("ImGui LayerStack - Application::Run()");
-					p_ImGuiLayer->Begin();
-					for (Layer* layer : p_LayerStack)
-					{
-						layer->OnImGuiRender();
-					}
-					p_ImGuiLayer->End();
-				}
+	
+				p_Framebuffer->Unbind();
 			}
 
 			{ //	Updates Window
-				GE_PROFILE_SCOPE("Window - Application::Run()");
+				GE_PROFILE_SCOPE("Updating AppWindow");
 				p_Window->OnUpdate();
 			}
 		}
@@ -121,37 +160,33 @@ namespace GE
 
 #pragma region Layer Handling
 
-	void Application::PushLayer(Layer* layer)
+	/*
+	* Used if Layers were inserted to the LayerStack directly
+	*/
+	void Application::AttachAllLayers()
 	{
-		GE_PROFILE_FUNCTION();
-
-		p_LayerStack.PushLayer(layer);
-		layer->OnAttach();
+		for (auto& layer : p_LayerStack->p_Layers)
+		{
+			layer->OnAttach();
+		}
 	}
 
-	void Application::PushOverlay(Layer* overlay)
+	void Application::PushLayer(Ref<Layer> layer)
 	{
 		GE_PROFILE_FUNCTION();
 
-		p_LayerStack.PushOverlay(overlay);
-		overlay->OnAttach();
+		if(p_LayerStack->InsertLayer(layer))
+			layer->OnAttach();
 	}
 
-	void Application::PopLayer(Layer* layer)
+	void Application::PopLayer(Ref<Layer> layer)
 	{
 		GE_PROFILE_FUNCTION();
 
-		if (p_LayerStack.PopLayer(layer))
+		if (p_LayerStack->RemoveLayer(layer))
 			layer->OnDetach();
 	}
 
-	void Application::PopOverlay(Layer* overlay)
-	{
-		GE_PROFILE_FUNCTION();
-
-		if (p_LayerStack.PopOverlay(overlay))
-			overlay->OnDetach();
-	}
 #pragma endregion
 
 #pragma region Thread Handling
@@ -172,15 +207,29 @@ namespace GE
 			std::scoped_lock<std::mutex> lock(p_MainThreadMutex);
 			copy = p_MainThread;
 			p_MainThread.clear();
+			p_MainThread = std::vector<std::function<void()>>();
 		}
 
 		for (auto& func : copy)
 			func();
+
+		copy.clear();
+		copy = std::vector<std::function<void()>>();
 	}
 
 #pragma endregion
 
 #pragma region Event Handling
+
+	int Application::GetHovered(Framebuffer::Attachment format, const uint32_t& x, const uint32_t& y)
+	{
+		int pixelData = -1;
+		if (x >= 0 && y >= 0 && x <= p_Framebuffer->GetWidth() && y <= p_Framebuffer->GetHeight())
+		{
+			pixelData = p_Framebuffer->ReadPixel(format, x, y);
+		}
+		return pixelData;
+	}
 
 	void Application::OnEvent(Event& e)
 	{
@@ -190,11 +239,11 @@ namespace GE
 		dispatcher.Dispatch<WindowCloseEvent>(BIND_EVENT_FN(OnWindowClose));
 		dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(OnWindowResize));
 
-		for (auto it = p_LayerStack.end(); it != p_LayerStack.begin(); )
+		for (auto it = p_LayerStack->end(); it != p_LayerStack->begin(); )
 		{
-			(*--it)->OnEvent(e);
 			if (e.IsHandled())
 				break;
+			(*--it)->OnEvent(e);
 		}
 
 	}
@@ -215,11 +264,10 @@ namespace GE
 			return false;
 		}
 
-		//RenderCommand::SetViewport(0, 0, e.GetWidth(), e.GetHeight());
-		Project::SetViewport(e.GetWidth(), e.GetHeight());
-
+		Renderer::ResizeViewport(0, 0, e.GetWidth(), e.GetHeight());
+		Project::Resize(e.GetWidth(), e.GetHeight());
 		p_Minimized = false;
-		return false;
+		return true;
 	}
 
 #pragma endregion
@@ -252,7 +300,7 @@ namespace GE
 
 	bool Application::SaveProject() const
 	{
-		const std::filesystem::path& path = Project::GetProjectPath() / std::filesystem::path(Project::GetConfig().Name + ".gproj");
+		const std::filesystem::path& path = Project::GetProjectPath() / std::filesystem::path(Project::GetName() + ".gproj");
 		if (!path.empty())
 		{
 			return SaveProject(path);

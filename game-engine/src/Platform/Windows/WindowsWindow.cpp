@@ -32,16 +32,13 @@ namespace GE
 	{
 		GE_PROFILE_FUNCTION();
 
-		m_Config.Name = config.Name;
-		m_Config.Width = config.Width;
-		m_Config.Height = config.Height;
-
+		m_Config = Config(config);
 		GE_CORE_TRACE("Creating window {0}\n\tWidth, Height : ({1}, {2})", m_Config.Name, m_Config.Width, m_Config.Height);
 
 		if (!s_GLFWInitialized)
 		{
 			int success = glfwInit();
-			GE_CORE_ASSERT(success, "Could not intialize GLFW!");
+			GE_CORE_ASSERT(success, "Could not initialize GLFW!");
 			glfwSetErrorCallback(GLFWErrorCallback);
 			s_GLFWInitialized = true;
 		}
@@ -50,7 +47,7 @@ namespace GE
 		s_GLFWWindowCount++;
 
 		glfwGetWindowSize(m_Window, (int*)&m_Config.Width, (int*)&m_Config.Height);
-		glfwGetWindowPos(m_Window, &m_Config.PositionX, &m_Config.PositionY);
+		glfwGetWindowPos(m_Window, (int*)&m_Config.PositionX, (int*)&m_Config.PositionY);
 
 		m_Monitor = glfwGetPrimaryMonitor();
 
@@ -172,6 +169,8 @@ namespace GE
 
 		if (s_GLFWWindowCount == 0)
 			glfwTerminate();
+
+		delete[] m_Context;
 	}
 
 	void WindowsWindow::OnUpdate()
@@ -217,7 +216,8 @@ namespace GE
 		else
 		{
 			// restore last window size and position
-			glfwSetWindowMonitor(m_Window, nullptr, m_Config.PositionX, m_Config.PositionY, m_Config.Width, m_Config.Height, 0);
+			glfwSetWindowMonitor(m_Window, nullptr, (int)m_Config.PositionX, (int)m_Config.PositionY,
+				(int)m_Config.Width, (int)m_Config.Height, 0);
 		}
 	}
 

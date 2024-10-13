@@ -7,7 +7,6 @@ namespace GE
 	class OpenGLVertexArray : public VertexArray
 	{
 	public:
-		// Created on construct using OpenGL
 		OpenGLVertexArray();
 		~OpenGLVertexArray() override;
 

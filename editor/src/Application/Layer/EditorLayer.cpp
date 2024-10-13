@@ -3,16 +3,16 @@
 #include "../../AssetManager/EditorAssetManager.h"
 
 #include <GE/Asset/RuntimeAssetManager.h>
-#include <GE/Audio/AudioManager.h>
+#include <GE/Asset/Assets/Scene/Components/Components.h>
+
 #include <GE/Core/Application/Application.h>
 #include <GE/Core/Input/Input.h>
-#include <GE/Core/FileSystem/FileSystem.h>
 
 #include <GE/Project/Project.h>
-#include <GE/Rendering/RenderCommand.h>
+#include <GE/Rendering/Renderer/Renderer.h>
 #include <GE/Scripting/Scripting.h>
 
-#include <imgui/imgui.h>
+#include <GE/Core/Debug/ImGUI/ImGuiBuild.cpp>
 #include <glm/gtc/type_ptr.hpp>
 
 namespace GE
@@ -50,36 +50,36 @@ namespace GE
 		Project::NewAssetManager<EditorAssetManager>()->DeserializeAssets();
 	}
 
-	EditorLayer::EditorLayer(const std::string& name)
-		: Layer(name), m_ViewportBounds{ { 0.0, 0.0 },{ 0.0, 0.0 } }, m_Viewport({ 0.0, 0.0 })
+	EditorLayer::EditorLayer() : EditorLayer(0, false)
 	{
+	}
 
+	EditorLayer::EditorLayer(uint32_t id, bool isBase) : Layer(id, isBase),
+		m_ImGUIViewportBounds{ { 0.0, 0.0 },{ 0.0, 0.0 } }, m_ImGUIViewport({ 0.0, 0.0 }),
+		m_ImGUIMousePosition({ 0.0f, 0.0f })
+	{
 	}
 
 	void EditorLayer::OnAttach()
 	{
 		GE_PROFILE_FUNCTION();
 		GE_INFO("EditorLayer::OnAttach Start.");
-		{
-			GE_PROFILE_SCOPE("EditorLayer::OnAttach - Framebuffer Setup");
-			Framebuffer::Config framebufferConfig;
-			framebufferConfig.AttachmentSpecification = { Framebuffer::TextureFormat::RGBA8, 
-				Framebuffer::TextureFormat::RED_INTEGER, Framebuffer::TextureFormat::DEPTH24STENCIL8 };
-			framebufferConfig.Width = Application::GetApp().GetWidth();
-			framebufferConfig.Height = Application::GetApp().GetHeight();
-			m_Framebuffer = Framebuffer::Create(framebufferConfig);
-		}
-		m_EditorCamera = new EditorCamera(45.0f, 0.1f, 100.0f, (float)m_Framebuffer->GetWidth()/(float)m_Framebuffer->GetHeight());
+
+		Layer::OnAttach();
+
+		ImGUI_OnAttach();
+
+		if (Ref<Framebuffer> fb = Application::GetFramebuffer())
+			m_EditorCamera = new EditorCamera(45.0f, 0.1f, 100.0f, (float)fb->GetWidth() / (float)fb->GetHeight());
 
 		m_PlayButtonHandle = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Play_Button.png")->GetHandle();
-		m_SimulateButtonHandle = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Simulate_Button.png")->GetHandle();
 		m_PauseButtonHandle = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Pause_Button.png")->GetHandle();
 		m_StepButtonHandle = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Step_Button.png")->GetHandle();
 		m_StopButtonHandle = Project::GetAssetManager<EditorAssetManager>()->GetAsset("textures/Stop_Button.png")->GetHandle();
 
 		m_FontHandle = Project::GetAssetManager<EditorAssetManager>()->GetAsset("fonts/arial.ttf")->GetHandle();
 
-		LoadScene(Project::GetSceneHandle());
+		LoadScene();
 
 		GE_INFO("EditorLayer::OnAttach Complete.");
 	}
@@ -87,90 +87,440 @@ namespace GE
 	void EditorLayer::OnDetach()
 	{
 		GE_PROFILE_FUNCTION();
+
+		Layer::OnDetach();
+
+		delete[] m_EditorCamera;
+
+		ImGUI_OnDetach();
 	}
 
 	void EditorLayer::OnUpdate(Timestep ts)
 	{
-		Framebuffer::Config config = m_Framebuffer->GetConfig();
-		if ((m_Viewport.x != 0 && m_Viewport.y != 0) && (m_Viewport.x != config.Width || m_Viewport.y != config.Height))
-			m_Framebuffer->Resize((uint32_t)m_Viewport.x, (uint32_t)m_Viewport.y);
-
-		Renderer2D::ResetStats();
-		m_Framebuffer->Bind();
-		RenderCommand::SetClearColor({ 0.25f, 0.25f, 0.25f, 1.0f });
-		RenderCommand::ClearAPI();
-
-		// Clear attachmentIndex = 1 - RED_INTEGER / entityID
-		m_Framebuffer->ClearAttachment(1, -1);
-
-		if (m_RuntimeScene)
+		if (Ref<Framebuffer> fb = Application::GetFramebuffer())
 		{
-			UpdateScene(ts);
+			fb->Resize((uint32_t)m_ImGUIViewport.x, (uint32_t)m_ImGUIViewport.y, m_ImGUIViewportBounds[0], m_ImGUIViewportBounds[1]);
 
-			// if Stopped, Simulating, or Paused
-			if(!m_RuntimeScene->IsRunning())
+			if (m_UseEditorCamera && m_EditorCamera)
 			{
-				if (m_RuntimeScene->IsStopped())
+				m_EditorCamera->SetViewport(fb->GetWidth(), fb->GetHeight());
+				m_EditorCamera->OnUpdate(ts);
+				OnRender(m_EditorCamera);
+			}
+
+			/*
+			* Updates ImGui - Renders SceneHierarchy/Asset Panel & Framebuffer to viewport
+			*/
+			Application::SubmitToMainAppThread([editorLayer = this]()
 				{
-					auto [mx, my] = ImGui::GetMousePos();
-					mx -= m_ViewportBounds[0].x;
-					my -= m_ViewportBounds[0].y;
-					glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
-					my = viewportSize.y - my;
+					GE_PROFILE_SCOPE("ImGui Render");
+					editorLayer->ImGUI_Begin();
+					editorLayer->ImGUI_Render();
+					editorLayer->ImGUI_End();
+				}); 
+		}
 
-					int mouseX = mx;
-					int mouseY = my;
+	}
 
-					if (mouseX >= 0 && mouseY >= 0 && mouseX < viewportSize.x && mouseY < viewportSize.y)
+	void EditorLayer::OnRender(Camera* camera)
+	{
+		if (m_UseEditorCamera && camera)
+		{
+			Layer::OnRender(camera);
+
+			Renderer::Open(*camera);
+
+			if (m_ShowColliders)
+			{
+				std::vector<Entity> entities = Project::GetRuntimeScene()->GetAllEntitiesWith<RenderComponent>();
+				for (Entity entity : entities)
+				{
+					if (Validate(entity) && entity.HasComponent<TransformComponent>())
 					{
-						int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY); // attachmentIndex = 1 - RED_INTEGER
-						m_HoveredEntity = (pixelData == -1) ? Entity() : Entity((entt::entity)pixelData, m_RuntimeScene.get());
+						auto& trsc = entity.GetComponent<TransformComponent>();
+
+						if (entity.HasComponent<BoxCollider2DComponent>())
+						{
+							auto& bc2D = entity.GetComponent<BoxCollider2DComponent>();
+							Renderer::DrawRect(trsc.GetTransform(glm::vec3(bc2D.Offset, 0.0025f), glm::vec3(bc2D.Size * m_ColliderModifier, 1.0f)), m_ColliderColor, entity);
+						}
+
+						if (entity.HasComponent<CircleCollider2DComponent>())
+						{
+							auto& cc2D = entity.GetComponent<CircleCollider2DComponent>();
+							Renderer::DrawSphere(trsc.GetTransform(glm::vec3(cc2D.Offset, 0.0025f), glm::vec3(glm::vec2(cc2D.Radius * (m_ColliderModifier * m_ColliderModifier)), 1.0f)), m_ColliderColor, cc2D.Radius, m_CircleColliderThickness, m_CircleColliderFade, entity);
+						}
 					}
+				}
+				entities.clear();
+				entities = std::vector<Entity>();
+			}
 
-					if (m_HoveredEntity != Entity() && m_HoveredEntity.HasComponent<TransformComponent>())
-					{
-						Renderer2D::Start(*m_EditorCamera);
+			m_HoveredEntity = Application::GetHoveredEntity(m_ImGUIMousePosition.x, m_ImGUIMousePosition.y, -1);
+			// Outline Hovered Entity
+			if (m_HoveredEntity && m_HoveredEntity.HasComponent<TransformComponent>())
+			{
+				TransformComponent tc = m_HoveredEntity.GetComponent<TransformComponent>();
+				Renderer::DrawRect(tc.GetTransform(), m_HoveredColor, m_HoveredEntity);
+			}
 
-						TransformComponent tc = m_HoveredEntity.GetComponent<TransformComponent>();
-
-						// Outline
-						Renderer2D::DrawRectangle(tc.GetTransform(), m_HoveredColor, m_HoveredEntity.GetEntityID());
-
-						Renderer2D::End();
-					}
-
-					const Entity& selectedEntity = m_ScenePanel->GetSelectedEntity();
-					if (selectedEntity != Entity() && selectedEntity.HasComponent<TransformComponent>())
-					{
-						Renderer2D::Start(*m_EditorCamera);
-
-						TransformComponent tc = selectedEntity.GetComponent<TransformComponent>();
-
-						// Outline
-						Renderer2D::DrawRectangle(tc.GetTransform(), m_ScenePanel->GetSelectedColor(), selectedEntity.GetEntityID());
-
-						Renderer2D::End();
-					}
+			// Outline Selected Entity
+			if (m_ScenePanel)
+			{
+				const Entity& selectedEntity = m_ScenePanel->GetSelectedEntity();
+				if (selectedEntity && selectedEntity.HasComponent<TransformComponent>())
+				{
+					TransformComponent tc = selectedEntity.GetComponent<TransformComponent>();
+					Renderer::DrawRect(tc.GetTransform(), m_ScenePanel->GetSelectedColor(), selectedEntity);
 				}
 			}
 
+			Renderer::Close();
 		}
-
-		m_Framebuffer->Unbind();
 	}
 
 	void EditorLayer::OnEvent(Event& e)
 	{
 		EventDispatcher dispatcher(e);
-		dispatcher.Dispatch<KeyPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnKeyPressed));
-		dispatcher.Dispatch<MouseButtonPressedEvent>(GE_BIND_EVENT_FN(EditorLayer::OnMousePressed));
+		dispatcher.Dispatch<KeyPressedEvent>(GE_BIND_EVENT_FN(OnKeyPressed));
+		dispatcher.Dispatch<MouseButtonPressedEvent>(GE_BIND_EVENT_FN(OnMousePressed));
 
-		if(m_ViewportFocused && m_ViewportHovered)
+		if (m_ImGUIViewportFocused && m_ImGUIViewportHovered && m_UseEditorCamera && m_EditorCamera)
 			m_EditorCamera->OnEvent(e);
+
+		ImGUI_OnEvent(e);
 	}
 
-	void EditorLayer::OnImGuiRender()
+	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
 	{
+		if (e.GetRepeatCount() > 0)
+			return false;
+
+		bool control = Input::IsKeyPressed(Input::KEY_LEFT_CONTROL) || Input::IsKeyPressed(Input::KEY_RIGHT_CONTROL);
+		bool shift = Input::IsKeyPressed(Input::KEY_LEFT_SHIFT) || Input::IsKeyPressed(Input::KEY_RIGHT_SHIFT);
+
+		switch (e.GetKeyCode())
+		{
+		case Input::KEY_D:
+		{
+			if (control)
+			{
+				if (m_ScenePanel)
+				{
+					if(Entity e = m_ScenePanel->GetSelectedEntity())
+						OnDuplicateEntity(e);
+				}
+			}
+				
+			break;
+		}
+		case Input::KEY_E:
+		{
+			if (control)
+			{
+				if (shift)
+					SerializeRuntimeAssetManager();
+			}
+			break;
+		}
+		case Input::KEY_F:
+		{
+			if (control)
+				Application::SetFullscreen(true);
+			break;
+		}
+		case Input::KEY_I:
+		{
+			if (control)
+			{
+				if (shift)
+					DeserializeRuntimeAssetManager();
+			}
+			break;
+		}
+		case Input::KEY_O:
+		{
+			if (control)
+			{
+				if (shift)
+					Application::LoadAppProjectFileDialog();
+			}
+			break;
+		}
+		case Input::KEY_S:
+		{
+			if (control)
+			{
+				if (shift)
+					Application::SaveAppProjectFileDialog();
+				else
+					Application::SaveAppProject();
+			}
+
+			break;
+		}
+		case Input::KEY_R:
+		{
+			if (control)
+			{
+				Scripting::ReloadAssembly();
+			}
+
+			break;
+		}
+		case Input::KEY_DELETE:
+		{
+			// Not hovering ImGui, hovering Framebuffer/Scene
+			if (ImGUI_WidgetID() == 0)
+			{
+				Entity selectedEntity = m_ScenePanel->GetSelectedEntity();
+				if (selectedEntity)
+				{
+					if (selectedEntity == m_ScenePanel->GetSelectedEntity())
+						m_ScenePanel->ClearSelected();
+					// If runtime, only destroys runtime Entity
+					// if editor, destroys Entity in both
+					Project::GetRuntimeScene()->DestroyEntity(selectedEntity);
+				}
+			}
+			break;
+		}
+		case Input::KEY_ESCAPE:
+		{
+			Application::SetFullscreen(false);
+			break;
+		}
+		default:
+			break;
+		}
+		return true;
+	}
+
+	bool EditorLayer::OnMousePressed(MouseButtonPressedEvent& e)
+	{
+		switch (e.GetMouseButton())
+		{
+		case Input::MOUSE_BUTTON_1:
+			if (m_ImGUIViewportHovered && m_HoveredEntity && m_HoveredEntity.HasComponent<IDComponent>())
+			{
+				m_ScenePanel->SetSelected(m_HoveredEntity.GetComponent<IDComponent>().ID);
+			}
+			break;
+		case Input::MOUSE_BUTTON_2:
+			break;
+		default:
+			break;
+		}
+		return true;
+	}
+
+	void EditorLayer::OnDuplicateEntity(Entity e)
+	{
+		if (Ref<Scene> runtimeScene = Project::GetRuntimeScene())
+		{
+			if (runtimeScene->EntityExists(e))
+				runtimeScene->DuplicateEntity(e);
+		}
+	}
+
+	UUID EditorLayer::PopSelectedID()
+	{
+		UUID selectedUUID = 0;
+		if (m_ScenePanel)
+		{
+			const Entity& entity = m_ScenePanel->GetSelectedEntity();
+			if (entity && entity.HasComponent<IDComponent>())
+			{
+				selectedUUID = entity.GetComponent<IDComponent>().ID;
+				m_ScenePanel->ClearSelected();
+			}
+		}
+		return selectedUUID;
+	}
+
+#pragma region Scene Functions
+
+	void EditorLayer::StartScene(const Scene::State& state)
+	{
+		if (state == Scene::State::Stop)
+		{
+			StopScene();
+			return;
+		}
+
+		if (state == Scene::State::Run)
+			m_UseEditorCamera = false;
+
+		UUID selectedID = PopSelectedID();
+		if (m_ScenePanel)
+			m_ScenePanel->SetSelected(selectedID);
+
+		Project::StartScene(state);
+
+	}
+
+	void EditorLayer::StopScene()
+	{
+		m_UseEditorCamera = true;
+
+		// Old SelectedEntity.UUID won't exist after setting runtimeScene=editorScene
+		// Save a copy to revert to after
+		UUID selectedID = PopSelectedID();
+		// Revert Scene
+		if (Project::ResetScene() && m_ScenePanel)
+		{
+			m_ScenePanel->SetSelected(selectedID);
+		}
+	}
+
+	void EditorLayer::LoadScene(UUID handle)
+	{
+		if(handle != 0)
+			Project::SetSceneHandle(handle);
+		if (Project::ResetScene())
+		{
+			if (Ref<Scene> scene = Project::GetRuntimeScene())
+			{
+				m_AssetPanel = CreateRef<AssetPanel>();
+				m_ScenePanel = CreateRef<SceneHierarchyPanel>();
+
+				std::string sceneName = std::string("None");
+				if (Ref<EditorAssetManager> eam = Project::GetAssetManager<EditorAssetManager>())
+				{
+					const AssetMetadata& sceneMetadata = eam->GetMetadata(handle);
+					sceneName = sceneMetadata.FilePath.filename().string();
+				}
+				GE_INFO("Editor Loaded Scene : {0}, {1}", sceneName.c_str(), (uint64_t)handle);
+			}
+		}
+	}
+
+#pragma endregion
+
+#pragma region ImGui Functions
+
+	static void ImGUI_SetDarkTheme(ImGuiStyle& style)
+	{
+		auto& colors = style.Colors;
+		colors[ImGuiCol_WindowBg] = ImVec4{ 0.095f, 0.095f, 0.095f, 1.0f };
+
+		// Headers
+		colors[ImGuiCol_Header] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_HeaderHovered] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_HeaderActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Buttons
+		colors[ImGuiCol_Button] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_ButtonHovered] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_ButtonActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Frame BG
+		colors[ImGuiCol_FrameBg] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_FrameBgHovered] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_FrameBgActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Tab
+		colors[ImGuiCol_Tab] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_TabHovered] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_TabActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+		colors[ImGuiCol_TabUnfocused] = ImVec4{ 0.45f, 0.45f, 0.45f, 1.0f };
+		colors[ImGuiCol_TabUnfocusedActive] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+
+		// Name
+		colors[ImGuiCol_TitleBg] = ImVec4{ 0.25f, 0.25f, 0.25f, 1.0f };
+		colors[ImGuiCol_TitleBgActive] = ImVec4{ 0.55f, 0.55f, 0.55f, 1.0f };
+		colors[ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.5f, 0.5f, 0.5f, 1.0f };
+	}
+
+	uint32_t EditorLayer::ImGUI_WidgetID() const
+	{
+		ImGuiContext& imguiContext = *GImGui;
+		return imguiContext.ActiveId;
+	}
+
+	void EditorLayer::ImGUI_OnAttach()
+	{
+		GE_PROFILE_FUNCTION();
+		//	Context Setup
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+
+		ImGuiIO& io = ImGui::GetIO(); (void)io;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+		//	Style Setup
+		ImGui::StyleColorsDark();
+		ImGuiStyle& style = ImGui::GetStyle();
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			style.WindowRounding = 0.0f;
+			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+			ImGUI_SetDarkTheme(style);
+		}
+
+		GLFWwindow* window = static_cast<GLFWwindow*>(Application::GetNativeWindow());
+
+		//	Platform/Renderer bindings Setup
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
+		ImGui_ImplOpenGL3_Init("#version 410");
+	}
+
+	void EditorLayer::ImGUI_OnDetach()
+	{
+		GE_PROFILE_FUNCTION();
+
+		ImGui_ImplOpenGL3_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
+	}
+
+	void EditorLayer::ImGUI_OnEvent(Event& e) const
+	{
+		if (m_ImGUIBlockEvents)
+		{
+			ImGuiIO& io = ImGui::GetIO();
+			if (!e.IsHandled())
+			{
+				e.SetHandled(false | e.IsInCategory(Event::Mouse) & io.WantCaptureMouse);
+				e.SetHandled(false | e.IsInCategory(Event::Keyboard) & io.WantCaptureKeyboard);
+			}
+		}
+	}
+
+	void EditorLayer::ImGUI_Begin()
+	{
+		GE_PROFILE_FUNCTION();
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+	}
+
+	void EditorLayer::ImGUI_End()
+	{
+		GE_PROFILE_FUNCTION();
+		ImGuiIO& io = ImGui::GetIO();
+		io.DisplaySize = ImVec2((float)Application::GetWindowWidth(), (float)Application::GetWindowHeight());
+
+		//Rendering
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			GLFWwindow* backup_current_contect = glfwGetCurrentContext();
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+			glfwMakeContextCurrent(backup_current_contect);
+
+		}
+	}
+
+	void EditorLayer::ImGUI_Render()
+	{
+		GE_PROFILE_FUNCTION();
 		static bool dockspaceOpen = true;
 		static bool opt_fullscreen_persistant = true;
 		bool opt_fullscreen = opt_fullscreen_persistant;
@@ -221,16 +571,17 @@ namespace GE
 			{
 				if (ImGui::BeginMenu("Project"))
 				{
-					if(ImGui::MenuItem("Save Project", "Ctrl+Shift+S")) Application::SaveAppProject();
-					if(ImGui::MenuItem("Load Project", "Ctrl+Shift+O")) Application::LoadAppProjectFileDialog();
-					if(ImGui::MenuItem("Export", "Ctrl+Shift+E")) SerializeRuntimeAssetManager();
-					if(ImGui::MenuItem("Import", "Ctrl+Shift+I")) DeserializeRuntimeAssetManager();
+					if (ImGui::MenuItem("Save", "Ctrl+Shift+S")) Application::SaveAppProject();
+					if (ImGui::MenuItem("Load", "Ctrl+Shift+O")) Application::LoadAppProjectFileDialog();
+					if (ImGui::MenuItem("Export", "Ctrl+Shift+E")) SerializeRuntimeAssetManager();
+					if (ImGui::MenuItem("Import", "Ctrl+Shift+I")) DeserializeRuntimeAssetManager();
+					
 					ImGui::EndMenu();
 				}
 
 				ImGui::Separator();
 				if (ImGui::MenuItem("Exit")) Application::CloseApp();
-				ImGui::EndMenu();	
+				ImGui::EndMenu();
 			}
 
 			if (ImGui::BeginMenu("Scripting"))
@@ -247,8 +598,8 @@ namespace GE
 			ImGui::Begin("Statistics");
 
 			{
-				Renderer2D::Statistics stats = Renderer2D::GetStats();
-				ImGui::Text("Renderer2D");
+				Renderer::Statistics stats = Renderer::Get()->GetStats();
+				ImGui::Text("Renderer");
 				ImGui::Text("\tDraw Calls - %d", stats.DrawCalls);
 				ImGui::Text("\tSpawn Count - %d", stats.SpawnCount);
 				ImGui::Text("\tVertices - %d", stats.GetTotalVertexCount());
@@ -259,16 +610,26 @@ namespace GE
 
 			{
 				ImGui::Text("Scene");
-				ImGui::DragInt("Step Rate", &m_StepFrameMultiplier);
 				ImGui::Checkbox("Editor Camera Toggle", &m_UseEditorCamera);
+				ImGui::DragInt("Step Rate", &m_StepFrameMultiplier);
+				ImGui::Separator();
+				ImGui::Text("Colliders");
+				ImGui::Checkbox("Show", &m_ShowColliders);
+				ImGui::DragFloat4("Color", glm::value_ptr(m_ColliderColor));
+				ImGui::DragFloat("Size Modifer", &m_ColliderModifier);
+				ImGui::DragFloat("Circle Thickness", &m_CircleColliderThickness);
+				ImGui::DragFloat("Circle Fade", &m_CircleColliderFade);
+				ImGui::Separator();
 
 				std::string name = "None";
-				if (m_HoveredEntity != Entity() && m_HoveredEntity.HasComponent<TagComponent>())
-					name = m_HoveredEntity.GetComponent<TagComponent>().Tag;
+				if (m_HoveredEntity && m_HoveredEntity.HasComponent<NameComponent>())
+					name = m_HoveredEntity.GetComponent<NameComponent>().Name;
 				ImGui::Text("Hovered Entity - %s", name.c_str());
 				ImGui::DragFloat4("Hovered Color", glm::value_ptr(m_HoveredColor));
 
-				ImGui::DragFloat4("Selected Color", glm::value_ptr(m_ScenePanel->m_SelectedColor));
+				if (m_ScenePanel)
+					ImGui::DragFloat4("Selected Color", glm::value_ptr(m_ScenePanel->m_SelectedColor));
+				
 			}
 
 			ImGui::End();
@@ -283,45 +644,59 @@ namespace GE
 				m_AssetPanel->OnImGuiRender();
 		}
 
-		//	Viewport
+		// Framebuffer Viewport
 		{
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 			ImGui::Begin("Viewport");
 
+			// Gather for next GE Update
 			auto viewportOffset = ImGui::GetWindowPos();
 			auto viewportMin = ImGui::GetWindowContentRegionMin();
 			auto viewportMax = ImGui::GetWindowContentRegionMax();
-			m_ViewportBounds[0] = { viewportMin.x + viewportOffset.x, viewportMin.y + viewportOffset.y };
-			m_ViewportBounds[1] = { viewportMax.x + viewportOffset.x, viewportMax.y + viewportOffset.y };
+			m_ImGUIViewportBounds[0] = { viewportMin.x + viewportOffset.x, viewportMin.y + viewportOffset.y };
+			m_ImGUIViewportBounds[1] = { viewportMax.x + viewportOffset.x, viewportMax.y + viewportOffset.y };
 
-			m_ViewportFocused = ImGui::IsWindowFocused();
-			m_ViewportHovered = ImGui::IsWindowHovered();
+			m_ImGUIViewportFocused = ImGui::IsWindowFocused();
+			m_ImGUIViewportHovered = ImGui::IsWindowHovered();
 
-			Application::BlockAppEvents(!m_ViewportHovered);
-			
-			ImVec2 viewportSize = ImGui::GetContentRegionAvail();			
-			m_Viewport = { viewportSize.x, viewportSize.y };
+			ImGUI_BlockEvents(!m_ImGUIViewportHovered);
 
-			uint32_t textureID = m_Framebuffer->GetColorAttachmentID();
-			ImGui::Image((ImTextureID)textureID, viewportSize, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
-			if (ImGui::BeginDragDropTarget())
+			ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+			m_ImGUIViewport = { viewportSize.x, viewportSize.y };
+
+			auto [mx, my] = ImGui::GetMousePos();
+			m_ImGUIMousePosition = glm::vec2(mx, my);
+
+			// Render framebuffer in dockspace if present
+			if (Ref<Framebuffer> fb = Application::GetFramebuffer())
 			{
-				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+				ImGui::Image((ImTextureID)(uint64_t)fb->GetAttachmentID(Framebuffer::Attachment::RGBA8), viewportSize, ImVec2{0, 1}, ImVec2{1, 0});
+				if (ImGui::BeginDragDropTarget())
 				{
-					const UUID handle = *(UUID*)payload->Data;
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+					{
+						const UUID handle = *(UUID*)payload->Data;
 
-					Ref<Asset> asset = Project::GetAssetManager<EditorAssetManager>()->GetAsset(handle);
-					Asset::Type type = asset->GetType();
-					if (asset && type == Asset::Type::Scene)
-					{
-						LoadScene(handle);
+						Ref<Asset> asset = Project::GetAssetManager<EditorAssetManager>()->GetAsset(handle);
+						if (asset)
+						{
+							if (asset->GetType() == Asset::Type::Scene)
+							{
+								LoadScene(handle);
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Scene.\n\tType:{0}", AssetUtils::AssetTypeToString(asset->GetType()));
+							}
+						}
+						else
+						{
+							GE_ERROR("Could find Asset in AssetManager.");
+						}
 					}
-					else
-					{
-						GE_WARN("Asset Type is not Scene.\n\tType:{0}", AssetUtils::AssetTypeToString(type));
-					}
+					ImGui::EndDragDropTarget();
 				}
-				ImGui::EndDragDropTarget();
+
 			}
 
 			ImGui::End();
@@ -329,296 +704,57 @@ namespace GE
 
 		}
 
-		UI_Toolbar();
+		ImGUI_SceneToolbar();
 
 		ImGui::End();
-
 	}
 
-	void EditorLayer::OnWindowResize(WindowResizeEvent& e)
-	{
-		RenderCommand::SetViewport((uint32_t)m_EditorCamera->GetPosition().x, (uint32_t)m_EditorCamera->GetPosition().y, e.GetWidth(), e.GetHeight());
-	}
-
-	bool EditorLayer::OnKeyPressed(KeyPressedEvent& e)
-	{
-		if (e.GetRepeatCount() > 0)
-			return false;
-
-		bool control = Input::IsKeyPressed(Input::KEY_LEFT_CONTROL) || Input::IsKeyPressed(Input::KEY_RIGHT_CONTROL);
-		bool shift = Input::IsKeyPressed(Input::KEY_LEFT_SHIFT) || Input::IsKeyPressed(Input::KEY_RIGHT_SHIFT);
-
-		switch (e.GetKeyCode())
-		{
-		case Input::KEY_D:
-		{
-			if (control)
-				OnDuplicateEntity();
-			break;
-		}
-		case Input::KEY_E:
-		{
-			if (control)
-			{
-				if (shift)
-					SerializeRuntimeAssetManager();
-			}
-			break;
-		}
-		case Input::KEY_F:
-		{
-			if (control)
-				Application::GetApp().GetWindow().SetFullscreen(true);
-			break;
-		}
-		case Input::KEY_I:
-		{
-			if (control)
-			{
-				if (shift)
-					DeserializeRuntimeAssetManager();
-			}
-			break;
-		}
-		case Input::KEY_O:
-		{
-			if (control)
-			{
-				if (shift)
-					Application::LoadAppProjectFileDialog();
-			}
-			break;
-		}
-		case Input::KEY_S:
-		{
-			if (control)
-			{
-				if (shift)
-					Application::SaveAppProjectFileDialog();
-				else
-					Application::SaveAppProject();
-			}
-
-			break;
-		}
-		case Input::KEY_R:
-		{
-			if (control)
-			{
-				Scripting::ReloadAssembly();
-			}
-
-			break;
-		}
-		case Input::KEY_DELETE:
-		{
-			if (Application::GetActiveWidgetID() == 0)
-			{
-				Entity selectedEntity = m_ScenePanel->GetSelectedEntity();
-				if (selectedEntity)
-				{
-					m_ScenePanel->m_SelectedEntity = Entity();
-					m_RuntimeScene->DestroyEntity(selectedEntity);
-				}
-			}
-			break;
-		}
-		case Input::KEY_ESCAPE:
-		{
-			Application::GetApp().GetWindow().SetFullscreen(false);
-			break;
-		}
-		default:
-			GE_WARN("Editor::OnKeyPressed Event - Input::Key not bound. Keycode : {0}", e.GetKeyCode());
-			break;
-		}
-		return true;
-	}
-
-	bool EditorLayer::OnMousePressed(MouseButtonPressedEvent& e)
-	{
-		switch (e.GetMouseButton())
-		{
-		case Input::MOUSE_BUTTON_1:
-			if (m_ViewportHovered && m_HoveredEntity)
-				m_ScenePanel->m_SelectedEntity = m_HoveredEntity;
-			break;
-		case Input::MOUSE_BUTTON_2:
-			break;
-		default:
-			GE_WARN("Editor Input::ButtonPressed not bound.");
-			break;
-		}
-		return true;
-	}
-
-	void EditorLayer::OnDuplicateEntity()
-	{
-		Entity selectedEntity = m_ScenePanel->GetSelectedEntity();
-		if (m_RuntimeScene->GetState() == Scene::State::Stop && selectedEntity)
-		{
-			m_RuntimeScene->DuplicateEntity(selectedEntity);
-		}
-	}
-
-#pragma region Scene Functions
-
-	void EditorLayer::StartScene(const Scene::State& state)
-	{
-		if (state == Scene::State::Stop)
-		{
-			StopScene();
-			return;
-		}
-		if (state != Scene::State::Pause && !m_RuntimeScene->IsPaused())
-		{
-			m_RuntimeScene = Project::GetCopy<Scene>(m_EditorScene);
-			m_ScenePanel->SetScene(m_RuntimeScene.get());
-			m_HoveredEntity = Entity();
-		}
-		if (state == Scene::State::Run)
-			m_UseEditorCamera = false;
-
-		m_RuntimeScene->OnStart(state, m_Framebuffer->GetWidth(), m_Framebuffer->GetHeight());
-	}
-
-	void EditorLayer::UpdateScene(Timestep ts)
-	{
-		if ((m_RuntimeScene->IsStopped() || m_UseEditorCamera) && m_EditorCamera)
-		{
-			m_EditorCamera->SetViewport(m_Framebuffer->GetWidth(), m_Framebuffer->GetHeight());
-
-			m_RuntimeScene->OnUpdate(ts, m_EditorCamera);
-		}
-		else
-		{
-			m_RuntimeScene->OnUpdate(ts);
-		}
-	}
-
-	void EditorLayer::StopScene()
-	{
-		if (m_RuntimeScene)
-		{
-			m_RuntimeScene->OnStop();
-		}
-		m_UseEditorCamera = true;
-
-		// Old SelectedEntity.UUID won't exist after setting runtimeScene=editorScene
-		// Save a copy to revert to after
-		UUID selectedUUID = 0;
-		if (m_ScenePanel->GetSelectedEntity() && m_ScenePanel->GetSelectedEntity().HasComponent<IDComponent>())
-		{
-			selectedUUID = m_ScenePanel->GetSelectedEntity().GetComponent<IDComponent>().ID;
-			m_ScenePanel->m_SelectedEntity = Entity();
-		}
-		m_RuntimeScene = m_EditorScene;
-		m_ScenePanel->SetScene(m_RuntimeScene.get(), selectedUUID);
-	}
-
-	void EditorLayer::LoadScene(UUID handle)
-	{
-		if (m_RuntimeScene)
-		{
-			if (m_RuntimeScene->GetHandle() == handle)
-				return;
-
-			if (!m_RuntimeScene->IsStopped())
-				m_RuntimeScene->OnStop();
-		}
-
-		m_EditorScene = Project::GetAsset<Scene>(handle);
-		m_RuntimeScene = m_EditorScene;
-		if (m_RuntimeScene)
-		{
-			m_AssetPanel = CreateRef<AssetPanel>();
-			m_ScenePanel = CreateRef<SceneHierarchyPanel>(m_RuntimeScene.get());
-			GE_INFO("Editor Loaded Scene : {0}, {1}", m_RuntimeScene->GetName().c_str(), (uint64_t)m_RuntimeScene->GetHandle());
-		}
-	}
-
-#pragma endregion
-
-#pragma region UI Panel Functions
-	void EditorLayer::UI_Toolbar()
+	void EditorLayer::ImGUI_SceneToolbar()
 	{
 		ImGui::Begin("##UItoolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
 
 		// Scene State Control Buttons
-		if(m_RuntimeScene)
+		if(Ref<Scene> runtimeScene = Project::GetRuntimeScene())
 		{
-			// Stop <-> Run || Simulate
-			if (!m_RuntimeScene->IsPaused())
+			// Stop <-> Run
+			if (!runtimeScene->IsPaused())
 			{
-				const Scene::State& currentState = GetSceneState();
+				const Scene::State& currentState = runtimeScene->GetState();
 
 				// Scene Runtime Start & Stop
-				if (currentState != Scene::State::Simulate)
+				Scene::State handledState = Scene::State::Run;
+				Ref<Texture2D> playStopButtonTexture = Project::GetAsset<Texture2D>(currentState == handledState ? m_StopButtonHandle : m_PlayButtonHandle);
+
+				ImGui::SameLine();
+				if (playStopButtonTexture && ImGui::ImageButton((ImTextureID)(uint64_t)playStopButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
 				{
-					Scene::State handledState = Scene::State::Run;
-					Ref<Texture2D> playStopButtonTexture = Project::GetAsset<Texture2D>(currentState == handledState ? m_StopButtonHandle : m_PlayButtonHandle);
-
-					ImGui::SameLine();
-					if (playStopButtonTexture && ImGui::ImageButton((ImTextureID)playStopButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
-					{
-						(currentState == handledState) ? StopScene() : StartScene(handledState);
-					}
-				}
-
-				// Scene Simulate Start & Stop
-				if (currentState != Scene::State::Run)
-				{
-					Scene::State handledState = Scene::State::Simulate;
-					Ref<Texture2D> simulateStopButtonTexture = Project::GetAsset<Texture2D>(currentState == handledState ? m_StopButtonHandle : m_SimulateButtonHandle);
-					
-					ImGui::SameLine();
-					if (simulateStopButtonTexture && ImGui::ImageButton((ImTextureID)simulateStopButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
-					{
-						(currentState == handledState) ? StopScene() : StartScene(handledState);
-					}
-
+					(currentState == handledState) ? StopScene() : StartScene(handledState);
 				}
 			}
 			
-			// Pause <-> Run || Simulate
-			if (!m_RuntimeScene->IsStopped())
+			// Pause <-> Run
+			if (!runtimeScene->IsStopped())
 			{
-				const Scene::State& currentState = GetSceneState();
+				const Scene::State& currentState = runtimeScene->GetState();
 
-				// Simulate
-				if (currentState != Scene::State::Run)
-				{
-					Scene::State handledState = Scene::State::Simulate;
-
-					Ref<Texture2D> simulatePauseButtonTexture = Project::GetAsset<Texture2D>(currentState == handledState ? m_PauseButtonHandle : m_SimulateButtonHandle);
-
-					ImGui::SameLine();
-					if (simulatePauseButtonTexture && ImGui::ImageButton((ImTextureID)simulatePauseButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
-					{
-						(currentState == handledState) ? StartScene(Scene::State::Pause) : StartScene(handledState);
-					}
-				}
 				// Run
-				else if (currentState != Scene::State::Simulate)
+				Scene::State handledState = Scene::State::Run;
+
+				Ref<Texture2D> playPauseButtonTexture = Project::GetAsset<Texture2D>(currentState == handledState ? m_PauseButtonHandle : m_PlayButtonHandle);
+
+				ImGui::SameLine();
+				if (playPauseButtonTexture && ImGui::ImageButton((ImTextureID)(uint64_t)playPauseButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
 				{
-					Scene::State handledState = Scene::State::Run;
-
-					Ref<Texture2D> playPauseButtonTexture = Project::GetAsset<Texture2D>(currentState == handledState ? m_PauseButtonHandle : m_PlayButtonHandle);
-
-					ImGui::SameLine();
-					if (playPauseButtonTexture && ImGui::ImageButton((ImTextureID)playPauseButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
-					{
-						(currentState == handledState) ? StartScene(Scene::State::Pause) : StartScene(handledState);
-					}
+					(currentState == handledState) ? StartScene(Scene::State::Pause) : StartScene(handledState);
 				}
 
 				// Step Pause
-				if (m_RuntimeScene->IsPaused())
+				if (runtimeScene->IsPaused())
 				{
 					Ref<Texture2D> stepButtonTexture = Project::GetAsset<Texture2D>(m_StepButtonHandle);
 					ImGui::SameLine();
-					if (stepButtonTexture && ImGui::ImageButton((ImTextureID)stepButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
-						m_RuntimeScene->OnStep(m_StepFrameMultiplier); // Adds step frames to queue. Handled in Scene::OnPauseUpdate.
+					if (stepButtonTexture && ImGui::ImageButton((ImTextureID)(uint64_t)stepButtonTexture->GetID(), ImVec2(20.0f, 20.0f)))
+						Project::StepScene(m_StepFrameMultiplier); // Adds step frames to queue. Handled in Scene::OnPauseUpdate.
 				}
 
 			}
@@ -627,6 +763,7 @@ namespace GE
 		ImGui::End();
 		
 	}
+
 #pragma endregion
 
 }

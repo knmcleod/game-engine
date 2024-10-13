@@ -2,7 +2,7 @@
 
 #include "IndexBuffer.h"
 
-#include "GE/Rendering/RenderAPI.h"
+#include "GE/Rendering/Renderer/Renderer.h"
 
 #include "Platform/OpenGL/VertexArray/Buffers/OpenGLIndexBuffer.h"
 
@@ -10,13 +10,12 @@ namespace GE
 {
 	Ref<IndexBuffer> IndexBuffer::Create(uint32_t size)
 	{
-		switch (RenderAPI::GetAPI())
+		switch (Renderer::Get()->GetAPI())
 		{
-		case RenderAPI::API::None:
-			GE_CORE_ASSERT(false, "RendererAPI::None is not currently supported!");
-			return nullptr;
+		case Renderer::API::None:
+			GE_CORE_ASSERT(false, "No Renderer API given!");
 			break;
-		case RenderAPI::API::OpenGL:
+		case Renderer::API::OpenGL:
 			return CreateRef<OpenGLIndexBuffer>(size);
 			break;
 		}
