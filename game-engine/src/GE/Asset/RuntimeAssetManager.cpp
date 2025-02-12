@@ -4,6 +4,8 @@
 
 #include "GE/Asset/Assets/Audio/Audio.h"
 #include "GE/Asset/Assets/Font/Font.h"
+#include "GE/Asset/Assets/Scene/Components/Components.h"
+#include "GE/Asset/Assets/Scene/Scene.h"
 
 #include "GE/Core/Memory/Buffer.h"
 
@@ -99,8 +101,17 @@ namespace GE
 
 	RuntimeAssetManager::~RuntimeAssetManager()
 	{
+		InvalidateAssets();
 		m_LoadedAssets.clear();
 		m_AssetPack->ClearAllFileData();
+	}
+
+	void RuntimeAssetManager::InvalidateAssets()
+	{
+		for (auto& [handle, asset] : m_LoadedAssets)
+		{
+			asset->Invalidate();
+		}
 	}
 
 	Ref<Asset> RuntimeAssetManager::GetAsset(UUID handle)
@@ -204,7 +215,7 @@ namespace GE
 
 		AssetPack::File& packFile = m_AssetPack->m_File;
 		std::filesystem::path path = Project::GetPathToAsset(packFile.Path);
-		GE_CORE_INFO("AssetRegistry Serialization Started.\n\tFilePath : {0}", path.string().c_str());
+		GE_CORE_TRACE("Serializing AssetRegistry\n\tFilePath : {0}", path.string().c_str());
 
 		std::ofstream stream(path, std::ios::app | std::ios::binary);
 		if (!stream)
@@ -257,7 +268,7 @@ namespace GE
 		if (stream.is_open() && stream.good())
 		{
 			stream.close();
-			GE_CORE_TRACE("Asset Pack Serialization Complete");
+			GE_CORE_INFO("Asset Pack Serialization Complete");
 			return true;
 		}
 		GE_CORE_WARN("Asset Pack Serialization Failed.");
@@ -350,14 +361,16 @@ namespace GE
 							}
 						}
 
-						Ref<Scene> scene = Project::GetAssetAs<Scene>(sceneAsset);
-						for (const auto& [uuid, entityInfo] : sceneInfo.Entities)
+						if (Ref<Scene> scene = Project::GetAssetAs<Scene>(sceneAsset))
 						{
-							// Entity is created in DeserializeAsset<Scene>(AssetInfo&)
-							Entity e = scene->GetEntityByUUID(uuid);
-							if (!DeserializeEntity(entityInfo, e))
+							for (const auto& [uuid, entityInfo] : sceneInfo.Entities)
 							{
-								scene->DestroyEntity(e);
+								// Entity is created in DeserializeAsset<Scene>(AssetInfo&)
+								Entity entity = scene->GetEntityByUUID(uuid);
+								if (!DeserializeEntity(scene, entityInfo, entity))
+								{
+									scene->DestroyEntity(entity);
+								}
 							}
 						}
 					}
@@ -497,8 +510,8 @@ namespace GE
 					std::vector<Entity> entities = scene->GetAllEntitiesWith<IDComponent>();
 					for (Entity entity : entities)
 					{
-						UUID uuid = entity.GetComponent<IDComponent>().ID;
-						if (SerializeEntity(sceneInfo.Entities[uuid], entity))
+						UUID uuid = scene->GetComponent<IDComponent>(entity).ID;
+						if (SerializeEntity(scene, sceneInfo.Entities[uuid], entity))
 						{
 							// += SizeofData + Data
 							requiredSize += GetAlignedOfArray<uint8_t>(sceneInfo.Entities.at(uuid).DataBuffer.GetSize());
@@ -567,7 +580,7 @@ namespace GE
 
 					if (destination - assetInfo.DataBuffer.As<uint8_t>() == requiredSize)
 					{
-						GE_CORE_INFO("RuntimeAssetManager::SerializeScene Successful.");
+						GE_CORE_INFO("RuntimeAssetManager::SerializeScene() Successful.");
 					}
 					else
 					{
@@ -577,7 +590,7 @@ namespace GE
 				}
 				else
 				{
-					GE_CORE_ERROR("Required size is larger than given buffer size.");
+					GE_CORE_ERROR("RuntimeAssetManager::SerializeScene() Failed.\n\tRequired size is larger than given buffer size.");
 					return false;
 				}
 			}
@@ -590,14 +603,14 @@ namespace GE
 
 	}
 
-	bool RuntimeAssetManager::SerializeEntity(SceneInfo::EntityInfo& eInfo, const Entity& e)
+	bool RuntimeAssetManager::SerializeEntity(Ref<Scene> scene, SceneInfo::EntityInfo& eInfo, const Entity& entity)
 	{
 		uint64_t requiredSize = 0;
 
 		// Get Size
 		{
 			// ID Component
-			if (!e.HasComponent<IDComponent>())
+			if (!scene->HasComponent<IDComponent>(entity))
 			{
 				GE_CORE_ERROR("Cannot serialize Entity for pack. Entity does not have ID.");
 				return false;
@@ -606,22 +619,32 @@ namespace GE
 			requiredSize += GetAligned(sizeof(uint16_t)) + GetAligned(sizeof(uint64_t));
 
 			// Tag Component 
-			if (e.HasComponent<TagComponent>())
+			if (scene->HasComponent<TagComponent>(entity))
 			{
-				TagComponent tc = e.GetComponent<TagComponent>();
-				requiredSize += GetAligned(sizeof(uint16_t)) + GetAligned(sizeof(tc.ID));
+				TagComponent tc = scene->GetComponent<TagComponent>(entity);
+				requiredSize += GetAligned(sizeof(uint16_t)) + GetAligned(sizeof(tc.TagID));
 			}
 
 			// Name Component 
-			if (e.HasComponent<NameComponent>())
+			if (scene->HasComponent<NameComponent>(entity))
 			{
-				NameComponent nc = e.GetComponent<NameComponent>();
+				NameComponent nc = scene->GetComponent<NameComponent>(entity);
 				// Component identifier + Name String
 				requiredSize += GetAligned(sizeof(uint16_t)) + GetAlignedOfArray<char>(nc.Name.size());
 			}
 
+			if (scene->HasComponent<ActiveComponent>(entity))
+			{
+				requiredSize += GetAligned(sizeof(uint16_t)) + GetAligned(sizeof(bool)) + GetAligned(sizeof(bool));
+			}
+			if (scene->HasComponent<RelationshipComponent>(entity))
+			{
+				auto& rsc = scene->GetComponent<RelationshipComponent>(entity);
+				requiredSize += GetAligned(sizeof(uint16_t)) + GetAligned(sizeof(uint64_t)) + GetAlignedOfArray<uint64_t>(rsc.Children.size());
+			}
+
 			// Transform
-			if (e.HasComponent<TransformComponent>())
+			if (scene->HasComponent<TransformComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
@@ -634,10 +657,13 @@ namespace GE
 
 				// Scale
 				requiredSize += GetAlignedOfVec3<float>();
+
+				// Pivot Enum
+				requiredSize += GetAligned(sizeof(uint32_t));
 			}
 
 			// AudioSource
-			if (e.HasComponent<AudioSourceComponent>())
+			if (scene->HasComponent<AudioSourceComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
@@ -650,16 +676,16 @@ namespace GE
 			}
 
 			// AudioDevice
-			if (e.HasComponent<AudioListenerComponent>())
+			if (scene->HasComponent<AudioListenerComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
 			}
 
 			// Render
-			if (e.HasComponent<RenderComponent>())
+			if (scene->HasComponent<RenderComponent>(entity))
 			{
-				auto& rc = e.GetComponent<RenderComponent>();
+				auto& rc = scene->GetComponent<RenderComponent>(entity);
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
 
@@ -667,7 +693,7 @@ namespace GE
 			}
 
 			// Camera
-			if (e.HasComponent<CameraComponent>())
+			if (scene->HasComponent<CameraComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
@@ -682,12 +708,12 @@ namespace GE
 			}
 
 			// SpriteRenderer
-			if (e.HasComponent<SpriteRendererComponent>())
+			if (scene->HasComponent<SpriteRendererComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
 
-				SpriteRendererComponent src = e.GetComponent<SpriteRendererComponent>();
+				SpriteRendererComponent src = scene->GetComponent<SpriteRendererComponent>(entity);
 
 				requiredSize += GetAligned(sizeof(uint64_t))	// Texture Asset UUID
 					+ GetAligned(sizeof(float));				// TilingFactor
@@ -697,12 +723,12 @@ namespace GE
 			}
 
 			// CircleRenderer
-			if (e.HasComponent<CircleRendererComponent>())
+			if (scene->HasComponent<CircleRendererComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
 
-				CircleRendererComponent crc = e.GetComponent<CircleRendererComponent>();
+				CircleRendererComponent crc = scene->GetComponent<CircleRendererComponent>(entity);
 
 				requiredSize += GetAligned(sizeof(uint64_t))	// Texture Asset UUID
 					+ GetAligned(sizeof(float))				// TilingFactor
@@ -715,27 +741,132 @@ namespace GE
 			}
 
 			// TextRenderer
-			if (e.HasComponent<TextRendererComponent>())
+			if (scene->HasComponent<TextRendererComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
 
-				TextRendererComponent trc = e.GetComponent<TextRendererComponent>();
+				TextRendererComponent trc = scene->GetComponent<TextRendererComponent>(entity);
 
 				requiredSize += GetAligned(sizeof(uint64_t))		// Texture Asset UUID
 					+ GetAligned(sizeof(trc.KerningOffset))			// KerningOffset
 					+ GetAligned(sizeof(trc.LineHeightOffset))		// LineHeightOffset
 					+ GetAlignedOfArray<char>(trc.Text.size());		// size of Text String & Text String
 
-				// TextColor
-				requiredSize += GetAlignedOfVec4<float>();
+				// TextColor & BGColor
+				requiredSize += GetAlignedOfVec4<float>() + GetAlignedOfVec4<float>();
+				// TextScalar & Offset
+				requiredSize += GetAligned(sizeof(float)) + GetAlignedOfVec2<float>();
 
-				// BGColor
-				requiredSize += GetAlignedOfVec4<float>();
+			}
+			if (scene->HasComponent<GUICanvasComponent>(entity))
+			{
+				// Component identifier
+				requiredSize += GetAligned(sizeof(uint16_t));
+
+				requiredSize += GetAligned(sizeof(uint32_t)); // CanvasMode
+			}
+			if (scene->HasComponent<GUILayoutComponent>(entity))
+			{
+				// Component identifier
+				requiredSize += GetAligned(sizeof(uint16_t));
+
+				requiredSize += GetAligned(sizeof(uint32_t)) + // LayoutMode
+					GetAlignedOfVec2<float>() + GetAlignedOfVec2<float>() + GetAlignedOfVec2<float>();
+			}
+			// TODO : GUIMaskComponent
+			if (scene->HasComponent<GUIImageComponent>(entity))
+			{
+				// Component identifier
+				requiredSize += GetAligned(sizeof(uint16_t));
+
+				requiredSize += GetAlignedOfVec4<float>() + GetAligned(sizeof(UUID)) + GetAligned(sizeof(float));
+			}
+			if (scene->HasComponent<GUIButtonComponent>(entity))
+			{
+				// Component identifier
+				requiredSize += GetAligned(sizeof(uint16_t));
+
+				auto& guiBC = scene->GetComponent<GUIButtonComponent>(entity);
+				requiredSize += GetAligned(sizeof(uint64_t))		// Font Asset UUID
+					+ GetAligned(sizeof(float))						// KerningOffset
+					+ GetAligned(sizeof(float))						// LineHeightOffset
+					+ GetAlignedOfArray<char>(guiBC.Text.size())	// size of Text String & Text String
+					+ GetAlignedOfVec4<float>() + GetAlignedOfVec4<float>() // TextColor & BGColor
+					+ GetAligned(sizeof(float)) + GetAlignedOfVec2<float>() + GetAlignedOfVec2<float>(); // Text SizeScalar & StartingOffset & TextSize
+
+				// BG
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+
+				// MG
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+
+				// FG
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+			}
+			if (scene->HasComponent<GUIInputFieldComponent>(entity))
+			{
+				// Component identifier
+				requiredSize += GetAligned(sizeof(uint16_t));
+
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+
+				auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+				requiredSize += GetAligned(sizeof(uint64_t))		// BG Texture Asset UUID
+					+ GetAlignedOfVec4<float>() // BG Texture Color
+					+ GetAligned(sizeof(bool)); // Fill BG
+
+				requiredSize += GetAligned(sizeof(uint64_t))		// Font Asset UUID
+					+ GetAligned(sizeof(float))						// KerningOffset
+					+ GetAligned(sizeof(float))						// LineHeightOffset
+					+ GetAlignedOfArray<char>(guiIFC.Text.size())	// size of Text String & Text String
+					+ GetAlignedOfVec4<float>() + GetAlignedOfVec4<float>() // TextColor & BGColor
+					+ GetAligned(sizeof(float)) + GetAlignedOfVec2<float>() // Text SizeScalar & StartingOffset
+					+ GetAlignedOfVec2<float>() + GetAlignedOfVec2<float>(); // Text Size & Padding
+
+			}
+			if (scene->HasComponent<GUISliderComponent>(entity))
+			{
+				// Component identifier
+				requiredSize += GetAligned(sizeof(uint16_t));
+
+				requiredSize += GetAligned(sizeof(uint32_t)) + GetAligned(sizeof(float));
+
+				// BG
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				// MG
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				// FG
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+
+			}
+			if (scene->HasComponent<GUICheckboxComponent>(entity))
+			{
+				// Component identifier
+				requiredSize += GetAligned(sizeof(uint16_t));
+
+				// BG
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				// MG
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+				// FG
+				requiredSize += GetAligned(sizeof(uint64_t)) + GetAlignedOfVec4<float>();
+
 			}
 
+			// TODO : GUIScrollRectComponent & GUIScrollbarComponent
+
 			// Rigidbody2D
-			if (e.HasComponent<Rigidbody2DComponent>())
+			if (scene->HasComponent<Rigidbody2DComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
@@ -745,7 +876,7 @@ namespace GE
 			}
 
 			// BoxCollider2D
-			if (e.HasComponent<BoxCollider2DComponent>())
+			if (scene->HasComponent<BoxCollider2DComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
@@ -765,40 +896,39 @@ namespace GE
 			}
 
 			// CircleCollider2D
-			if (e.HasComponent<CircleCollider2DComponent>())
+			if (scene->HasComponent<CircleCollider2DComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
 
 				requiredSize += GetAligned(sizeof(bool))	// Show
-					+ GetAligned(sizeof(float))				// Radius
 					+ GetAligned(sizeof(float))				// Density
 					+ GetAligned(sizeof(float))				// Friction
 					+ GetAligned(sizeof(float))				// Restitution
 					+ GetAligned(sizeof(float));			// RestitutionThreshold
 
-				// Offset
-				requiredSize += GetAlignedOfVec2<float>();
+				// Radius & Offset
+				requiredSize += GetAligned(sizeof(float)) + GetAlignedOfVec2<float>();
 			}
 
 			// NativeScript
-			if (e.HasComponent<NativeScriptComponent>())
+			if (scene->HasComponent<NativeScriptComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
 			}
 
 			// Script
-			if (e.HasComponent<ScriptComponent>())
+			if (scene->HasComponent<ScriptComponent>(entity))
 			{
 				// Component identifier
 				requiredSize += GetAligned(sizeof(uint16_t));
 
-				ScriptComponent sc = e.GetComponent<ScriptComponent>();
+				ScriptComponent sc = scene->GetComponent<ScriptComponent>(entity);
 				requiredSize += GetAligned(sizeof(sc.AssetHandle));
 
 				// Field Name, Type & Data
-				const ScriptFieldMap& fields = Scripting::GetEntityFields(e.GetComponent<IDComponent>().ID);
+				const ScriptFieldMap& fields = Scripting::GetEntityFields(scene->GetComponent<IDComponent>(entity).ID);
 				requiredSize += GetAligned(sizeof(uint64_t)); // size of Fields
 				for (const auto& [name, field] : fields)
 				{
@@ -872,63 +1002,93 @@ namespace GE
 						uint16_t currentType = (uint16_t)ComponentType::ID;
 						WriteAligned(destination, currentType);
 
-						uint64_t uuid = e.GetComponent<IDComponent>().ID;
+						uint64_t uuid = scene->GetComponent<IDComponent>(entity).ID;
 						WriteAligned(destination, uuid);
 					}
 
 					// All Other Components
 					{
 						// Tag
-						if (e.HasComponent<TagComponent>())
+						if (scene->HasComponent<TagComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::Tag;
 							WriteAligned(destination, currentType);
 
-							TagComponent tc = e.GetComponent<TagComponent>();
+							TagComponent& tc = scene->GetComponent<TagComponent>(entity);
 
-							WriteAligned<uint32_t>(destination, tc.ID);
+							WriteAligned<uint32_t>(destination, tc.TagID);
 
 						}
 
 						// Name
-						if (e.HasComponent<NameComponent>())
+						if (scene->HasComponent<NameComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::Name;
 							WriteAligned(destination, currentType);
 
-							NameComponent nc = e.GetComponent<NameComponent>();
+							NameComponent& nc = scene->GetComponent<NameComponent>(entity);
 
 							const char* tagCStr = nc.Name.c_str();
 							WriteAlignedArray<char>(destination, tagCStr, nc.Name.size());
 
 						}
 
+						// Active
+						if (scene->HasComponent<ActiveComponent>(entity))
+						{
+							uint16_t currentType = (uint16_t)ComponentType::Active;
+							WriteAligned(destination, currentType);
+
+							auto& ac = scene->GetComponent<ActiveComponent>(entity);
+
+							WriteAligned<bool>(destination, ac.Active);
+							WriteAligned<bool>(destination, ac.Hidden);
+
+						}
+						// Relationship
+						if (scene->HasComponent<RelationshipComponent>(entity))
+						{
+							uint16_t currentType = (uint16_t)ComponentType::Relationship;
+							WriteAligned(destination, currentType);
+
+							auto& rsc = scene->GetComponent<RelationshipComponent>(entity);
+							WriteAligned<uint64_t>(destination, rsc.Parent);
+
+							const uint64_t* data = (uint64_t*)rsc.Children.data();
+							WriteAlignedArray<uint64_t>(destination, data, rsc.Children.size());
+
+						}
+						
 						// Transform
-						if (e.HasComponent<TransformComponent>())
+						if (scene->HasComponent<TransformComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::Transform;
 							WriteAligned(destination, currentType);
 
-							TransformComponent trsc = e.GetComponent<TransformComponent>();
+							TransformComponent& trsc = scene->GetComponent<TransformComponent>(entity);
 
 							// Translation
-							WriteAlignedVec3<float>(destination, trsc.Translation.x, trsc.Translation.y, trsc.Translation.z);
+							const glm::vec3& translation = trsc.Translation;
+							WriteAlignedVec3<float>(destination, translation.x, translation.y, translation.z);
 
 							// Rotation
 							WriteAlignedVec3<float>(destination, trsc.Rotation.x, trsc.Rotation.y, trsc.Rotation.z);
 
 							// Scale
 							WriteAlignedVec3<float>(destination, trsc.Scale.x, trsc.Scale.y, trsc.Scale.z);
+							// Pivot Enum
+							const uint32_t& pivotEnum = trsc.GetPivot();
+							WriteAligned<uint32_t>(destination, pivotEnum);
 
 						}
 
 						// AudioSource
-						if (e.HasComponent<AudioSourceComponent>())
+						if (scene->HasComponent<AudioSourceComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::AudioSource;
 							WriteAligned(destination, currentType);
 
-							AudioSourceComponent asc = e.GetComponent<AudioSourceComponent>();
+							AudioSourceComponent& asc = scene->GetComponent<AudioSourceComponent>(entity);
 
 							WriteAligned<uint64_t>(destination, asc.AssetHandle);
 
@@ -940,22 +1100,22 @@ namespace GE
 						}
 
 						// AudioDevice
-						if (e.HasComponent<AudioListenerComponent>())
+						if (scene->HasComponent<AudioListenerComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::AudioListener;
 							WriteAligned(destination, currentType);
 
-							AudioListenerComponent alc = e.GetComponent<AudioListenerComponent>();
+							AudioListenerComponent& alc = scene->GetComponent<AudioListenerComponent>(entity);
 
 						}
 
 						// Render
-						if (e.HasComponent<RenderComponent>())
+						if (scene->HasComponent<RenderComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::Render;
 							WriteAligned(destination, currentType);
 
-							auto& rc = e.GetComponent<RenderComponent>();
+							auto& rc = scene->GetComponent<RenderComponent>(entity);
 							for (uint64_t id : rc.LayerIDs)
 							{
 								WriteAligned<uint64_t>(destination, id);
@@ -963,12 +1123,12 @@ namespace GE
 						}
 
 						// Camera
-						if (e.HasComponent<CameraComponent>())
+						if (scene->HasComponent<CameraComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::Camera;
 							WriteAligned(destination, currentType);
 
-							CameraComponent cc = e.GetComponent<CameraComponent>();
+							CameraComponent& cc = scene->GetComponent<CameraComponent>(entity);
 
 							WriteAligned<bool>(destination, cc.Primary);
 							WriteAligned<bool>(destination, cc.FixedAspectRatio);
@@ -981,12 +1141,12 @@ namespace GE
 						}
 
 						// SpriteRenderer
-						if (e.HasComponent<SpriteRendererComponent>())
+						if (scene->HasComponent<SpriteRendererComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::SpriteRenderer;
 							WriteAligned(destination, currentType);
 
-							SpriteRendererComponent src = e.GetComponent<SpriteRendererComponent>();
+							SpriteRendererComponent& src = scene->GetComponent<SpriteRendererComponent>(entity);
 
 							WriteAligned<uint64_t>(destination, src.AssetHandle);
 
@@ -998,12 +1158,12 @@ namespace GE
 						}
 
 						// CircleRenderer
-						if (e.HasComponent<CircleRendererComponent>())
+						if (scene->HasComponent<CircleRendererComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::CircleRenderer;
 							WriteAligned(destination, currentType);
 
-							CircleRendererComponent crc = e.GetComponent<CircleRendererComponent>();
+							CircleRendererComponent& crc = scene->GetComponent<CircleRendererComponent>(entity);
 
 							WriteAligned<uint64_t>(destination, crc.AssetHandle);
 
@@ -1017,12 +1177,12 @@ namespace GE
 						}
 
 						// TextRenderer
-						if (e.HasComponent<TextRendererComponent>())
+						if (scene->HasComponent<TextRendererComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::TextRenderer;
 							WriteAligned(destination, currentType);
 
-							TextRendererComponent trc = e.GetComponent<TextRendererComponent>();
+							TextRendererComponent& trc = scene->GetComponent<TextRendererComponent>(entity);
 
 							WriteAligned<uint64_t>(destination, trc.AssetHandle);
 
@@ -1037,15 +1197,177 @@ namespace GE
 							WriteAlignedVec4<float>(destination, trc.TextColor.a, trc.TextColor.g, trc.TextColor.b, trc.TextColor.a);
 
 							WriteAlignedVec4<float>(destination, trc.BGColor.a, trc.BGColor.g, trc.BGColor.b, trc.BGColor.a);
+
+							WriteAligned<float>(destination, trc.TextScalar);
+							WriteAlignedVec2<float>(destination, trc.TextOffset.x, trc.TextOffset.y);
 						}
 
+						if (scene->HasComponent<GUICanvasComponent>(entity))
+						{
+							uint16_t currentType = (uint16_t)ComponentType::GUICanvas;
+							WriteAligned(destination, currentType);
+
+							GUICanvasComponent& guiCC = scene->GetComponent<GUICanvasComponent>(entity);
+
+							WriteAligned<bool>(destination, guiCC.ControlMouse);
+							WriteAligned<bool>(destination, guiCC.ShowMouse);
+
+							uint32_t mode = (uint32_t)guiCC.Mode;
+							WriteAligned<uint32_t>(destination, mode);
+						}
+						if (scene->HasComponent<GUILayoutComponent>(entity))
+						{
+							uint16_t currentType = (uint16_t)ComponentType::GUILayout;
+							WriteAligned(destination, currentType);
+
+							GUILayoutComponent& guiLOC = scene->GetComponent<GUILayoutComponent>(entity);
+
+							uint32_t mode = (uint32_t)guiLOC.Mode;
+							WriteAligned<uint32_t>(destination, mode);
+
+							WriteAlignedVec2<float>(destination, guiLOC.StartingOffset.x, guiLOC.StartingOffset.y);
+							WriteAlignedVec2<float>(destination, guiLOC.ChildSize.x, guiLOC.ChildSize.y);
+							WriteAlignedVec2<float>(destination, guiLOC.ChildPadding.x, guiLOC.ChildPadding.y);
+						}
+						// TODO : GUIMaskComponent
+						if (scene->HasComponent<GUIImageComponent>(entity))
+						{
+							uint16_t currentType = (uint16_t)ComponentType::GUILayout;
+							WriteAligned(destination, currentType);
+
+							GUIImageComponent& guIIC = scene->GetComponent<GUIImageComponent>(entity);
+
+							WriteAlignedVec4<float>(destination, guIIC.Color.x, guIIC.Color.y, guIIC.Color.z, guIIC.Color.w);
+							WriteAligned<UUID>(destination, guIIC.TextureHandle);
+							WriteAligned<float>(destination, guIIC.TilingFactor);
+						}
+						if (scene->HasComponent<GUIButtonComponent>(entity))
+						{
+							uint16_t currentType = (uint16_t)ComponentType::GUIButton;
+							WriteAligned(destination, currentType);
+
+							GUIButtonComponent& guiBC = scene->GetComponent<GUIButtonComponent>(entity);
+
+							// Font
+							WriteAligned<uint64_t>(destination, guiBC.FontAssetHandle);
+							WriteAligned<float>(destination, guiBC.KerningOffset);
+							WriteAligned<float>(destination, guiBC.LineHeightOffset);
+
+							const char* trcTextCStr = guiBC.Text.c_str();
+							WriteAlignedArray<char>(destination, trcTextCStr, guiBC.Text.size());
+							WriteAlignedVec4<float>(destination, guiBC.TextColor.a, guiBC.TextColor.g, guiBC.TextColor.b, guiBC.TextColor.a);
+							WriteAlignedVec4<float>(destination, guiBC.BGColor.a, guiBC.BGColor.g, guiBC.BGColor.b, guiBC.BGColor.a);
+							WriteAligned<float>(destination, guiBC.TextScalar);
+							WriteAlignedVec2<float>(destination, guiBC.TextStartingOffset.x, guiBC.TextStartingOffset.y);
+							WriteAlignedVec2<float>(destination, guiBC.TextSize.x, guiBC.TextSize.y);
+
+							// Textures & Colors
+							WriteAligned<uint64_t>(destination, guiBC.BackgroundTextureHandle);
+							WriteAlignedVec4<float>(destination, guiBC.BackgroundColor.r, guiBC.BackgroundColor.g, guiBC.BackgroundColor.b, guiBC.BackgroundColor.a);
+
+							WriteAligned<uint64_t>(destination, guiBC.DisabledTextureHandle);
+							WriteAlignedVec4<float>(destination, guiBC.DisabledColor.r, guiBC.DisabledColor.g, guiBC.DisabledColor.b, guiBC.DisabledColor.a);
+
+							WriteAligned<uint64_t>(destination, guiBC.EnabledTextureHandle);
+							WriteAlignedVec4<float>(destination, guiBC.EnabledColor.r, guiBC.EnabledColor.g, guiBC.EnabledColor.b, guiBC.EnabledColor.a);
+
+							WriteAligned<uint64_t>(destination, guiBC.HoveredTextureHandle);
+							WriteAlignedVec4<float>(destination, guiBC.HoveredColor.r, guiBC.HoveredColor.g, guiBC.HoveredColor.b, guiBC.HoveredColor.a);
+
+							WriteAligned<uint64_t>(destination, guiBC.SelectedTextureHandle);
+							WriteAlignedVec4<float>(destination, guiBC.SelectedColor.r, guiBC.SelectedColor.g, guiBC.SelectedColor.b, guiBC.SelectedColor.a);
+
+							WriteAligned<uint64_t>(destination, guiBC.ForegroundTextureHandle);
+							WriteAlignedVec4<float>(destination, guiBC.ForegroundColor.r, guiBC.ForegroundColor.g, guiBC.ForegroundColor.b, guiBC.ForegroundColor.a);
+
+						}
+						if (scene->HasComponent<GUIInputFieldComponent>(entity))
+						{
+							uint16_t currentType = (uint16_t)ComponentType::GUIInputField;
+							WriteAligned(destination, currentType);
+
+							GUIInputFieldComponent& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+
+							WriteAligned<uint64_t>(destination, guiIFC.FontAssetHandle);
+							WriteAligned<float>(destination, guiIFC.KerningOffset);
+							WriteAligned<float>(destination, guiIFC.LineHeightOffset);
+
+							const char* trcTextCStr = guiIFC.Text.c_str();
+							WriteAlignedArray<char>(destination, trcTextCStr, guiIFC.Text.size());
+							WriteAlignedVec4<float>(destination, guiIFC.TextColor.a, guiIFC.TextColor.g, guiIFC.TextColor.b, guiIFC.TextColor.a);
+							WriteAlignedVec4<float>(destination, guiIFC.BGColor.a, guiIFC.BGColor.g, guiIFC.BGColor.b, guiIFC.BGColor.a);
+							WriteAligned<float>(destination, guiIFC.TextScalar);
+							WriteAlignedVec2<float>(destination, guiIFC.TextStartingOffset.x, guiIFC.TextStartingOffset.y);
+							WriteAlignedVec2<float>(destination, guiIFC.TextSize.x, guiIFC.TextSize.y);
+							WriteAlignedVec2<float>(destination, guiIFC.Padding.x, guiIFC.Padding.y);
+
+						}
+						if (scene->HasComponent<GUISliderComponent>(entity))
+						{
+							uint16_t currentType = (uint16_t)ComponentType::GUISlider;
+							WriteAligned(destination, currentType);
+
+							GUISliderComponent& guiSC = scene->GetComponent<GUISliderComponent>(entity);
+
+							uint32_t direction = (uint32_t)guiSC.Direction;
+							WriteAligned<uint32_t>(destination, direction);
+							WriteAligned<float>(destination, guiSC.Fill);
+
+							WriteAligned<uint64_t>(destination, guiSC.BackgroundTextureHandle);
+							WriteAlignedVec4<float>(destination, guiSC.BackgroundColor.r, guiSC.BackgroundColor.g, guiSC.BackgroundColor.b, guiSC.BackgroundColor.a);
+
+							WriteAligned<uint64_t>(destination, guiSC.DisabledTextureHandle);
+							WriteAlignedVec4<float>(destination, guiSC.DisabledColor.r, guiSC.DisabledColor.g, guiSC.DisabledColor.b, guiSC.DisabledColor.a);
+
+							WriteAligned<uint64_t>(destination, guiSC.EnabledTextureHandle);
+							WriteAlignedVec4<float>(destination, guiSC.EnabledColor.r, guiSC.EnabledColor.g, guiSC.EnabledColor.b, guiSC.EnabledColor.a);
+
+							WriteAligned<uint64_t>(destination, guiSC.HoveredTextureHandle);
+							WriteAlignedVec4<float>(destination, guiSC.HoveredColor.r, guiSC.HoveredColor.g, guiSC.HoveredColor.b, guiSC.HoveredColor.a);
+
+							WriteAligned<uint64_t>(destination, guiSC.SelectedTextureHandle);
+							WriteAlignedVec4<float>(destination, guiSC.SelectedColor.r, guiSC.SelectedColor.g, guiSC.SelectedColor.b, guiSC.SelectedColor.a);
+
+							WriteAligned<uint64_t>(destination, guiSC.ForegroundTextureHandle);
+							WriteAlignedVec4<float>(destination, guiSC.ForegroundColor.r, guiSC.ForegroundColor.g, guiSC.ForegroundColor.b, guiSC.ForegroundColor.a);
+
+						}
+						if (scene->HasComponent<GUICheckboxComponent>(entity))
+						{
+							uint16_t currentType = (uint16_t)ComponentType::GUICheckbox;
+							WriteAligned(destination, currentType);
+
+							GUICheckboxComponent& guiCBC = scene->GetComponent<GUICheckboxComponent>(entity);
+
+							WriteAligned<uint64_t>(destination, guiCBC.BackgroundTextureHandle);
+							WriteAlignedVec4<float>(destination, guiCBC.BackgroundColor.r, guiCBC.BackgroundColor.g, guiCBC.BackgroundColor.b, guiCBC.BackgroundColor.a);
+
+							WriteAligned<uint64_t>(destination, guiCBC.DisabledTextureHandle);
+							WriteAlignedVec4<float>(destination, guiCBC.DisabledColor.r, guiCBC.DisabledColor.g, guiCBC.DisabledColor.b, guiCBC.DisabledColor.a);
+
+							WriteAligned<uint64_t>(destination, guiCBC.EnabledTextureHandle);
+							WriteAlignedVec4<float>(destination, guiCBC.EnabledColor.r, guiCBC.EnabledColor.g, guiCBC.EnabledColor.b, guiCBC.EnabledColor.a);
+
+							WriteAligned<uint64_t>(destination, guiCBC.HoveredTextureHandle);
+							WriteAlignedVec4<float>(destination, guiCBC.HoveredColor.r, guiCBC.HoveredColor.g, guiCBC.HoveredColor.b, guiCBC.HoveredColor.a);
+
+							WriteAligned<uint64_t>(destination, guiCBC.SelectedTextureHandle);
+							WriteAlignedVec4<float>(destination, guiCBC.SelectedColor.r, guiCBC.SelectedColor.g, guiCBC.SelectedColor.b, guiCBC.SelectedColor.a);
+
+							WriteAligned<uint64_t>(destination, guiCBC.ForegroundTextureHandle);
+							WriteAlignedVec4<float>(destination, guiCBC.ForegroundColor.r, guiCBC.ForegroundColor.g, guiCBC.ForegroundColor.b, guiCBC.ForegroundColor.a);
+
+						}
+
+						// TODO : GUIScrollRectComponent & GUIScrollbarComponent
+
 						// Rigidbody2D
-						if (e.HasComponent<Rigidbody2DComponent>())
+						if (scene->HasComponent<Rigidbody2DComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::Rigidbody2D;
 							WriteAligned(destination, currentType);
 
-							Rigidbody2DComponent rb2D = e.GetComponent<Rigidbody2DComponent>();
+							Rigidbody2DComponent& rb2D = scene->GetComponent<Rigidbody2DComponent>(entity);
 
 							uint16_t typeInt = (uint16_t)rb2D.Type;
 							WriteAligned<uint16_t>(destination, typeInt);
@@ -1054,12 +1376,12 @@ namespace GE
 						}
 
 						// BoxCollider2D
-						if (e.HasComponent<BoxCollider2DComponent>())
+						if (scene->HasComponent<BoxCollider2DComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::BoxCollider2D;
 							WriteAligned(destination, currentType);
 
-							BoxCollider2DComponent bc2d = e.GetComponent<BoxCollider2DComponent>();
+							BoxCollider2DComponent& bc2d = scene->GetComponent<BoxCollider2DComponent>(entity);
 
 							WriteAligned<bool>(destination, bc2d.Show);
 
@@ -1077,45 +1399,42 @@ namespace GE
 						}
 
 						// CircleCollider2D
-						if (e.HasComponent<CircleCollider2DComponent>())
+						if (scene->HasComponent<CircleCollider2DComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::CircleCollider2D;
 							WriteAligned(destination, currentType);
 
-							CircleCollider2DComponent cc2d = e.GetComponent<CircleCollider2DComponent>();
+							CircleCollider2DComponent& cc2d = scene->GetComponent<CircleCollider2DComponent>(entity);
 
 							WriteAligned<bool>(destination, cc2d.Show);
 
-							WriteAligned<float>(destination, cc2d.Radius);
 							WriteAligned<float>(destination, cc2d.Density);
 							WriteAligned<float>(destination, cc2d.Friction);
 							WriteAligned<float>(destination, cc2d.Restitution);
 							WriteAligned<float>(destination, cc2d.RestitutionThreshold);
-
-							// Offset
+							WriteAligned<float>(destination, cc2d.Radius);
 							WriteAlignedVec2<float>(destination, cc2d.Offset.x, cc2d.Offset.y);
-
 						}
 
 						// NativeScript
-						if (e.HasComponent<NativeScriptComponent>())
+						if (scene->HasComponent<NativeScriptComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::NativeScript;
 							WriteAligned(destination, currentType);
 						}
 
 						// Script
-						if (e.HasComponent<ScriptComponent>())
+						if (scene->HasComponent<ScriptComponent>(entity))
 						{
 							uint16_t currentType = (uint16_t)ComponentType::Script;
 							WriteAligned(destination, currentType);
 
-							ScriptComponent sc = e.GetComponent<ScriptComponent>();
+							ScriptComponent& sc = scene->GetComponent<ScriptComponent>(entity);
 
 							WriteAligned<uint64_t>(destination, sc.AssetHandle);
 
 							// Field Name, Type & Data
-							const ScriptFieldMap& fields = Scripting::GetEntityFields(e.GetComponent<IDComponent>().ID);
+							const ScriptFieldMap& fields = Scripting::GetEntityFields(scene->GetComponent<IDComponent>(entity).ID);
 							WriteAligned<uint64_t>(destination, fields.size());
 							for (const auto& [name, field] : fields)
 							{
@@ -1688,7 +2007,7 @@ namespace GE
 		return scene;
 	}
 
-	bool RuntimeAssetManager::DeserializeEntity(const SceneInfo::EntityInfo& eInfo, Entity& e)
+	bool RuntimeAssetManager::DeserializeEntity(Ref<Scene> scene, const SceneInfo::EntityInfo& eInfo, Entity& entity)
 	{
 		if (eInfo.DataBuffer)
 		{
@@ -1705,60 +2024,102 @@ namespace GE
 			uint16_t currentType = 0;
 			if (ReadAligned<uint16_t>(source, end, currentType))
 			{
-				switch (currentType)
+				ComponentType type = (ComponentType)currentType;
+				switch (type)
 				{
-				case 0: // Invalid/None
+				case ComponentType::None: // Invalid/None
 				{
 					GE_CORE_ERROR("Entity Component has invalid Type.");
 					return false;
 				}
-				case 1: // ID
+				case ComponentType::ID: // ID
 				{
 					uint64_t uuid = 0;
 					if (ReadAligned<uint64_t>(source, end, uuid))
-						e.GetOrAddComponent<IDComponent>().ID = uuid;
+						scene->GetOrAddComponent<IDComponent>(entity).ID = uuid;
 				}
 				break;
-				case 2: // Tag
+				case ComponentType::Tag: // Tag
 				{
 					uint32_t tag = 0;
 					if (ReadAligned(source, end, tag))
-						e.GetOrAddComponent<TagComponent>().ID = tag;
+						scene->GetOrAddComponent<TagComponent>(entity).TagID = tag;
 				}
 				break;
-				case 3: // Name
+				case ComponentType::Name: // Name
 				{
 					uint64_t nameStringSize = 0;
 					if (!ReadAligned(source, end, nameStringSize))
 						break;
 					char* tagCStr = new char[nameStringSize];
 					if (ReadAlignedArray<char>(source, end, tagCStr, nameStringSize))
-						e.GetOrAddComponent<NameComponent>().Name.assign(tagCStr, nameStringSize);
+						scene->GetOrAddComponent<NameComponent>(entity).Name.assign(tagCStr, nameStringSize);
 					delete[](tagCStr);
 				}
 				break;
-				case 4: // Transform
+				case ComponentType::Active:
 				{
-					TransformComponent nc = e.GetOrAddComponent<TransformComponent>();
-					if (!ReadAlignedVec3<float>(source, end, nc.Translation.x, nc.Translation.y, nc.Translation.z))
+					auto& ac = scene->GetOrAddComponent<ActiveComponent>(entity);
+					bool active = true;
+					if (ReadAligned<bool>(source, end, active))
+						ac.Active = active;
+
+					bool hidden = false;
+					if (ReadAligned<bool>(source, end, hidden))
+						ac.Hidden = hidden;
+				}
+					break;
+				case ComponentType::Relationship:
+				{
+					auto& idc = scene->GetComponent<IDComponent>(entity);
+					auto& rsc = scene->GetOrAddComponent<RelationshipComponent>(entity);
+					uint64_t parentID = idc.ID;
+					if (ReadAligned<uint64_t>(source, end, parentID))
+						rsc.Parent = parentID;
+
+					uint64_t numChildren = 0;
+					if (!ReadAligned(source, end, numChildren))
+						break;
+					uint64_t* children = new uint64_t[numChildren];
+					if (ReadAlignedArray<uint64_t>(source, end, children, numChildren))
+					{
+						for (uint64_t i = 0; i < numChildren; i++)
+						{
+							rsc.Children.push_back(children[i]);
+						}
+					}
+					delete[](children);
+				}
+				break;
+				case ComponentType::Transform: // Transform
+				{
+					TransformComponent& trsc = scene->GetOrAddComponent<TransformComponent>(entity);
+					glm::vec3& translation = trsc.Translation;
+					if (!ReadAlignedVec3<float>(source, end, translation.x, translation.y, translation.z))
 					{
 						GE_CORE_ERROR("Failed to read Entity TransformComponent Translation.");
 					}
 
-					if (!ReadAlignedVec3<float>(source, end, nc.Rotation.x, nc.Rotation.y, nc.Rotation.z))
+					if (!ReadAlignedVec3<float>(source, end, trsc.Rotation.x, trsc.Rotation.y, trsc.Rotation.z))
 					{
 						GE_CORE_ERROR("Failed to read Entity TransformComponent Rotation.");
 					}
 
-					if (!ReadAlignedVec3<float>(source, end, nc.Scale.x, nc.Scale.y, nc.Scale.z))
+					if (!ReadAlignedVec3<float>(source, end, trsc.Scale.x, trsc.Scale.y, trsc.Scale.z))
 					{
-						GE_CORE_ERROR("Failed to read Entity TransformComponent Scale.");
+						GE_CORE_ERROR("Failed to read Entity TransformComponent ChildSize.");
 					}
+					uint32_t pivotEnum = 0;
+					if (!ReadAligned<uint32_t>(source, end, pivotEnum))
+					{
+						GE_CORE_ERROR("Failed to read Entity TransformComponent ChildSize.");
+					}
+					trsc.SetPivot((Pivot)pivotEnum);
 				}
 				break;
-				case 5: // AudioSource
+				case ComponentType::AudioSource: // AudioSource
 				{
-					AudioSourceComponent asc = e.GetOrAddComponent<AudioSourceComponent>();
+					AudioSourceComponent& asc = scene->GetOrAddComponent<AudioSourceComponent>(entity);
 
 					uint64_t uuid = 0;
 					if (ReadAligned<uint64_t>(source, end, uuid))
@@ -1776,14 +2137,14 @@ namespace GE
 						asc.Gain = gain;
 				}
 				break;
-				case 6: // AudioDevice
+				case ComponentType::AudioListener: // AudioDevice
 				{
-					AudioListenerComponent alc = e.GetOrAddComponent<AudioListenerComponent>();
+					AudioListenerComponent& alc = scene->GetOrAddComponent<AudioListenerComponent>(entity);
 				}
 				break;
-				case 7: // Render
+				case ComponentType::Render: // Render
 				{
-					RenderComponent rc = e.GetOrAddComponent<RenderComponent>();
+					RenderComponent& rc = scene->GetOrAddComponent<RenderComponent>(entity);
 					
 					uint64_t* ids = nullptr;
 					size_t size = 0;
@@ -1800,9 +2161,9 @@ namespace GE
 					}
 				}
 				break;
-				case 8: // Camera
+				case ComponentType::Camera: // Camera
 				{
-					CameraComponent cc = e.GetOrAddComponent<CameraComponent>();
+					CameraComponent& cc = scene->GetOrAddComponent<CameraComponent>(entity);
 					if (!ReadAligned<bool>(source, end, cc.Primary))
 					{
 						GE_CORE_ERROR("Failed to read CameraComponent Primary.");
@@ -1819,16 +2180,19 @@ namespace GE
 					float farClip = 0;
 					if (ReadAligned<float>(source, end, fov) && ReadAligned<float>(source, end, nearClip) && ReadAligned<float>(source, end, farClip))
 					{
-						cc.ActiveCamera.SetInfo(fov, nearClip, farClip);
+						cc.SetFOV(fov);
+						cc.SetNearClip(nearClip);
+						cc.SetNearClip(farClip);
 					}
 					else
 					{
 						GE_CORE_ERROR("Failed to read CameraComponent SceneCamera Info.\n\tFOV:{0}\n\tNearClip:{1}\n\tFarClip:{2}", fov, nearClip, farClip);
 					}
 				}
-				case 9: // SpriteRenderer
+				break;
+				case ComponentType::SpriteRenderer: // SpriteRenderer
 				{
-					SpriteRendererComponent src = e.GetOrAddComponent<SpriteRendererComponent>();
+					SpriteRendererComponent& src = scene->GetOrAddComponent<SpriteRendererComponent>(entity);
 
 					uint64_t uuid = 0;
 					if (ReadAligned<uint64_t>(source, end, uuid))
@@ -1843,9 +2207,9 @@ namespace GE
 						src.Color = glm::vec4(x, y, z, w);
 				}
 				break;
-				case 10: // CircleRenderer
+				case ComponentType::CircleRenderer: // CircleRenderer
 				{
-					CircleRendererComponent crc = e.GetOrAddComponent<CircleRendererComponent>();
+					CircleRendererComponent& crc = scene->GetOrAddComponent<CircleRendererComponent>(entity);
 
 					uint64_t uuid = 0;
 					if (ReadAligned<uint64_t>(source, end, uuid))
@@ -1854,7 +2218,7 @@ namespace GE
 					float tilingFactor = 0;
 					if (ReadAligned<float>(source, end, tilingFactor))
 						crc.TilingFactor = tilingFactor;
-
+					
 					float radius = 0;
 					if (ReadAligned<float>(source, end, radius))
 						crc.Radius = radius;
@@ -1872,19 +2236,19 @@ namespace GE
 						crc.Color = glm::vec4(x, y, z, w);
 				}
 				break;
-				case 11: // TextRenderer
+				case ComponentType::TextRenderer: // TextRenderer
 				{
-					TextRendererComponent trc = e.GetOrAddComponent<TextRendererComponent>();
+					TextRendererComponent& trc = scene->GetOrAddComponent<TextRendererComponent>(entity);
 
 					uint64_t uuid = 0;
 					if (ReadAligned<uint64_t>(source, end, uuid))
 						trc.AssetHandle = uuid;
 
-					float kerningOffset = 0;
+					float kerningOffset = 0.0f;
 					if (ReadAligned<float>(source, end, kerningOffset))
 						trc.KerningOffset = kerningOffset;
 
-					float lineHeightOffset = 0;
+					float lineHeightOffset = 0.0f;
 					if (ReadAligned<float>(source, end, lineHeightOffset))
 						trc.LineHeightOffset = lineHeightOffset;
 
@@ -1896,31 +2260,362 @@ namespace GE
 						trc.Text.assign(textCStr, textStringSize);
 					delete[](textCStr);
 
-					float x, y, z, w = 0;
+					float x, y, z, w = 0.0f;
 					if (ReadAlignedVec4<float>(source, end, x, y, z, w))
 						trc.TextColor = glm::vec4(x, y, z, w);
 
-					x, y, z, w = 0;
+					x, y, z, w = 0.0f;
 					if (ReadAlignedVec4<float>(source, end, x, y, z, w))
 						trc.BGColor = glm::vec4(x, y, z, w);
+
+					float scalar = 0.0f;
+					if (ReadAligned<float>(source, end, scalar))
+						trc.TextScalar = scalar;
+
+					float offsetX, offsetY = 0.0f;
+					if (ReadAlignedVec2<float>(source, end, offsetX, offsetY))
+						trc.TextOffset = glm::vec2(offsetX, offsetY);
+
 				}
 				break;
-				case 12: // Rigidbody2D
+				case ComponentType::GUICanvas:
 				{
-					Rigidbody2DComponent rb2dc = e.GetOrAddComponent<Rigidbody2DComponent>();
+					GUICanvasComponent& guiCC = scene->GetOrAddComponent<GUICanvasComponent>(entity);
 
-					uint16_t type = 0;
-					if (ReadAligned<uint16_t>(source, end, type))
-						rb2dc.Type = (Rigidbody2DComponent::BodyType)type; // TODO : Change to Physics::BodyType(?)
+					uint32_t mode = 0;
+					if (ReadAligned<uint32_t>(source, end, mode))
+						guiCC.Mode = (CanvasMode)mode;
+
+				}
+					break;
+				case ComponentType::GUILayout:
+				{
+					GUILayoutComponent& guiLOC = scene->GetOrAddComponent<GUILayoutComponent>(entity);
+
+					uint32_t mode = 0;
+					if (ReadAligned<uint32_t>(source, end, mode))
+						guiLOC.Mode = (LayoutMode)mode;
+
+					float offsetX, offsetY = 0.0f;
+					if (ReadAlignedVec2<float>(source, end, offsetX, offsetY))
+						guiLOC.StartingOffset = glm::vec2(offsetX, offsetY);
+					float sizeX, sizeY = 0.0f;
+					if (ReadAlignedVec2<float>(source, end, sizeX, sizeY))
+						guiLOC.ChildSize = glm::vec2(sizeX, sizeY);
+					float paddingX, paddingY = 0.0f;
+					if (ReadAlignedVec2<float>(source, end, paddingX, paddingY))
+						guiLOC.ChildPadding = glm::vec2(paddingX, paddingY);
+
+				}
+				break;
+				// TODO : GUIMaskComponent
+				case ComponentType::GUIImage:
+				{
+
+					GUIImageComponent& guiIC = scene->GetOrAddComponent<GUIImageComponent>(entity);
+
+					float r, g, b, a = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, r, g, b, a))
+						guiIC.Color = glm::vec4(r, g, b, a);
+
+					uint64_t handle = 0;
+					if (ReadAligned<uint64_t>(source, end, handle))
+						guiIC.TextureHandle = handle;
+
+					float tilingFactor = 0.0f;
+					if (ReadAligned<float>(source, end, tilingFactor))
+						guiIC.TilingFactor = tilingFactor;
+
+				}
+				break;
+				case ComponentType::GUIButton: 
+				{
+					GUIButtonComponent& guiBC = scene->GetOrAddComponent<GUIButtonComponent>(entity);
+
+					uint64_t buttonfontHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, buttonfontHandle))
+						guiBC.FontAssetHandle = buttonfontHandle;
+
+					float kerningOffset = 0.0f;
+					if (ReadAligned<float>(source, end, kerningOffset))
+						guiBC.KerningOffset = kerningOffset;
+
+					float lineHeightOffset = 0.0f;
+					if (ReadAligned<float>(source, end, lineHeightOffset))
+						guiBC.LineHeightOffset = lineHeightOffset;
+
+					uint64_t textStringSize = 0;
+					if (!ReadAligned(source, end, textStringSize))
+						return false;
+					char* textCStr = new char[textStringSize];
+					if (ReadAlignedArray(source, end, textCStr, textStringSize))
+						guiBC.Text.assign(textCStr, textStringSize);
+					delete[](textCStr);
+
+					float x, y, z, w = 0;
+					if (ReadAlignedVec4<float>(source, end, x, y, z, w))
+						guiBC.TextColor = glm::vec4(x, y, z, w);
+
+					x, y, z, w = 0;
+					if (ReadAlignedVec4<float>(source, end, x, y, z, w))
+						guiBC.BGColor = glm::vec4(x, y, z, w);
+
+					float scalar = 0.0f;
+					if (ReadAligned<float>(source, end, scalar))
+						guiBC.TextScalar = scalar;
+
+					float offsetX, offsetY = 0.0f;
+					if (ReadAlignedVec2<float>(source, end, offsetX, offsetY))
+						guiBC.TextStartingOffset = glm::vec2(offsetX, offsetY);
+
+					float sizeX, sizeY = 0.0f;
+					if (ReadAlignedVec2<float>(source, end, sizeX, sizeY))
+						guiBC.TextSize = glm::vec2(sizeX, sizeY);
+
+					// BG
+					uint64_t fgTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, fgTextureHandle))
+						guiBC.ForegroundTextureHandle = fgTextureHandle;
+
+					float fgr, fgg, fgb, fga = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, fgr, fgg, fgb, fga))
+						guiBC.ForegroundColor = glm::vec4(fgr, fgg, fgb, fga);
+
+					// MG
+					uint64_t inactiveTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, inactiveTextureHandle))
+						guiBC.DisabledTextureHandle = inactiveTextureHandle;
+
+					float iar, iag, iab, iaa = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, iar, iag, iab, iaa))
+						guiBC.DisabledColor = glm::vec4(iar, iag, iab, iaa);
+
+					uint64_t activeTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, activeTextureHandle))
+						guiBC.EnabledTextureHandle = activeTextureHandle;
+
+					float ar, ag, ab, aa = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, ar, ag, ab, aa))
+						guiBC.DisabledColor = glm::vec4(ar, ag, ab, aa);
+
+					uint64_t hoveredTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, hoveredTextureHandle))
+						guiBC.HoveredTextureHandle = hoveredTextureHandle;
+
+					float hr, hg, hb, ha = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, hr, hg, hb, ha))
+						guiBC.HoveredColor = glm::vec4(hr, hg, hb, ha);
+
+					uint64_t selectedTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, selectedTextureHandle))
+						guiBC.SelectedTextureHandle = selectedTextureHandle;
+
+					float sr, sg, sb, sa = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, sr, sg, sb, sa))
+						guiBC.SelectedColor = glm::vec4(sr, sg, sb, sa);
+
+					// FG
+					uint64_t buttonFGHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, buttonFGHandle))
+						guiBC.ForegroundTextureHandle = buttonFGHandle;
+
+					float r, g, b, a = 0;
+					if (ReadAlignedVec4<float>(source, end, r, g, b, a))
+						guiBC.ForegroundColor = glm::vec4(r, g, b, a);
+
+				}
+					break;
+				case ComponentType::GUIInputField:
+				{
+					GUIInputFieldComponent& guiIFC = scene->GetOrAddComponent<GUIInputFieldComponent>(entity);
+
+					uint64_t bgHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, bgHandle))
+						guiIFC.BackgroundTextureHandle = bgHandle;
+
+					float r, g, b, a = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, r, g, b, a))
+						guiIFC.BackgroundColor = glm::vec4(r, g, b, a);
+
+					bool fillBG = false;
+					if (ReadAligned<bool>(source, end, fillBG))
+						guiIFC.FillBackground = fillBG;
+
+					uint64_t inputFieldFontHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, inputFieldFontHandle))
+						guiIFC.FontAssetHandle = inputFieldFontHandle;
+
+					float kerningOffset = 0.0f;
+					if (ReadAligned<float>(source, end, kerningOffset))
+						guiIFC.KerningOffset = kerningOffset;
+
+					float lineHeightOffset = 0.0f;
+					if (ReadAligned<float>(source, end, lineHeightOffset))
+						guiIFC.LineHeightOffset = lineHeightOffset;
+
+					uint64_t textStringSize = 0;
+					if (!ReadAligned(source, end, textStringSize))
+						return false;
+					char* textCStr = new char[textStringSize];
+					if (ReadAlignedArray(source, end, textCStr, textStringSize))
+						guiIFC.Text.assign(textCStr, textStringSize);
+					delete[](textCStr);
+
+					float x, y, z, w = 0;
+					if (ReadAlignedVec4<float>(source, end, x, y, z, w))
+						guiIFC.TextColor = glm::vec4(x, y, z, w);
+
+					x, y, z, w = 0;
+					if (ReadAlignedVec4<float>(source, end, x, y, z, w))
+						guiIFC.BGColor = glm::vec4(x, y, z, w);
+
+					float scalar = 0.0f;
+					if (ReadAligned<float>(source, end, scalar))
+						guiIFC.TextScalar = scalar;
+
+					float offsetX, offsetY = 0.0f;
+					if (ReadAlignedVec2<float>(source, end, offsetX, offsetY))
+						guiIFC.TextStartingOffset = glm::vec2(offsetX, offsetY);
+
+					float sizeX, sizeY = 0.0f;
+					if (ReadAlignedVec2<float>(source, end, sizeX, sizeY))
+						guiIFC.TextSize = glm::vec2(sizeX, sizeY);
+
+					float paddingX, paddingY = 0.0f;
+					if (ReadAlignedVec2<float>(source, end, paddingX, paddingY))
+						guiIFC.Padding = glm::vec2(paddingX, paddingY);
+				}
+					break;
+				case ComponentType::GUISlider:
+				{
+					GUISliderComponent& guiSC = scene->GetOrAddComponent<GUISliderComponent>(entity);
+
+					uint32_t direction = 0;
+					if (ReadAligned<uint32_t>(source, end, direction))
+						guiSC.Direction = (SliderDirection)direction;
+
+					float current = 0.0f;
+					if (ReadAligned<float>(source, end, current))
+						guiSC.Fill = current;
+
+					uint64_t bgHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, bgHandle))
+						guiSC.BackgroundTextureHandle = bgHandle;
+					float bgr, bgg, bgb, bga = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, bgr, bgg, bgb, bga))
+						guiSC.BackgroundColor = glm::vec4(bgr, bgg, bgb, bga);
+
+					// MG
+					uint64_t inactiveTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, inactiveTextureHandle))
+						guiSC.DisabledTextureHandle = inactiveTextureHandle;
+
+					float iar, iag, iab, iaa = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, iar, iag, iab, iaa))
+						guiSC.DisabledColor = glm::vec4(iar, iag, iab, iaa);
+
+					uint64_t activeTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, activeTextureHandle))
+						guiSC.EnabledTextureHandle = activeTextureHandle;
+
+					float ar, ag, ab, aa = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, ar, ag, ab, aa))
+						guiSC.DisabledColor = glm::vec4(ar, ag, ab, aa);
+
+					uint64_t hoveredTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, hoveredTextureHandle))
+						guiSC.HoveredTextureHandle = hoveredTextureHandle;
+
+					float hr, hg, hb, ha = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, hr, hg, hb, ha))
+						guiSC.HoveredColor = glm::vec4(hr, hg, hb, ha);
+
+					uint64_t selectedTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, selectedTextureHandle))
+						guiSC.SelectedTextureHandle = selectedTextureHandle;
+
+					float sr, sg, sb, sa = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, sr, sg, sb, sa))
+						guiSC.SelectedColor = glm::vec4(sr, sg, sb, sa);
+
+					uint64_t fgHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, fgHandle))
+						guiSC.ForegroundTextureHandle = fgHandle;
+					float fgr, fgg, fgb, fga = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, fgr, fgg, fgb, fga))
+						guiSC.ForegroundColor = glm::vec4(fgr, fgg, fgb, fga);
+
+				}
+					break;
+				case ComponentType::GUICheckbox: 
+				{
+					GUICheckboxComponent& guiCBC = scene->GetOrAddComponent<GUICheckboxComponent>(entity);
+
+					uint64_t bgHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, bgHandle))
+						guiCBC.BackgroundTextureHandle = bgHandle;
+					float bgr, bgg, bgb, bga = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, bgr, bgg, bgb, bga))
+						guiCBC.BackgroundColor = glm::vec4(bgr, bgg, bgb, bga);
+
+					// MG
+					uint64_t inactiveTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, inactiveTextureHandle))
+						guiCBC.DisabledTextureHandle = inactiveTextureHandle;
+
+					float iar, iag, iab, iaa = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, iar, iag, iab, iaa))
+						guiCBC.DisabledColor = glm::vec4(iar, iag, iab, iaa);
+
+					uint64_t activeTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, activeTextureHandle))
+						guiCBC.EnabledTextureHandle = activeTextureHandle;
+
+					float ar, ag, ab, aa = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, ar, ag, ab, aa))
+						guiCBC.DisabledColor = glm::vec4(ar, ag, ab, aa);
+
+					uint64_t hoveredTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, hoveredTextureHandle))
+						guiCBC.HoveredTextureHandle = hoveredTextureHandle;
+
+					float hr, hg, hb, ha = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, hr, hg, hb, ha))
+						guiCBC.HoveredColor = glm::vec4(hr, hg, hb, ha);
+
+					uint64_t selectedTextureHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, selectedTextureHandle))
+						guiCBC.SelectedTextureHandle = selectedTextureHandle;
+
+					float sr, sg, sb, sa = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, sr, sg, sb, sa))
+						guiCBC.SelectedColor = glm::vec4(sr, sg, sb, sa);
+
+					uint64_t fgHandle = 0;
+					if (ReadAligned<uint64_t>(source, end, fgHandle))
+						guiCBC.ForegroundTextureHandle = fgHandle;
+					float fgr, fgg, fgb, fga = 0.0f;
+					if (ReadAlignedVec4<float>(source, end, fgr, fgg, fgb, fga))
+						guiCBC.ForegroundColor = glm::vec4(fgr, fgg, fgb, fga);
+				}
+					break;
+					// TODO : GUIScrollRectComponent & GUIScrollbarComponent
+				case ComponentType::Rigidbody2D: // Rigidbody2D
+				{
+					Rigidbody2DComponent& rb2dc = scene->GetOrAddComponent<Rigidbody2DComponent>(entity);
+
+					uint32_t type = 0;
+					if (ReadAligned<uint32_t>(source, end, type))
+						rb2dc.Type = (Rigidbody2DComponent::BodyType)type;
 
 					bool fixedRotation = false;
 					if (ReadAligned<bool>(source, end, fixedRotation))
 						rb2dc.FixedRotation = fixedRotation;
 				}
 				break;
-				case 13: // BoxCollider2D
+				case ComponentType::BoxCollider2D: // BoxCollider2D
 				{
-					BoxCollider2DComponent bc2dc = e.GetOrAddComponent<BoxCollider2DComponent>();
+					BoxCollider2DComponent& bc2dc = scene->GetOrAddComponent<BoxCollider2DComponent>(entity);
 
 					bool show = false;
 					if (ReadAligned<bool>(source, end, show))
@@ -1951,17 +2646,13 @@ namespace GE
 						bc2dc.Size = glm::vec2(x, y);
 				}
 				break;
-				case 14: // CircleCollider2D
+				case ComponentType::CircleCollider2D: // CircleCollider2D
 				{
-					CircleCollider2DComponent cc2dc = e.GetOrAddComponent<CircleCollider2DComponent>();
+					CircleCollider2DComponent& cc2dc = scene->GetOrAddComponent<CircleCollider2DComponent>(entity);
 
 					bool show = false;
 					if (ReadAligned<bool>(source, end, show))
 						cc2dc.Show = show;
-
-					float radius = 0.0f;
-					if (ReadAligned<float>(source, end, radius))
-						cc2dc.Radius = radius;
 
 					float density = 0.0f;
 					if (ReadAligned<float>(source, end, density))
@@ -1979,20 +2670,24 @@ namespace GE
 					if (ReadAligned<float>(source, end, restitutionThreshold))
 						cc2dc.RestitutionThreshold = restitutionThreshold;
 
+					float radius = 0.0f;
+					if (ReadAligned<float>(source, end, radius))
+						cc2dc.Radius = radius;
 					float x, y = 0;
 					if (ReadAlignedVec2<float>(source, end, x, y))
 						cc2dc.Offset = glm::vec2(x, y);
-				}
-				break;
-				case 15: // NativeScript
-				{
-					NativeScriptComponent nsc = e.GetOrAddComponent<NativeScriptComponent>();
 
 				}
 				break;
-				case 16: // Script
+				case ComponentType::NativeScript: // NativeScript
 				{
-					ScriptComponent sc = e.GetOrAddComponent<ScriptComponent>();
+					NativeScriptComponent& nsc = scene->GetOrAddComponent<NativeScriptComponent>(entity);
+
+				}
+				break;
+				case ComponentType::Script: // Script
+				{
+					ScriptComponent& sc = scene->GetOrAddComponent<ScriptComponent>(entity);
 
 					uint64_t scriptHandle = 0;
 					if (!ReadAligned<uint64_t>(source, end, scriptHandle))
@@ -2017,7 +2712,7 @@ namespace GE
 						if (!ReadAligned(source, end, fieldType))
 							return false;
 
-						ScriptFieldMap& fields = Scripting::GetEntityFields(e.GetComponent<IDComponent>().ID);
+						ScriptFieldMap& fields = Scripting::GetEntityFields(scene->GetComponent<IDComponent>(entity).ID);
 						ScriptField& instanceField = fields[fieldName];
 						switch ((ScriptField::Type)fieldType)
 						{

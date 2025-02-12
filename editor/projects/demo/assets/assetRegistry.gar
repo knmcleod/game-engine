@@ -2,9 +2,21 @@ AssetRegistry:
   - Handle: 255212577547459639
     FilePath: textures/Play_Button.png
     Type: Texture2D
+  - Handle: 823297678570397225
+    FilePath: InputField.cs
+    Type: Script
+  - Handle: 1279544408651837389
+    FilePath: Slider.cs
+    Type: Script
+  - Handle: 2159947313897299825
+    FilePath: Button.cs
+    Type: Script
   - Handle: 5985027268343488239
     FilePath: textures/Step_Button.png
     Type: Texture2D
+  - Handle: 7553269979079703358
+    FilePath: Slider.cs
+    Type: Script
   - Handle: 8321772525370642796
     FilePath: scenes/demoExample.scene
     Type: Scene
@@ -15,13 +27,22 @@ AssetRegistry:
     FilePath: audio/LittleRobotSoundFactory/8-Bit/Wav/Jump_00.wav
     Type: Audio
   - Handle: 12345127586763726501
-    FilePath: demo/Player.cs
+    FilePath: Player.cs
+    Type: Script
+  - Handle: 12671463660318298120
+    FilePath: Image.cs
     Type: Script
   - Handle: 13426698827862289058
-    FilePath: demo/Camera.cs
+    FilePath: Camera.cs
     Type: Script
   - Handle: 16203209201710611844
     FilePath: textures/Stop_Button.png
+    Type: Texture2D
+  - Handle: 17295148655943605647
+    FilePath: InputField.cs
+    Type: Script
+  - Handle: 17594275082513845197
+    FilePath: textures/EditorIcon.png
     Type: Texture2D
   - Handle: 18334408789933592280
     FilePath: fonts/arial.ttf

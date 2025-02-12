@@ -1,5 +1,6 @@
 #include "EditorAssetManager.h"
 
+#include "../Application/Layer/EditorLayer.h"
 #include "../Application/Layer/EditorLayerStack.h"
 
 #include <GE/GE.h>
@@ -126,30 +127,31 @@ namespace GE
 {
 #pragma region Entity
 	
-	static void SerializeEntity(YAML::Emitter& out, const Entity& e)
+	static void SerializeEntity(YAML::Emitter& out, Ref<Scene> scene, const Entity& entity)
 	{
-		GE_CORE_ASSERT(e.HasComponent<IDComponent>(), "Cannot serialize Entity without ID.");
+		GE_CORE_ASSERT(scene->HasComponent<IDComponent>(entity), "Cannot serialize Entity without ID.");
 
-		IDComponent& idc = e.GetComponent<IDComponent>();
+		IDComponent& idc = scene->GetComponent<IDComponent>(entity);
 		out << YAML::BeginMap; // Entity
 		out << YAML::Key << "Entity" << YAML::Value << idc.ID;
-		if (e.HasComponent<TagComponent>())
+		if (scene->HasComponent<TagComponent>(entity))
 		{
 			out << YAML::Key << "TagComponent";
 			out << YAML::BeginMap; // TagComponent
-			auto& tc = e.GetComponent<TagComponent>();
+			auto& tc = scene->GetComponent<TagComponent>(entity);
 
-			out << YAML::Key << "Tag" << YAML::Value << Project::GetTagByKey(tc.ID).c_str();
-			out << YAML::Key << "ID" << YAML::Value << tc.ID;
+			// TODO : Move TagStrs to EditorProject file. Base Project & Entity only needs the ID
+			out << YAML::Key << "Tag" << YAML::Value << Project::GetStrByTag(tc.TagID).c_str();
+			out << YAML::Key << "ID" << YAML::Value << tc.TagID;
 
 			out << YAML::EndMap; // TagComponent
 		}
 
-		if (e.HasComponent<NameComponent>())
+		if (scene->HasComponent<NameComponent>(entity))
 		{
 			out << YAML::Key << "NameComponent";
 			out << YAML::BeginMap; // NameComponent
-			auto& name = e.GetComponent<NameComponent>().Name;
+			auto& name = scene->GetComponent<NameComponent>(entity).Name;
 			GE_TRACE("UUID : {0},\n\tName : {1}", (uint64_t)idc.ID, name.c_str());
 
 			out << YAML::Key << "Name" << YAML::Value << name;
@@ -157,24 +159,58 @@ namespace GE
 			out << YAML::EndMap; // NameComponent
 		}
 
-		if (e.HasComponent<TransformComponent>())
+		if (scene->HasComponent<ActiveComponent>(entity))
+		{
+			out << YAML::Key << "ActiveComponent";
+			out << YAML::BeginMap; // ActiveComponent
+			auto& component = scene->GetComponent<ActiveComponent>(entity);
+
+			out << YAML::Key << "Active" << YAML::Value << component.Active;
+			out << YAML::Key << "Hidden" << YAML::Value << component.Hidden;
+	
+			out << YAML::EndMap; // ActiveComponent
+		}
+
+		if (scene->HasComponent<RelationshipComponent>(entity))
+		{
+			out << YAML::Key << "RelationshipComponent";
+			out << YAML::BeginMap; // RelationshipComponent
+			auto& component = scene->GetComponent<RelationshipComponent>(entity);
+
+			out << YAML::Key << "Parent" << YAML::Value << component.GetParent();
+			if (component.GetChildren().size() > 0)
+			{
+				out << YAML::Key << "Children" << YAML::Value;
+				out << YAML::BeginSeq; // Children
+				for (const uint64_t& child : component.GetChildren())
+				{
+					out << YAML::Value << child;
+				}
+				out << YAML::EndSeq; // Children
+			}
+			out << YAML::EndMap; // RelationshipComponent
+		}
+
+		if (scene->HasComponent<TransformComponent>(entity))
 		{
 			out << YAML::Key << "TransformComponent";
 			out << YAML::BeginMap; // TransformComponent
-			auto& component = e.GetComponent<TransformComponent>();
+			auto& component = scene->GetComponent<TransformComponent>(entity);
 
 			out << YAML::Key << "Translation" << YAML::Value << component.Translation;
 			out << YAML::Key << "Rotation" << YAML::Value << component.Rotation;
 			out << YAML::Key << "Scale" << YAML::Value << component.Scale;
 
+			out << YAML::Key << "PivotEnum" << YAML::Value << component.GetPivot();
+
 			out << YAML::EndMap; // TransformComponent
 		}
 
-		if (e.HasComponent<AudioSourceComponent>())
+		if (scene->HasComponent<AudioSourceComponent>(entity))
 		{
 			out << YAML::Key << "AudioSourceComponent";
 			out << YAML::BeginMap; // AudioSourceComponent
-			auto& component = e.GetComponent<AudioSourceComponent>();
+			auto& component = scene->GetComponent<AudioSourceComponent>(entity);
 
 			out << YAML::Key << "AssetHandle" << YAML::Value << component.AssetHandle;
 			out << YAML::Key << "Gain" << YAML::Value << component.Gain;
@@ -184,30 +220,33 @@ namespace GE
 			out << YAML::EndMap; // AudioSourceComponent
 		}
 
-		if (e.HasComponent<AudioListenerComponent>())
+		if (scene->HasComponent<AudioListenerComponent>(entity))
 		{
 			out << YAML::Key << "AudioListenerComponent";
 			out << YAML::BeginMap; // AudioListenerComponent
-			auto& component = e.GetComponent<AudioListenerComponent>();
+			auto& component = scene->GetComponent<AudioListenerComponent>(entity);
 
 			out << YAML::EndMap; // AudioListenerComponent
 		}
 
-		if (e.HasComponent<RenderComponent>())
+#pragma region Rendering
+
+		if (scene->HasComponent<RenderComponent>(entity))
 		{
 			out << YAML::Key << "RenderComponent";
 			out << YAML::BeginMap; // RenderComponent
-			auto& rc = e.GetComponent<RenderComponent>();
+			auto& rc = scene->GetComponent<RenderComponent>(entity);
 
-			out << YAML::Key << "IDs" << YAML::Value;
+			out << YAML::Key << "Layers" << YAML::Value;
 			out << YAML::BeginSeq;
+			Ref<EditorLayerStack> els = Application::GetLayerStack<EditorLayerStack>();
 			for (uint64_t id : rc.LayerIDs)
 			{
-				if (Ref<Layer> layer = Application::GetLayerStack<EditorLayerStack>()->GetLayerAtIndex(id))
+				if (Ref<Layer> layer = els->GetLayer(id))
 				{
 					out << YAML::BeginMap; // LayerID
-					out << YAML::Key << "Loadable" << YAML::Value << layer->IsBase();
-					out << YAML::Key << "Name" << YAML::Value << Application::GetLayerStack<EditorLayerStack>()->GetLayerName(id).c_str();
+					// TODO : Move name to EditorProject file. Entity only needs ID
+					out << YAML::Key << "Name" << YAML::Value << els->GetLayerName(id).c_str();
 					out << YAML::Key << "ID" << YAML::Value << layer->GetID();
 					out << YAML::EndMap; // LayerID
 				}
@@ -217,11 +256,11 @@ namespace GE
 			out << YAML::EndMap; // RenderComponent
 		}
 
-		if (e.HasComponent<CameraComponent>())
+		if (scene->HasComponent<CameraComponent>(entity))
 		{
 			out << YAML::Key << "CameraComponent";
 			out << YAML::BeginMap; // CameraComponent
-			auto& component = e.GetComponent<CameraComponent>();
+			auto& component = scene->GetComponent<CameraComponent>(entity);
 			auto& camera = component.ActiveCamera;
 
 			out << YAML::Key << "FixedAspectRatio" << YAML::Value << component.FixedAspectRatio;
@@ -239,11 +278,11 @@ namespace GE
 			out << YAML::EndMap; // CameraComponent
 		}
 
-		if (e.HasComponent<SpriteRendererComponent>())
+		if (scene->HasComponent<SpriteRendererComponent>(entity))
 		{
 			out << YAML::Key << "SpriteRendererComponent";
 			out << YAML::BeginMap; // SpriteRendererComponent
-			auto& component = e.GetComponent<SpriteRendererComponent>();
+			auto& component = scene->GetComponent<SpriteRendererComponent>(entity);
 			out << YAML::Key << "Color" << YAML::Value << component.Color;
 			if (component.AssetHandle)
 			{
@@ -257,11 +296,11 @@ namespace GE
 			out << YAML::EndMap; // SpriteRendererComponent
 		}
 
-		if (e.HasComponent<CircleRendererComponent>())
+		if (scene->HasComponent<CircleRendererComponent>(entity))
 		{
 			out << YAML::Key << "CircleRendererComponent";
 			out << YAML::BeginMap; // CircleRendererComponent
-			auto& component = e.GetComponent<CircleRendererComponent>();
+			auto& component = scene->GetComponent<CircleRendererComponent>(entity);
 			out << YAML::Key << "Color" << YAML::Value << component.Color;
 			out << YAML::Key << "Radius" << YAML::Value << component.Radius;
 			out << YAML::Key << "Thickness" << YAML::Value << component.Thickness;
@@ -269,11 +308,11 @@ namespace GE
 			out << YAML::EndMap; // CircleRendererComponent
 		}
 
-		if (e.HasComponent<TextRendererComponent>())
+		if (scene->HasComponent<TextRendererComponent>(entity))
 		{
 			out << YAML::Key << "TextRendererComponent";
 			out << YAML::BeginMap; // TextRendererComponent
-			auto& component = e.GetComponent<TextRendererComponent>();
+			auto& component = scene->GetComponent<TextRendererComponent>(entity);
 			out << YAML::Key << "TextColor" << YAML::Value << component.TextColor;
 			out << YAML::Key << "BGColor" << YAML::Value << component.BGColor;
 
@@ -281,24 +320,194 @@ namespace GE
 			out << YAML::Key << "LineHeightOffset" << YAML::Value << component.LineHeightOffset;
 			out << YAML::Key << "Text" << YAML::Value << component.Text;
 
+			out << YAML::Key << "TextScalar" << YAML::Value << component.TextScalar;
+			out << YAML::Key << "TextOffset" << YAML::Value << component.TextOffset;
+
 			out << YAML::Key << "AssetHandle" << YAML::Value << component.AssetHandle;
 			out << YAML::EndMap; // TextRendererComponent
 		}
 
-		if (e.HasComponent<NativeScriptComponent>())
+		if (scene->HasComponent<GUICanvasComponent>(entity))
+		{
+			out << YAML::Key << "GUICanvasComponent";
+			out << YAML::BeginMap; // GUICanvasComponent
+			auto& guiCC = scene->GetComponent<GUICanvasComponent>(entity);
+			
+			out << YAML::Key << "ControlMouse" << YAML::Value << guiCC.ControlMouse;
+			out << YAML::Key << "ShowMouse" << YAML::Value << guiCC.ShowMouse;
+
+			out << YAML::Key << "Mode" << YAML::Value << (uint32_t)guiCC.Mode;
+
+			out << YAML::EndMap; // GUICanvasComponent
+		}
+
+		if (scene->HasComponent<GUILayoutComponent>(entity))
+		{
+			out << YAML::Key << "GUILayoutComponent";
+			out << YAML::BeginMap; // GUILayoutComponent
+			auto& guiLOC = scene->GetComponent<GUILayoutComponent>(entity);
+
+			out << YAML::Key << "Mode" << YAML::Value << (uint32_t)guiLOC.Mode;
+			out << YAML::Key << "StartingOffset" << YAML::Value << guiLOC.StartingOffset;
+			out << YAML::Key << "ChildSize" << YAML::Value << guiLOC.ChildSize;
+			out << YAML::Key << "ChildPadding" << YAML::Value << guiLOC.ChildPadding;
+
+			out << YAML::EndMap; // GUILayoutComponent
+		}
+		// TODO : GUIMaskComponent
+
+		if (scene->HasComponent<GUIImageComponent>(entity))
+		{
+			out << YAML::Key << "GUIImageComponent";
+			out << YAML::BeginMap; // GUIImageComponent
+			auto& guiIC = scene->GetComponent<GUIImageComponent>(entity);
+			out << YAML::Key << "Color" << YAML::Value << guiIC.Color;
+			out << YAML::Key << "TextureHandle" << YAML::Value << guiIC.TextureHandle;
+			out << YAML::Key << "TilingFactor" << YAML::Value << guiIC.TilingFactor;
+
+			out << YAML::EndMap; // GUIImageComponent
+
+		}
+		if (scene->HasComponent<GUIButtonComponent>(entity))
+		{
+			out << YAML::Key << "GUIButtonComponent";
+			out << YAML::BeginMap; // GUIButtonComponent
+			auto& guiBC = scene->GetComponent<GUIButtonComponent>(entity);
+			out << YAML::Key << "TextColor" << YAML::Value << guiBC.TextColor;
+			out << YAML::Key << "BGColor" << YAML::Value << guiBC.BGColor;
+
+			out << YAML::Key << "KerningOffset" << YAML::Value << guiBC.KerningOffset;
+			out << YAML::Key << "LineHeightOffset" << YAML::Value << guiBC.LineHeightOffset;
+			out << YAML::Key << "Text" << YAML::Value << guiBC.Text;
+
+			out << YAML::Key << "FontAssetHandle" << YAML::Value << guiBC.FontAssetHandle;
+
+			out << YAML::Key << "BackgroundTextureHandle" << YAML::Value << guiBC.BackgroundTextureHandle;
+			out << YAML::Key << "BackgroundColor" << YAML::Value << guiBC.BackgroundColor;
+
+			out << YAML::Key << "DisabledColor" << YAML::Value << guiBC.DisabledColor;
+			out << YAML::Key << "DisabledTextureHandle" << YAML::Value << guiBC.DisabledTextureHandle;
+
+			out << YAML::Key << "EnabledColor" << YAML::Value << guiBC.EnabledColor;
+			out << YAML::Key << "EnabledTextureHandle" << YAML::Value << guiBC.EnabledTextureHandle;
+
+			out << YAML::Key << "HoveredColor" << YAML::Value << guiBC.HoveredColor;
+			out << YAML::Key << "HoveredTextureHandle" << YAML::Value << guiBC.HoveredTextureHandle;
+
+			out << YAML::Key << "SelectedColor" << YAML::Value << guiBC.SelectedColor;
+			out << YAML::Key << "SelectedTextureHandle" << YAML::Value << guiBC.SelectedTextureHandle;
+
+			out << YAML::Key << "ForegroundTextureHandle" << YAML::Value << guiBC.ForegroundTextureHandle;
+			out << YAML::Key << "ForegroundColor" << YAML::Value << guiBC.ForegroundColor;
+
+			out << YAML::EndMap; // GUIButtonComponent
+		}
+
+		if (scene->HasComponent<GUIInputFieldComponent>(entity))
+		{
+			out << YAML::Key << "GUIInputFieldComponent";
+			out << YAML::BeginMap; // GUIInputFieldComponent
+			auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+
+			out << YAML::Key << "BackgroundColor" << YAML::Value << guiIFC.BackgroundColor;
+			out << YAML::Key << "BackgroundTextureHandle" << YAML::Value << guiIFC.BackgroundTextureHandle;
+
+			out << YAML::Key << "FillBackground" << YAML::Value << guiIFC.FillBackground;
+			out << YAML::Key << "TextSize" << YAML::Value << guiIFC.TextSize;
+
+			out << YAML::Key << "TextColor" << YAML::Value << guiIFC.TextColor;
+			out << YAML::Key << "BGColor" << YAML::Value << guiIFC.BGColor;
+
+			out << YAML::Key << "FontAssetHandle" << YAML::Value << guiIFC.FontAssetHandle;
+
+			out << YAML::Key << "KerningOffset" << YAML::Value << guiIFC.KerningOffset;
+			out << YAML::Key << "LineHeightOffset" << YAML::Value << guiIFC.LineHeightOffset;
+			out << YAML::Key << "Text" << YAML::Value << guiIFC.Text;
+
+			out << YAML::Key << "TextScalar" << YAML::Value << guiIFC.TextScalar;
+			out << YAML::Key << "TextOffset" << YAML::Value << guiIFC.TextStartingOffset;
+
+			out << YAML::Key << "Padding" << YAML::Value << guiIFC.Padding;
+
+			out << YAML::EndMap; // GUIInputFieldComponent
+		}
+
+		if (scene->HasComponent<GUISliderComponent>(entity))
+		{
+			out << YAML::Key << "GUISliderComponent";
+			out << YAML::BeginMap; // GUISliderComponent
+			auto& guiSC = scene->GetComponent<GUISliderComponent>(entity);
+
+			out << YAML::Key << "Direction" << YAML::Value << EditorAssetManager::SliderDirectionToString(guiSC.Direction);
+			out << YAML::Key << "Fill" << YAML::Value << guiSC.Fill;
+
+			out << YAML::Key << "BackgroundColor" << YAML::Value << guiSC.BackgroundColor;
+			out << YAML::Key << "BackgroundTextureHandle" << YAML::Value << guiSC.BackgroundTextureHandle;
+
+			out << YAML::Key << "DisabledColor" << YAML::Value << guiSC.DisabledColor;
+			out << YAML::Key << "DisabledTextureHandle" << YAML::Value << guiSC.DisabledTextureHandle;
+
+			out << YAML::Key << "EnabledColor" << YAML::Value << guiSC.EnabledColor;
+			out << YAML::Key << "EnabledTextureHandle" << YAML::Value << guiSC.EnabledTextureHandle;
+
+			out << YAML::Key << "HoveredColor" << YAML::Value << guiSC.HoveredColor;
+			out << YAML::Key << "HoveredTextureHandle" << YAML::Value << guiSC.HoveredTextureHandle;
+
+			out << YAML::Key << "SelectedColor" << YAML::Value << guiSC.SelectedColor;
+			out << YAML::Key << "SelectedTextureHandle" << YAML::Value << guiSC.SelectedTextureHandle;
+
+			out << YAML::Key << "ForegroundColor" << YAML::Value << guiSC.ForegroundColor;
+			out << YAML::Key << "ForegroundTextureHandle" << YAML::Value << guiSC.ForegroundTextureHandle;
+
+			out << YAML::EndMap; // GUISliderComponent
+		}
+		
+		if (scene->HasComponent<GUICheckboxComponent>(entity))
+		{
+			out << YAML::Key << "GUICheckboxComponent";
+			out << YAML::BeginMap; // GUICheckboxComponent
+			auto& guiCB = scene->GetComponent<GUICheckboxComponent>(entity);
+
+			out << YAML::Key << "BackgroundColor" << YAML::Value << guiCB.BackgroundColor;
+			out << YAML::Key << "BackgroundTextureHandle" << YAML::Value << guiCB.BackgroundTextureHandle;
+
+			out << YAML::Key << "DisabledColor" << YAML::Value << guiCB.DisabledColor;
+			out << YAML::Key << "DisabledTextureHandle" << YAML::Value << guiCB.DisabledTextureHandle;
+
+			out << YAML::Key << "EnabledColor" << YAML::Value << guiCB.EnabledColor;
+			out << YAML::Key << "EnabledTextureHandle" << YAML::Value << guiCB.EnabledTextureHandle;
+
+			out << YAML::Key << "HoveredColor" << YAML::Value << guiCB.HoveredColor;
+			out << YAML::Key << "HoveredTextureHandle" << YAML::Value << guiCB.HoveredTextureHandle;
+
+			out << YAML::Key << "SelectedColor" << YAML::Value << guiCB.SelectedColor;
+			out << YAML::Key << "SelectedTextureHandle" << YAML::Value << guiCB.SelectedTextureHandle;
+
+			out << YAML::Key << "ForegroundColor" << YAML::Value << guiCB.ForegroundColor;
+			out << YAML::Key << "ForegroundTextureHandle" << YAML::Value << guiCB.ForegroundTextureHandle;
+
+			out << YAML::EndMap; // GUICheckboxComponent
+		}
+
+		// TODO : GUIScrollRectComponent & GUIScrollbarComponent 
+#pragma endregion
+
+#pragma region Scripting
+
+		if (scene->HasComponent<NativeScriptComponent>(entity))
 		{
 			out << YAML::Key << "NativeScriptComponent";
 			out << YAML::BeginMap; // NativeScriptComponent
-			auto& component = e.GetComponent<NativeScriptComponent>();
+			auto& component = scene->GetComponent<NativeScriptComponent>(entity);
 
 			out << YAML::EndMap; // NativeScriptComponent
 		}
 
-		if (e.HasComponent<ScriptComponent>())
+		if (scene->HasComponent<ScriptComponent>(entity))
 		{
 			out << YAML::Key << "ScriptComponent";
 			out << YAML::BeginMap; // ScriptComponent
-			auto& component = e.GetComponent<ScriptComponent>();
+			auto& component = scene->GetComponent<ScriptComponent>(entity);
 
 			out << YAML::Key << "AssetHandle" << YAML::Value << component.AssetHandle;
 
@@ -306,7 +515,7 @@ namespace GE
 			if (Scripting::ScriptExists(component.AssetHandle))
 			{
 				Ref<Script> script = Scripting::GetScript(component.AssetHandle);
-				ScriptFieldMap& instanceFields = Scripting::GetEntityFields(e.GetComponent<IDComponent>().ID);
+				ScriptFieldMap& instanceFields = Scripting::GetEntityFields(scene->GetComponent<IDComponent>(entity).ID);
 				if (!instanceFields.empty())
 				{
 					out << YAML::Key << "ScriptFields" << YAML::Value;
@@ -365,25 +574,28 @@ namespace GE
 			}
 			out << YAML::EndMap; // ScriptComponent
 		}
+#pragma endregion
 
-		if (e.HasComponent<Rigidbody2DComponent>())
+#pragma region Physics
+
+		if (scene->HasComponent<Rigidbody2DComponent>(entity))
 		{
 			out << YAML::Key << "Rigidbody2DComponent";
 			out << YAML::BeginMap; // Rigidbody2DComponent
-			auto& component = e.GetComponent<Rigidbody2DComponent>();
+			auto& component = scene->GetComponent<Rigidbody2DComponent>(entity);
 			const std::string typeString = ComponentUtils::GetStringFromRigidBody2DType(component.Type);
 			out << YAML::Key << "Type" << YAML::Value << typeString;
 			out << YAML::Key << "FixedRotation" << YAML::Value << component.FixedRotation;
 			out << YAML::EndMap; // Rigidbody2DComponent
 		}
 
-		if (e.HasComponent<BoxCollider2DComponent>())
+		if (scene->HasComponent<BoxCollider2DComponent>(entity))
 		{
 			out << YAML::Key << "BoxCollider2DComponent";
 			out << YAML::BeginMap; // BoxCollider2DComponent
-			auto& component = e.GetComponent<BoxCollider2DComponent>();
+			auto& component = scene->GetComponent<BoxCollider2DComponent>(entity);
 			out << YAML::Key << "Offset" << YAML::Value << component.Offset;
-			out << YAML::Key << "Size" << YAML::Value << component.Size;
+			out << YAML::Key << "ChildSize" << YAML::Value << component.Size;
 			out << YAML::Key << "Density" << YAML::Value << component.Density;
 			out << YAML::Key << "Friction" << YAML::Value << component.Friction;
 			out << YAML::Key << "Restitution" << YAML::Value << component.Restitution;
@@ -392,11 +604,11 @@ namespace GE
 			out << YAML::EndMap; // BoxCollider2DComponent
 		}
 
-		if (e.HasComponent<CircleCollider2DComponent>())
+		if (scene->HasComponent<CircleCollider2DComponent>(entity))
 		{
 			out << YAML::Key << "CircleCollider2DComponent";
 			out << YAML::BeginMap; // CircleCollider2DComponent
-			auto& component = e.GetComponent<CircleCollider2DComponent>();
+			auto& component = scene->GetComponent<CircleCollider2DComponent>(entity);
 			out << YAML::Key << "Offset" << YAML::Value << component.Offset;
 			out << YAML::Key << "Radius" << YAML::Value << component.Radius;
 			out << YAML::Key << "Density" << YAML::Value << component.Density;
@@ -406,67 +618,133 @@ namespace GE
 			out << YAML::Key << "Show" << YAML::Value << component.Show;
 			out << YAML::EndMap; // CircleCollider2DComponent
 		}
+#pragma endregion
 
 		out << YAML::EndMap; // Entity
 	}
 
-	static bool DeserializeEntity(const YAML::detail::iterator_value& eDetails, Entity& e)
+	static bool DeserializeEntity(Ref<Scene> scene, const YAML::detail::iterator_value& eDetails, Entity& entity)
 	{
-		// TransformComponent
-		auto transformComponent = eDetails["TransformComponent"];
-		if (transformComponent)
+		// ActiveComponent
+		if (auto& activeComponent = eDetails["ActiveComponent"])
 		{
-			auto& nc = e.GetOrAddComponent<TransformComponent>();
-			nc.Translation = transformComponent["Translation"].as<glm::vec3>();
-			nc.Rotation = transformComponent["Rotation"].as<glm::vec3>();
-			nc.Scale = transformComponent["Scale"].as<glm::vec3>();
+			auto& ac = scene->GetOrAddComponent<ActiveComponent>(entity);
+			if(auto& active = activeComponent["Active"])
+				ac.Active = active.as<bool>();
+			if (auto& hidden = activeComponent["Hidden"])
+				ac.Hidden = hidden.as<bool>();
+		}
+
+		// RelationshipComponent
+		if (auto& relationshipComponent = eDetails["RelationshipComponent"])
+		{
+			auto& rsc = scene->GetOrAddComponent<RelationshipComponent>(entity);
+			if (auto& parent = relationshipComponent["Parent"])
+			{
+				uint64_t parentID = parent.as<uint64_t>();
+				std::vector<UUID> entityChildren = std::vector<UUID>();
+				if (auto& children = relationshipComponent["Children"])
+				{
+					for (auto& child : children)
+					{
+						entityChildren.push_back(child.as<UUID>());
+					}
+				}
+				
+				rsc = RelationshipComponent(parentID, entityChildren);
+				entityChildren.clear();
+				entityChildren = std::vector<UUID>();
+			}
+		}
+		// TransformComponent
+		if (auto& transformComponent = eDetails["TransformComponent"])
+		{
+			auto& trsc = scene->GetOrAddComponent<TransformComponent>(entity);
+			if(auto& translation = transformComponent["Translation"])
+				trsc.Translation = translation.as<glm::vec3>();
+			if (auto& rotation = transformComponent["Rotation"])
+				trsc.Rotation = rotation.as<glm::vec3>();
+			if (auto& scale = transformComponent["Scale"])
+				trsc.Scale = scale.as<glm::vec3>();
+			if(auto& pivot = transformComponent["PivotEnum"])
+				trsc.SetPivot((Pivot)pivot.as<uint32_t>());
 		}
 
 		// AudioSourceComponent
-		auto audioSourceComponent = eDetails["AudioSourceComponent"];
-		if (audioSourceComponent)
+		if (auto& audioSourceComponent = eDetails["AudioSourceComponent"])
 		{
-			auto& cc = e.GetOrAddComponent<AudioSourceComponent>();
-			cc.AssetHandle = audioSourceComponent["AssetHandle"].as<UUID>();
-			cc.Gain = audioSourceComponent["Gain"].as<float>();
-			cc.Pitch = audioSourceComponent["Pitch"].as<float>();
-			cc.Loop = audioSourceComponent["Loop"].as<bool>();
+			auto& asc = scene->GetOrAddComponent<AudioSourceComponent>(entity);
+			if(auto& handle = audioSourceComponent["AssetHandle"])
+				asc.AssetHandle = handle.as<UUID>();
+			if (auto& gain = audioSourceComponent["Gain"])
+				asc.Gain = gain.as<float>();
+			if (auto& handle = audioSourceComponent["Pitch"])
+				asc.Pitch = handle.as<float>();
+			if (auto& handle = audioSourceComponent["Loop"])
+				asc.Loop = handle.as<bool>();
 		}
 
 		// AudioListenerComponent
-		auto audioListenerComponent = eDetails["AudioListenerComponent"];
-		if (audioListenerComponent)
+		if (auto& audioListenerComponent = eDetails["AudioListenerComponent"])
 		{
-			auto& cc = e.GetOrAddComponent<AudioListenerComponent>();
+			auto& cc = scene->GetOrAddComponent<AudioListenerComponent>(entity);
 
 		}
-
+#pragma region Rendering
 		// RenderComponent
-		auto renderComponent = eDetails["RenderComponent"];
-		if (renderComponent)
+		if (auto renderComponent = eDetails["RenderComponent"])
 		{
-			auto& rc = e.GetOrAddComponent<RenderComponent>();
+			auto& rc = scene->GetOrAddComponent<RenderComponent>(entity);
 
-			if (auto IDs = renderComponent["IDs"])
+			if (auto& layers = renderComponent["Layers"])
 			{
-				for (auto id : IDs)
+				Ref<EditorLayerStack> els = Application::GetLayerStack<EditorLayerStack>();
+				for (auto& layer : layers)
 				{
-					bool loadableLayer = id["Loadable"].as<bool>();
-					std::string layerName = id["Name"].as<std::string>();
+					std::string layerName = std::string();
+					uint64_t layerID = 0;
 
-					Ref<EditorLayerStack> els = Application::GetLayerStack<EditorLayerStack>();
-					if (loadableLayer) // GE::Layer only
+					// TODO : Move to EditorProject Serialization
+					// Base Project will only serialize the ID
+					// Entity Component will only serialize the ID
+					if(auto& name = layer["Name"])
+						layerName = name.as<std::string>();
+					if(auto& id = layer["ID"])
+						layerID = id.as<uint64_t>();
+
+					rc.AddID(layerID);
+
+					if (els)
 					{
-						Ref<Layer> newLayer = CreateRef<Layer>();
-						if(els && els->InsertLayer(newLayer, layerName))
-							rc.AddID(newLayer->GetID());
-						else if(els->LayerNameExists(layerName))
-							rc.AddID(els->GetLayerIndex(layerName));
-					}
-					else // Any class inheriting from GE::Layer needs to be created in Client App.
-					{
-						if (els->LayerNameExists(layerName))
-							rc.AddID(els->GetLayerIndex(layerName));
+						if (!els->LayerExists(layerID) || !els->LayerNameExists(layerName))
+						{
+							const Layer::Type& layerType = EditorAssetManager::GetTypeFromName(layerName);
+							Ref<Layer> newLayer = nullptr;
+							switch (layerType)
+							{
+							case Layer::Type::Debug:
+							{
+								newLayer = CreateRef<EditorLayer>(layerID);
+							}
+							break;
+							case Layer::Type::Layer:
+							{
+								newLayer = CreateRef<Layer>(layerID);
+							}
+							break;
+							case Layer::Type::GUI:
+							{
+								newLayer = CreateRef<GUILayer>(layerID);
+							}
+							break;
+							default:
+								GE_WARN("Unknown Layer::Type.");
+								break;
+							}
+
+							if (els->InsertLayer(newLayer, layerName))
+								GE_TRACE("Layer Added - {0}, {1}", layerName.c_str(), layerID);
+						}
 					}
 
 				}
@@ -474,94 +752,337 @@ namespace GE
 		}
 
 		// CameraComponent
-		auto cameraComponent = eDetails["CameraComponent"];
-		if (cameraComponent)
+		if (auto& cameraComponent = eDetails["CameraComponent"])
 		{
-			auto& cc = e.GetOrAddComponent<CameraComponent>();
-			auto& cameraProps = cameraComponent["Camera"];
+			auto& cc = scene->GetOrAddComponent<CameraComponent>(entity);
+			if (auto& cameraProps = cameraComponent["Camera"])
+			{
+				if(auto& projectionType = cameraProps["Type"])
+					cc.SetProjectionType((SceneCamera::ProjectionType)projectionType.as<int>());
+				if(auto& fov = cameraProps["FOV"])
+					cc.SetFOV(fov.as<float>());
+				if (auto& nearclip = cameraProps["Near"])
+					cc.SetNearClip(nearclip.as<float>());
+				if (auto& farclip = cameraProps["Far"])
+					cc.SetFarClip(farclip.as<float>());
 
-			cc.ActiveCamera.SetProjectionType((SceneCamera::ProjectionType)cameraProps["Type"].as<int>());
-			cc.ActiveCamera.SetInfo(cameraProps["FOV"].as<float>(), cameraProps["Near"].as<float>(), cameraProps["Far"].as<float>());
-
-			cc.Primary = cameraComponent["Primary"].as<bool>();
-			cc.FixedAspectRatio = cameraComponent["FixedAspectRatio"].as<bool>();
-
+				if(auto& isPrimary = cameraComponent["Primary"])
+					cc.Primary = isPrimary.as<bool>();
+				if (auto& fixedAspectRatio = cameraComponent["FixedAspectRatio"])
+					cc.FixedAspectRatio = fixedAspectRatio.as<bool>();
+			}
 		}
 
 		// SpriteRendererComponent
-		auto spriteRendererComponent = eDetails["SpriteRendererComponent"];
-		if (spriteRendererComponent)
+		if (auto& spriteRendererComponent = eDetails["SpriteRendererComponent"])
 		{
-			auto& src = e.GetOrAddComponent<SpriteRendererComponent>();
-			src.Color = spriteRendererComponent["Color"].as<glm::vec4>();
-			if (spriteRendererComponent["AssetHandle"])
-			{
-				src.AssetHandle = spriteRendererComponent["AssetHandle"].as<UUID>();
-			}
+			auto& src = scene->GetOrAddComponent<SpriteRendererComponent>(entity);
+			if (auto& color = spriteRendererComponent["Color"])
+				src.Color = color.as<glm::vec4>();
+			if (auto& handle = spriteRendererComponent["AssetHandle"])
+				src.AssetHandle = handle.as<UUID>();
 
-			if (spriteRendererComponent["TilingFactor"])
-			{
-				src.TilingFactor = spriteRendererComponent["TilingFactor"].as<float>();
-			}
+			if (auto& tilingFactor = spriteRendererComponent["TilingFactor"])
+				src.TilingFactor = tilingFactor.as<float>();
 		}
 
 		// CircleRendererComponent
-		auto circleRendererComponent = eDetails["CircleRendererComponent"];
-		if (circleRendererComponent)
+		if (auto& circleRendererComponent = eDetails["CircleRendererComponent"])
 		{
-			auto& src = e.GetOrAddComponent<CircleRendererComponent>();
-			src.Color = circleRendererComponent["Color"].as<glm::vec4>();
-			src.Radius = circleRendererComponent["Radius"].as<float>();
-			src.Thickness = circleRendererComponent["Thickness"].as<float>();
-			src.Fade = circleRendererComponent["Fade"].as<float>();
+			auto& src = scene->GetOrAddComponent<CircleRendererComponent>(entity);
+			if(auto& color = circleRendererComponent["Color"])
+				src.Color = color.as<glm::vec4>();
+			if (auto& radius = circleRendererComponent["Radius"])
+				src.Radius = radius.as<float>();
+			if (auto& thickness = circleRendererComponent["Thickness"])
+				src.Thickness = thickness.as<float>();
+			if (auto& fade = circleRendererComponent["Fade"])
+				src.Fade = fade.as<float>();
 		}
 
 		// TextRendererComponent
-		auto textRendererComponent = eDetails["TextRendererComponent"];
-		if (textRendererComponent)
+		if (auto& textRendererComponent = eDetails["TextRendererComponent"])
 		{
-			auto& src = e.GetOrAddComponent<TextRendererComponent>();
-			src.TextColor = textRendererComponent["TextColor"].as<glm::vec4>();
-			src.BGColor = textRendererComponent["BGColor"].as<glm::vec4>();
+			auto& trc = scene->GetOrAddComponent<TextRendererComponent>(entity);
 
-			src.KerningOffset = textRendererComponent["KerningOffset"].as<float>();
-			src.LineHeightOffset = textRendererComponent["LineHeightOffset"].as<float>();
-			src.Text = textRendererComponent["Text"].as<std::string>();
+			if (auto& textColor = textRendererComponent["TextColor"])
+				trc.TextColor = textColor.as<glm::vec4>();
+			if (auto& bgColor = textRendererComponent["BGColor"])
+				trc.BGColor = bgColor.as<glm::vec4>();
 
-			src.AssetHandle = textRendererComponent["AssetHandle"].as<UUID>();
+			if (auto& xOffset = textRendererComponent["KerningOffset"])
+				trc.KerningOffset = xOffset.as<float>();
+			if (auto& yOffset = textRendererComponent["LineHeightOffset"])
+				trc.LineHeightOffset = yOffset.as<float>();
+
+			if (auto& text = textRendererComponent["Text"])
+				trc.Text = text.as<std::string>();
+
+			if (auto& scalar = textRendererComponent["TextScalar"])
+				trc.TextScalar = scalar.as<float>();
+			if (auto& offset = textRendererComponent["TextOffset"])
+				trc.TextOffset = offset.as<glm::vec2>();
+			if(auto& handle = textRendererComponent["AssetHandle"])
+				trc.AssetHandle = handle.as<UUID>();
 		}
 
-		// NativeScriptComponent
-		auto nativeScriptComponent = eDetails["NativeScriptComponent"];
-		if (nativeScriptComponent)
+#pragma region UI
+
+		if (auto& guiCanvasComponent = eDetails["GUICanvasComponent"])
 		{
-			auto& src = e.GetOrAddComponent<NativeScriptComponent>();
+			auto& guiCC = scene->GetOrAddComponent<GUICanvasComponent>(entity);
+			if (auto& control = guiCanvasComponent["ControlMouse"])
+				guiCC.ControlMouse = control.as<bool>();
+			if (auto& show = guiCanvasComponent["ShowMouse"])
+				guiCC.ShowMouse = show.as<bool>();
+			if(auto& mode = guiCanvasComponent["Mode"])
+				guiCC.Mode = (CanvasMode)mode.as<uint32_t>();
+		}
+
+		if (auto& guiLayoutComponent = eDetails["GUILayoutComponent"])
+		{
+			auto& guiLOC = scene->GetOrAddComponent<GUILayoutComponent>(entity);
+			if(auto& mode = guiLayoutComponent["Mode"])
+				guiLOC.Mode = (LayoutMode)mode.as<uint32_t>();
+			if(auto& offset = guiLayoutComponent["StartingOffset"])
+				guiLOC.StartingOffset = offset.as<glm::vec2>();
+			if(auto& size = guiLayoutComponent["ChildSize"])
+				guiLOC.ChildSize = size.as<glm::vec2>();
+			if (auto& padding = guiLayoutComponent["ChildPadding"])
+				guiLOC.ChildPadding = padding.as<glm::vec2>();
+		}
+
+		// TODO : GUIMaskComponent
+
+		if (auto& guiImageComponent = eDetails["GUIImageComponent"])
+		{
+			auto& guiIC = scene->GetOrAddComponent<GUIImageComponent>(entity);
+
+			if (auto& color = guiImageComponent["Color"])
+				guiIC.Color = color.as<glm::vec4>();
+			if (auto& handle = guiImageComponent["TextureHandle"])
+				guiIC.TextureHandle = handle.as<UUID>();
+			if (auto& tilingFactor = guiImageComponent["TilingFactor"])
+				guiIC.TilingFactor = tilingFactor.as<float>();
+
+		}
+
+		if (auto& guiButtonComponent = eDetails["GUIButtonComponent"])
+		{
+			auto& guiBC = scene->GetOrAddComponent<GUIButtonComponent>(entity);
+
+			if (auto& fHandle = guiButtonComponent["FontAssetHandle"])
+				guiBC.FontAssetHandle = fHandle.as<UUID>();
+
+			if (auto& scalar = guiButtonComponent["KerningOffset"])
+				guiBC.KerningOffset = scalar.as<float>();
+			if (auto& scalar = guiButtonComponent["LineHeightOffset"])
+				guiBC.LineHeightOffset = scalar.as<float>();
+
+			if (auto& text = guiButtonComponent["Text"])
+				guiBC.Text = text.as<std::string>();
+
+			if (auto& textColor = guiButtonComponent["TextColor"])
+				guiBC.TextColor = textColor.as<glm::vec4>();
+			if (auto& scalar = guiButtonComponent["BGColor"])
+				guiBC.BGColor = scalar.as<glm::vec4>();
+
+			if (auto& scalar = guiButtonComponent["TextScalar"])
+				guiBC.TextScalar = scalar.as<float>();
+			if (auto& offset = guiButtonComponent["TextOffset"])
+				guiBC.TextStartingOffset = offset.as<glm::vec2>();
+
+			if (auto& bgScalar = guiButtonComponent["TextSize"])
+				guiBC.TextSize = bgScalar.as<glm::vec2>();
+
+			if (auto& bgColor = guiButtonComponent["BackgroundColor"])
+				guiBC.BackgroundColor = bgColor.as<glm::vec4>();
+			if (auto& bgHandle = guiButtonComponent["BackgroundTextureHandle"])
+				guiBC.BackgroundTextureHandle = bgHandle.as<UUID>();
+
+			if (auto& iac = guiButtonComponent["DisabledColor"])
+				guiBC.DisabledColor = iac.as<glm::vec4>();
+			if (auto& iaHandle = guiButtonComponent["DisabledTextureHandle"])
+				guiBC.DisabledTextureHandle = iaHandle.as<UUID>();
+
+			if (auto& ac = guiButtonComponent["EnabledColor"])
+				guiBC.EnabledColor = ac.as<glm::vec4>();
+			if(auto& aHandle = guiButtonComponent["EnabledTextureHandle"])
+				guiBC.EnabledTextureHandle = aHandle.as<UUID>();
+
+			if (auto& hv = guiButtonComponent["HoveredColor"])
+				guiBC.HoveredColor = hv.as<glm::vec4>();
+			if (auto& sHandle = guiButtonComponent["HoveredTextureHandle"])
+				guiBC.HoveredTextureHandle = sHandle.as<UUID>();
+
+			if (auto& sc = guiButtonComponent["SelectedColor"])
+				guiBC.SelectedColor = sc.as<glm::vec4>();
+			if (auto& sHandle = guiButtonComponent["SelectedTextureHandle"])
+				guiBC.SelectedTextureHandle = sHandle.as<UUID>();
+
+			if (auto& fgColor = guiButtonComponent["ForegroundColor"])
+				guiBC.ForegroundColor = fgColor.as<glm::vec4>();
+			if (auto& fgHandle = guiButtonComponent["ForegroundTextureHandle"])
+				guiBC.ForegroundTextureHandle = fgHandle.as<UUID>();
+
+		}
+
+		if (auto& guiInputFieldComponent = eDetails["GUIInputFieldComponent"])
+		{
+			auto& guiIFC = scene->GetOrAddComponent<GUIInputFieldComponent>(entity);
+
+			if(auto& bgColor = guiInputFieldComponent["BackgroundColor"])
+				guiIFC.BackgroundColor = bgColor.as<glm::vec4>();
+			if (auto& bgHandle = guiInputFieldComponent["BackgroundTextureHandle"])
+				guiIFC.BackgroundTextureHandle = bgHandle.as<UUID>();
+
+			if (auto& fillBG = guiInputFieldComponent["FillBackground"])
+				guiIFC.FillBackground = fillBG.as<bool>();
+
+			if (auto& fontHandle = guiInputFieldComponent["FontAssetHandle"])
+				guiIFC.FontAssetHandle = fontHandle.as<UUID>();
+
+			if (auto& xOffset = guiInputFieldComponent["KerningOffset"])
+				guiIFC.KerningOffset = xOffset.as<float>();
+			if (auto& yOffset = guiInputFieldComponent["LineHeightOffset"])
+				guiIFC.LineHeightOffset = yOffset.as<float>();
+
+			if(auto& input = guiInputFieldComponent["Text"])
+				guiIFC.Text = input.as<std::string>();
+
+			if (auto& textColor = guiInputFieldComponent["TextColor"])
+				guiIFC.TextColor = textColor.as<glm::vec4>();
+			if (auto& bgColor = guiInputFieldComponent["BGColor"])
+				guiIFC.BGColor = bgColor.as<glm::vec4>();
+
+			if (auto& scalar = guiInputFieldComponent["TextScalar"])
+				guiIFC.TextScalar = scalar.as<float>();
+			if (auto& offset = guiInputFieldComponent["TextOffset"])
+				guiIFC.TextStartingOffset = offset.as<glm::vec2>();
+
+			if (auto& padding = guiInputFieldComponent["Padding"])
+				guiIFC.Padding = padding.as<glm::vec2>();
+
+		}
+
+		if (auto& guiSliderComponent = eDetails["GUISliderComponent"])
+		{
+			auto& guiSC = scene->GetOrAddComponent<GUISliderComponent>(entity);
+
+			if (auto& direction = guiSliderComponent["Direction"])
+			{
+				std::string dirStr = direction.as<std::string>();
+				guiSC.Direction = EditorAssetManager::StringToSliderDirection(dirStr);
+			}
+			if (auto& current = guiSliderComponent["Fill"])
+				guiSC.Fill = current.as<float>();
+
+			if (auto& bgColor = guiSliderComponent["BackgroundColor"])
+				guiSC.BackgroundColor = bgColor.as<glm::vec4>();
+			if (auto& bgHandle = guiSliderComponent["BackgroundTextureHandle"])
+				guiSC.BackgroundTextureHandle = bgHandle.as<UUID>();
+
+			if (auto& iac = guiSliderComponent["DisabledColor"])
+				guiSC.DisabledColor = iac.as<glm::vec4>();
+			if (auto& iaHandle = guiSliderComponent["DisabledTextureHandle"])
+				guiSC.DisabledTextureHandle = iaHandle.as<UUID>();
+
+			if (auto& ac = guiSliderComponent["EnabledColor"])
+				guiSC.EnabledColor = ac.as<glm::vec4>();
+			if (auto& aHandle = guiSliderComponent["EnabledTextureHandle"])
+				guiSC.EnabledTextureHandle = aHandle.as<UUID>();
+
+			if (auto& hv = guiSliderComponent["HoveredColor"])
+				guiSC.HoveredColor = hv.as<glm::vec4>();
+			if (auto& sHandle = guiSliderComponent["HoveredTextureHandle"])
+				guiSC.HoveredTextureHandle = sHandle.as<UUID>();
+
+			if (auto& sc = guiSliderComponent["SelectedColor"])
+				guiSC.SelectedColor = sc.as<glm::vec4>();
+			if (auto& sHandle = guiSliderComponent["SelectedTextureHandle"])
+				guiSC.SelectedTextureHandle = sHandle.as<UUID>();
+
+			if (auto& fgColor = guiSliderComponent["ForegroundColor"])
+				guiSC.ForegroundColor = fgColor.as<glm::vec4>();
+			if (auto& fgHandle = guiSliderComponent["ForegroundTextureHandle"])
+				guiSC.ForegroundTextureHandle = fgHandle.as<UUID>();
+
+		}
+
+		if (auto& guiCheckboxComponent = eDetails["GUICheckboxComponent"])
+		{
+			auto& guiSC = scene->GetOrAddComponent<GUICheckboxComponent>(entity);
+
+			if (auto& bgColor = guiCheckboxComponent["BackgroundColor"])
+				guiSC.BackgroundColor = bgColor.as<glm::vec4>();
+			if (auto& bgHandle = guiCheckboxComponent["BackgroundTextureHandle"])
+				guiSC.BackgroundTextureHandle = bgHandle.as<UUID>();
+			
+			if (auto& iac = guiCheckboxComponent["DisabledColor"])
+				guiSC.DisabledColor = iac.as<glm::vec4>();
+			if (auto& iaHandle = guiCheckboxComponent["DisabledTextureHandle"])
+				guiSC.DisabledTextureHandle = iaHandle.as<UUID>();
+
+			if (auto& ac = guiCheckboxComponent["EnabledColor"])
+				guiSC.EnabledColor = ac.as<glm::vec4>();
+			if (auto& aHandle = guiCheckboxComponent["EnabledTextureHandle"])
+				guiSC.EnabledTextureHandle = aHandle.as<UUID>();
+
+			if (auto& hv = guiCheckboxComponent["HoveredColor"])
+				guiSC.HoveredColor = hv.as<glm::vec4>();
+			if (auto& sHandle = guiCheckboxComponent["HoveredTextureHandle"])
+				guiSC.HoveredTextureHandle = sHandle.as<UUID>();
+
+			if (auto& sc = guiCheckboxComponent["SelectedColor"])
+				guiSC.SelectedColor = sc.as<glm::vec4>();
+			if (auto& sHandle = guiCheckboxComponent["SelectedTextureHandle"])
+				guiSC.SelectedTextureHandle = sHandle.as<UUID>();
+
+			if (auto& fgColor = guiCheckboxComponent["ForegroundColor"])
+				guiSC.ForegroundColor = fgColor.as<glm::vec4>();
+			if (auto& fgHandle = guiCheckboxComponent["ForegroundTextureHandle"])
+				guiSC.ForegroundTextureHandle = fgHandle.as<UUID>();
+
+		}
+
+		// TODO : GUIScrollRectComponent & GUIScrollbarComponent
+#pragma endregion
+
+
+#pragma endregion
+
+#pragma region Scripting
+		// NativeScriptComponent
+		if (auto& nativeScriptComponent = eDetails["NativeScriptComponent"])
+		{
+			auto& nsc = scene->GetOrAddComponent<NativeScriptComponent>(entity);
 		}
 
 		// ScriptComponent
-		auto scriptComponent = eDetails["ScriptComponent"];
-		if (scriptComponent)
+		if (auto& scriptComponent = eDetails["ScriptComponent"])
 		{
-			auto& src = e.GetOrAddComponent<ScriptComponent>();
+			auto& sc = scene->GetOrAddComponent<ScriptComponent>(entity);
 
-			auto handle = scriptComponent["AssetHandle"];
-			if(handle)
-				src.AssetHandle = handle.as<uint64_t>();
+			if(auto& handle = scriptComponent["AssetHandle"])
+				sc.AssetHandle = handle.as<uint64_t>();
 
-			// Fields
-			auto fields = scriptComponent["ScriptFields"];
-			if (fields)
+			if (auto& fields = scriptComponent["ScriptFields"])
 			{
-				auto& deserializedInstanceFields = Scripting::GetEntityFields(e.GetComponent<IDComponent>().ID);
+				auto& deserializedInstanceFields = Scripting::GetEntityFields(scene->GetComponent<IDComponent>(entity).ID);
 
-				for (auto field : fields)
+				for (auto& field : fields)
 				{
-					std::string scriptFieldName = field["Name"].as<std::string>();
-					std::string scriptFieldTypeString = field["Type"].as<std::string>();
-					ScriptField::Type scriptFieldType = Scripting::StringToScriptFieldType(scriptFieldTypeString);
+					std::string scriptFieldName = std::string();
+					std::string scriptFieldTypeStr = std::string();
+					if(auto& fieldName = field["Name"])
+						scriptFieldName = fieldName.as<std::string>();
+					if (auto& fieldTypeStr = field["Type"])
+						scriptFieldTypeStr = fieldTypeStr.as<std::string>();
+
+					ScriptField::Type scriptFieldType = Scripting::StringToScriptFieldType(scriptFieldTypeStr);
 
 					ScriptField& instanceScriptField = deserializedInstanceFields[scriptFieldName];
-					instanceScriptField = ScriptField(scriptFieldTypeString, scriptFieldType, nullptr);
+					instanceScriptField = ScriptField(scriptFieldTypeStr, scriptFieldType, nullptr);
 					if (auto& fieldData = field["Data"])
 					{
 						switch (scriptFieldType)
@@ -635,44 +1156,62 @@ namespace GE
 
 		}
 
+#pragma endregion
+
+#pragma region Physics
+
 		// RigidBody2DComponent
-		auto rigidBody2DComponent = eDetails["Rigidbody2DComponent"];
-		if (rigidBody2DComponent)
+		if (auto& rigidBody2DComponent = eDetails["Rigidbody2DComponent"])
 		{
-			auto& src = e.GetOrAddComponent<Rigidbody2DComponent>();
-			src.FixedRotation = rigidBody2DComponent["FixedRotation"].as<bool>();
-			src.Type = ComponentUtils::GetRigidBody2DTypeFromString(rigidBody2DComponent["Type"].as<std::string>());
+			auto& rb2DC = scene->GetOrAddComponent<Rigidbody2DComponent>(entity);
+			if(auto& fixedRotation = rigidBody2DComponent["FixedRotation"])
+				rb2DC.FixedRotation = fixedRotation.as<bool>();
+			if(auto& type = rigidBody2DComponent["Type"])
+				rb2DC.Type = ComponentUtils::GetRigidBody2DTypeFromString(type.as<std::string>());
 		}
 
 		// BoxCollider2DComponent
-		auto boxCollider2DComponent = eDetails["BoxCollider2DComponent"];
-		if (boxCollider2DComponent)
+		if (auto& boxCollider2DComponent = eDetails["BoxCollider2DComponent"])
 		{
-			auto& src = e.GetOrAddComponent<BoxCollider2DComponent>();
-			src.Offset = boxCollider2DComponent["Offset"].as<glm::vec2>();
-			src.Size = boxCollider2DComponent["Size"].as<glm::vec2>();
-			src.Density = boxCollider2DComponent["Density"].as<float>();
-			src.Friction = boxCollider2DComponent["Friction"].as<float>();
-			src.Restitution = boxCollider2DComponent["Restitution"].as<float>();
-			src.RestitutionThreshold = boxCollider2DComponent["RestitutionThreshold"].as<float>();
-
-			src.Show = boxCollider2DComponent["Show"].as<bool>();
+			auto& bc2DC = scene->GetOrAddComponent<BoxCollider2DComponent>(entity);
+	
+			if (auto& offset = boxCollider2DComponent["Offset"])
+				bc2DC.Offset = offset.as<glm::vec2>();
+			if (auto& size = boxCollider2DComponent["ChildSize"])
+				bc2DC.Size = size.as<glm::vec2>();
+			if (auto& density = boxCollider2DComponent["Density"])
+				bc2DC.Density = density.as<float>();
+			if (auto& friction = boxCollider2DComponent["Friction"])
+				bc2DC.Friction = friction.as<float>();
+			if (auto& restitution = boxCollider2DComponent["Restitution"])
+				bc2DC.Restitution = restitution.as<float>();
+			if (auto& restitutionThreshold = boxCollider2DComponent["RestitutionThreshold"])
+				bc2DC.RestitutionThreshold = restitutionThreshold.as<float>();
+			if (auto& show = boxCollider2DComponent["Show"])
+				bc2DC.Show = show.as<bool>();
 		}
 
 		// CircleCollider2DComponent
-		auto circleCollider2DComponent = eDetails["CircleCollider2DComponent"];
-		if (circleCollider2DComponent)
+		if (auto& circleCollider2DComponent = eDetails["CircleCollider2DComponent"])
 		{
-			auto& src = e.GetOrAddComponent<CircleCollider2DComponent>();
-			src.Offset = circleCollider2DComponent["Offset"].as<glm::vec2>();
-			src.Radius = circleCollider2DComponent["Radius"].as<float>();
-			src.Density = circleCollider2DComponent["Density"].as<float>();
-			src.Friction = circleCollider2DComponent["Friction"].as<float>();
-			src.Restitution = circleCollider2DComponent["Restitution"].as<float>();
-			src.RestitutionThreshold = circleCollider2DComponent["RestitutionThreshold"].as<float>();
+			auto& cc2DC = scene->GetOrAddComponent<CircleCollider2DComponent>(entity);
+			if(auto& offset = circleCollider2DComponent["Offset"])
+				cc2DC.Offset = offset.as<glm::vec2>();
+			if(auto& radius = circleCollider2DComponent["Radius"])
+				cc2DC.Radius = radius.as<float>();
+			if (auto& density = circleCollider2DComponent["Density"])
+				cc2DC.Density = density.as<float>();
+			if (auto& friction = circleCollider2DComponent["Friction"])
+				cc2DC.Friction = friction.as<float>();
+			if (auto& restitution = circleCollider2DComponent["Restitution"])
+				cc2DC.Restitution = restitution.as<float>();
+			if (auto& restitutionThreshold = circleCollider2DComponent["RestitutionThreshold"])
+				cc2DC.RestitutionThreshold = restitutionThreshold.as<float>();
+			if (auto& show = circleCollider2DComponent["Show"])
+				cc2DC.Show = show.as<bool>();
 
-			src.Show = circleCollider2DComponent["Show"].as<bool>();
 		}
+#pragma endregion
 
 		return true;
 	}
@@ -803,34 +1342,50 @@ namespace GE
 
 #pragma endregion
 
-#pragma region Script
-	/*
-	* Expected input = "namespace/className.cs"
-	* Expected output = "namespace.className"
-	*/
- 	static const std::string GetScriptFullNameFromFilepath(const std::filesystem::path& filepath)
-	{
-		const std::string filePathStr = filepath.string();
-		uint64_t pos = filePathStr.find('/');
-		std::string nameSpace = filePathStr.substr(0, pos);
-		std::string className = filePathStr.substr(pos + 1);
-		return std::string(nameSpace + "." + className);
-	}
-
-	/*
-	* Expected input = "namespace.className"
-	* Expected output = "namespace/className.cs"
-	*/
-	static const std::string GetScriptFilepathFromFullName(const std::string& fullName)
-	{
-		uint64_t pos = fullName.find('.');
-		std::string nameSpace = fullName.substr(0, pos);
-		std::string className = fullName.substr(pos + 1);
-		return std::string(nameSpace + "/" + className + ".cs");
-	}
-#pragma endregion
-
 	AssetMetadata EditorAssetManager::s_NullMetadata = AssetMetadata();
+
+	std::map<Pivot, std::string> EditorAssetManager::s_PivotStrs = 
+	{
+			{Pivot::Center, "Center"},
+			{Pivot::LowerLeft, "LowerLeft"},
+			{Pivot::TopLeft, "TopLeft"},
+			{Pivot::TopRight, "TopRight"},
+			{Pivot::LowerRight, "LowerRight"},
+			{ Pivot::MiddleRight, "MiddleRight" },
+			{ Pivot::TopMiddle, "TopMiddle" },
+			{ Pivot::MiddleLeft, "MiddleLeft" },
+			{ Pivot::BottomMiddle, "BottomMiddle" }
+	};
+
+	std::map<Layer::Type, std::string> EditorAssetManager::s_LayerTypeStrs =
+	{
+			{ Layer::Type::Debug, "Editor" },
+			{ Layer::Type::Layer, "Game" },
+			{ Layer::Type::GUI, "GUI" }
+	};
+
+	std::map<CanvasMode, std::string> EditorAssetManager::s_CanvasModeStrs =
+	{
+		{CanvasMode::None, "None"},
+		{CanvasMode::Overlay, "Overlay"},
+		{CanvasMode::World, "World"},
+	};
+	std::map<LayoutMode, std::string> EditorAssetManager::s_LayoutModeStrs =
+	{
+		{LayoutMode::Horizontal, "Horizontal"},
+		{LayoutMode::Vertical, "Vertical"}
+	};
+
+	std::map<SliderDirection, std::string> EditorAssetManager::s_SliderDirectionStrs =
+	{
+		{SliderDirection::None, "None"},
+		{SliderDirection::Left, "Left"},
+		{SliderDirection::Center, "Center"},
+		{SliderDirection::Right, "Right"},
+		{SliderDirection::Top, "Top"},
+		{SliderDirection::Middle, "Middle"},
+		{SliderDirection::Bottom, "Bottom"}
+	};
 
 	EditorAssetManager::EditorAssetManager(const AssetMap& assetMap /*= AssetMap()*/) : m_LoadedAssets(assetMap)
 	{
@@ -839,13 +1394,25 @@ namespace GE
 
 	EditorAssetManager::~EditorAssetManager()
 	{
+		InvalidateAssets();
 		m_LoadedAssets.clear();
+	}
+
+	void EditorAssetManager::InvalidateAssets()
+	{
+		for (auto& [handle, asset] : m_LoadedAssets)
+		{
+			asset->Invalidate();
+		}
 	}
 
 	const AssetMetadata& EditorAssetManager::GetMetadata(UUID handle)
 	{
 		if (!HandleExists(handle))
+		{
+			GE_WARN("Asset Handle doesn't exist in EditorAssetManager. \n\tReturning null Metadata.");
 			return s_NullMetadata;
+		}
 		return m_AssetRegistry->GetAssetMetadata(handle);
 	}
 
@@ -895,15 +1462,15 @@ namespace GE
 		if (!asset)
 			return false;
 		UUID handle = asset->GetHandle();
-		// Special case for Scripts since they cannot be added through AssetPanel currently
+		// Special case for Scripts
 		if (asset->GetType() == Asset::Type::Script && !HandleExists(handle))
 		{
 			AssetMetadata metadata = AssetMetadata();
 			Ref<Script> script = Project::GetAssetAs<Script>(asset);
 			if (script)
 			{
-				std::filesystem::path path = GetScriptFilepathFromFullName(script->GetFullName());
-				metadata = AssetMetadata(asset->GetHandle(), path);
+				std::filesystem::path className = script->GetName() + ".cs";
+				metadata = AssetMetadata(asset->GetHandle(), className);
 				AddAsset(metadata);
 			}
 		}
@@ -984,9 +1551,20 @@ namespace GE
 	bool EditorAssetManager::SerializeAssets()
 	{
 		// Prepare assets
+		for (auto& [className, script] : Scripting::GetScripts())
+		{
+			UUID scriptHandle = script->GetHandle();
+			if (!m_AssetRegistry->AssetExists(scriptHandle))
+			{
+				std::filesystem::path filePath = std::filesystem::path(script->GetName() + ".cs");
+				AssetMetadata metadata = AssetMetadata(scriptHandle, filePath);
+				m_AssetRegistry->AddAsset(metadata);
+			}
+		}
 		for (const auto& [handle, metadata] : m_AssetRegistry->GetRegistry())
 		{
 			// if Asset isn't Scene, get from loaded. Otherwise, get runtime Scene from Project.
+			// This ensures that changes made to the Scene are saved.
 			Ref<Asset> asset = ((AssetLoaded(handle) && m_LoadedAssets.at(handle)->GetType() != Asset::Type::Scene) 
 				? m_LoadedAssets.at(handle) : Project::GetRuntimeScene());
 
@@ -1033,6 +1611,8 @@ namespace GE
 
 	bool EditorAssetManager::DeserializeAssets()
 	{
+		m_LoadedAssets.clear();
+		m_LoadedAssets = AssetMap();
 		m_AssetRegistry->Clear();
 		const std::filesystem::path& path = Project::GetPathToAsset(m_AssetRegistry->GetFilePath());
 		if (path.empty())
@@ -1098,47 +1678,54 @@ namespace GE
 			GE_ERROR("Failed to load Scene Asset file. {0}\n\t{1}", path.string(), e.what());
 		}
 
-		if (!data["Scene"])
-			return nullptr;
-
-		std::string sceneName = data["Scene"].as<std::string>();
-		Ref<Scene> scene = CreateRef<Scene>(metadata.Handle);
-		GE_TRACE("Deserializing Scene\n\tUUID : {0}\n\tName : {1}\n\tPath : {2}", (uint64_t)metadata.Handle, sceneName.c_str(), path.string().c_str());
-
-		auto entities = data["Entities"];
-		if (entities)
+		Ref<Scene> scene = nullptr;
+		if (auto& sceneName = data["Scene"])
 		{
-			GE_TRACE("Deserializing Entities");
+			std::string name = sceneName.as<std::string>();
+			scene = CreateRef<Scene>(metadata.Handle);
+			GE_TRACE("Deserializing Scene\n\tUUID : {0}\n\tName : {1}\n\tPath : {2}", (uint64_t)metadata.Handle, name.c_str(), path.string().c_str());
 
-			for (auto e : entities)
+			if (auto& entities = data["Entities"])
 			{
-				// ID Component 
-				uint64_t uuid = e["Entity"].as<uint64_t>(); // UUID
+				GE_TRACE("Deserializing Entities");
 
-				// TagComponent
-				std::string tag = std::string();
-				uint32_t tagID = 0;
-				auto tc = e["TagComponent"];
-				if (tc)
+				for (auto& entityDetails : entities)
 				{
-					tag = tc["Tag"].as<std::string>();
-					tagID = tc["ID"].as<uint32_t>();
-					if(!tag.empty())
-						Project::AddTag(tag, tagID);
+					// ID Component 
+					UUID uuid = 0;
+					if(auto& entityUUID = entityDetails["Entity"])
+						uuid = entityUUID.as<UUID>();
+
+					// TagComponent
+					std::string tagStr = std::string();
+					uint32_t tcID = 0;
+					if(auto& tc = entityDetails["TagComponent"])
+					{
+						if(auto& tag = tc["Tag"])
+							tagStr = tag.as<std::string>();
+						if(auto& tagID = tc["ID"])
+							tcID = tagID.as<uint32_t>();
+						if (!tagStr.empty())
+							Project::AddTag(tagStr, tcID);
+					}
+
+					// NameComponent
+					if (auto& nc = entityDetails["NameComponent"])
+					{
+						std::string name = std::string("New Entity");
+						if(auto& entityName = nc["Name"])
+							name = entityName.as<std::string>();
+
+						Entity deserializedEntity = scene->CreateEntityWithUUID(uuid, name, tcID);
+						if (DeserializeEntity(scene, entityDetails, deserializedEntity))
+							GE_TRACE("UUID : {0},\n\tTag : {1}\n\tName : {2}", (uint64_t)uuid, Project::GetStrByTag(scene->GetComponent<TagComponent>(deserializedEntity).TagID).c_str(), name.c_str());
+						else
+							GE_ERROR("Failed to Deserialize Entity.");
+					}
 				}
-
-				// NameComponent
-				std::string name = std::string("New Entity");
-				auto nc = e["NameComponent"];
-				if (nc)
-					name = nc["Name"].as<std::string>();
-
-				Entity deserializedEntity = scene->CreateEntityWithUUID(uuid, name, tagID);
-				if(DeserializeEntity(e, deserializedEntity))
-					GE_TRACE("UUID : {0},\n\tTag : {1}\n\tName : {2}", uuid, Project::GetTagByKey(deserializedEntity.GetComponent<TagComponent>().ID).c_str(), name.c_str());
 			}
-		}
 
+		}
 		return scene;
 	}
 
@@ -1324,14 +1911,13 @@ namespace GE
 
 	Ref<Asset> EditorAssetManager::DeserializeScript(const AssetMetadata& metadata)
 	{
-		std::string filePathStr = metadata.FilePath.string();
-		std::filesystem::path noExPath = filePathStr.substr(0, filePathStr.find_last_of("."));
-		std::string fullNameFromPath = GetScriptFullNameFromFilepath(noExPath);
+		std::filesystem::path fileName = metadata.FilePath.filename();
+		std::string className = fileName.stem().string();
 		const std::unordered_map<std::string, Ref<Script>>& scripts = Scripting::GetScripts();
-		if (scripts.find(fullNameFromPath) != scripts.end())
+		if (scripts.find(className) != scripts.end())
 		{
-			Scripting::SetScriptHandle(fullNameFromPath, metadata.Handle);
-			return scripts.at(fullNameFromPath);
+			Scripting::SetScriptHandle(className, metadata.Handle);
+			return scripts.at(className);
 		}
 
 		return nullptr;
@@ -1353,7 +1939,7 @@ namespace GE
 			std::vector<Entity> entities = scene->GetAllEntitiesWith<IDComponent>();
 			for (Entity entity : entities)
 			{
-				SerializeEntity(out, entity);
+				SerializeEntity(out, scene, entity);
 			}
 			entities.clear();
 			entities = std::vector<Entity>();

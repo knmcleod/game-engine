@@ -56,15 +56,15 @@
   <ItemGroup Condition=" '$(Configuration)|$(Platform)' == 'Dist|x64' ">
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\GE\Components.cs" />
-    <Compile Include="src\GE\Entity.cs" />
-    <Compile Include="src\GE\Event.cs" />
-    <Compile Include="src\GE\Input.cs" />
-    <Compile Include="src\GE\InternalCalls.cs" />
-    <Compile Include="src\GE\KeyCodes.cs" />
-    <Compile Include="src\GE\Log.cs" />
-    <Compile Include="src\GE\MouseCodes.cs" />
-    <Compile Include="src\GE\Vectors.cs" />
+    <Compile Include="src\Components.cs" />
+    <Compile Include="src\Entity.cs" />
+    <Compile Include="src\Event.cs" />
+    <Compile Include="src\Input.cs" />
+    <Compile Include="src\InternalCalls.cs" />
+    <Compile Include="src\KeyCodes.cs" />
+    <Compile Include="src\Log.cs" />
+    <Compile Include="src\MouseCodes.cs" />
+    <Compile Include="src\Vectors.cs" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

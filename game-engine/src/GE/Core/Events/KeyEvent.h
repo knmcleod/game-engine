@@ -1,26 +1,17 @@
 #pragma once
 
 #include "Event.h"
+#include "GE/Core/Input/Input.h"
 
 namespace GE
 {
-	class KeyEvent : public Event
+	class KeyPressedEvent : public Event
 	{
 	public:
-		KeyEvent(int keycode) : m_KeyCode(keycode) {}
-		inline int GetKeyCode() const { return m_KeyCode; }
+		KeyPressedEvent(Input::KeyCode key, int repeatCount) 
+			: Event(false, Type::KeyPressed), m_KeyCode(key), m_RepeatCount(repeatCount) {}
 
-		EVENT_CLASS_CATEGORY(Keyboard | Input)
-	protected:
-		int m_KeyCode;
-	};
-
-	class KeyPressedEvent : public KeyEvent
-	{
-	public:
-		KeyPressedEvent(int keycode, int repeatCount)
-			: KeyEvent(keycode), m_RepeatCount(repeatCount) {}
-
+		inline const Input::KeyCode& GetKeyCode() const { return m_KeyCode; }
 		inline int GetRepeatCount() const { return m_RepeatCount; }
 
 		std::string ToString() const override
@@ -32,38 +23,42 @@ namespace GE
 
 		EVENT_CLASS_TYPE(KeyPressed)
 	private:
+		Input::KeyCode m_KeyCode;
 		int m_RepeatCount;
 	};
 
-	class KeyReleasedEvent : public KeyEvent
+	class KeyReleasedEvent : public Event
 	{
 	public:
-		KeyReleasedEvent(int keycode)
-			: KeyEvent(keycode) {}
+		KeyReleasedEvent(Input::KeyCode keycode)
+			: Event(false, Type::KeyReleased), m_KeyCode(keycode){}
 
+		inline const Input::KeyCode& GetKeyCode() { return m_KeyCode; }
 		std::string ToString() const override
 		{
 			std::stringstream ss;
 			ss << "KeyReleasedEvent: " << m_KeyCode;
 			return ss.str();
 		}
-
 		EVENT_CLASS_TYPE(KeyReleased)
+	private:
+		Input::KeyCode m_KeyCode;
 	};
 
-	class KeyTypedEvent : public KeyEvent
+	class KeyTypedEvent : public Event
 	{
 	public:
-		KeyTypedEvent(int keycode)
-			: KeyEvent(keycode) {}
+		KeyTypedEvent(Input::KeyCode keycode) : Event(false, Type::KeyTyped), m_KeyCode(keycode) {}
 
+		inline const Input::KeyCode& GetKeyCode() { return m_KeyCode; }
 		std::string ToString() const override
 		{
 			std::stringstream ss;
 			ss << "KeyTypedEvent: " << m_KeyCode;
 			return ss.str();
 		}
-
 		EVENT_CLASS_TYPE(KeyTyped)
+	private:
+		Input::KeyCode m_KeyCode;
 	};
 }

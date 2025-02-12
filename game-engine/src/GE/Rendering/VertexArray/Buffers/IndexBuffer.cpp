@@ -10,7 +10,7 @@ namespace GE
 {
 	Ref<IndexBuffer> IndexBuffer::Create(uint32_t size)
 	{
-		switch (Renderer::Get()->GetAPI())
+		switch (Renderer::InstanceAPI())
 		{
 		case Renderer::API::None:
 			GE_CORE_ASSERT(false, "No Renderer API given!");

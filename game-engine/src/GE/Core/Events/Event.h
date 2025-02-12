@@ -1,8 +1,9 @@
 #pragma once
 
+#include "GE/Core/Core.h"
+
 #include <string>
 #include <sstream>
-#include <GE/Core/Core.h>
 
 namespace GE
 {
@@ -21,45 +22,32 @@ namespace GE
 			WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved,
 			AppTick, AppUpdate, AppRender,
 			KeyPressed, KeyReleased, KeyTyped,
-			MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled
+			MousePressed, MouseReleased, MouseMoved, MouseScrolled
 		};
 
-		enum Category
-		{
-			None = 0,
-			Application = BIT(0),
-			Input = BIT(1),
-			Keyboard = BIT(2),
-			Mouse = BIT(3),
-			MouseButton = BIT(4)
-		};
-
-		virtual Type GetEventType() const { return Type::None; }
-		virtual const char* GetName() const { return nullptr; }
-		virtual int GetCategoryFlags() const { return Category::None; }
-		virtual std::string ToString() const { return GetName(); }
-
-		inline bool IsInCategory(Category category) const
-		{
-			return GetCategoryFlags() & category;
-		}
+		Event() = default;
+		Event(bool isHandled, Type type) 
+			: m_Handled(isHandled), m_Type(type) {} 
+		
 		inline bool IsHandled() const { return m_Handled; }
 		inline void SetHandled(bool status) { m_Handled = status; }
-	private:
+		inline Type GetEventType() const { return m_Type; }
+
+		virtual const char* GetName() const { return nullptr; }
+		virtual std::string ToString() const { return GetName(); }
+		
+	protected:
 		bool m_Handled = false;
+		Type m_Type = Type::None;
 
 	};
-
-#define EVENT_CLASS_TYPE(type) static Event::Type GetStaticType() {	return Event::Type::##type; }\
-								virtual Event::Type GetEventType() const override {	return GetStaticType(); }\
-								virtual const char* GetName() const override {	return #type; }
-
-#define EVENT_CLASS_CATEGORY(category) virtual int GetCategoryFlags() const override {	return category; }
+#define EVENT_CLASS_TYPE(type) static Event::Type GetStaticType() { return Event::Type::##type; }
 
 	class EventDispatcher
 	{
 		template<typename T>
 		using EventFn = std::function<bool(T&)>;
+
 	public:
 		EventDispatcher(Event& event) : m_Event(event)
 		{
@@ -72,9 +60,8 @@ namespace GE
 			if (m_Event.GetEventType() == T::GetStaticType())
 			{
 				m_Event.m_Handled = func(*(T*)&m_Event);
-				return true;
 			}
-			return false;
+			return m_Event.m_Handled;
 		}
 	private:
 		Event& m_Event;

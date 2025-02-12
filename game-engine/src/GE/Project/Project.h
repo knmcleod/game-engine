@@ -1,19 +1,18 @@
 #pragma once
 
-#include "GE/Asset/AssetManager.h"
 #include "GE/Asset/Assets/Scene/Scene.h"
+#include "GE/Asset/AssetManager.h"
 
 #include "GE/Core/Core.h"
+#include "GE/Core/Events/Event.h"
+#include "GE/Core/Time/Timestep.h"
 
 #include <filesystem>
 
 namespace GE
 {
-	class Scene;
-
 	class Project
 	{
-		friend class Application;
 		friend class ProjectSerializer;
 	public:
 		struct Config
@@ -25,6 +24,8 @@ namespace GE
 			std::string Name = std::string("NewProject");
 			// Application/Project Width & Height
 			uint32_t Width = 1280, Height = 720;
+
+			// TODO : Add IsFullScreen
 
 			UUID SceneHandle = 0;
 			Ref<Scene> RuntimeScene = nullptr;
@@ -49,20 +50,10 @@ namespace GE
 			}
 		};
 
-		inline static Ref<Project> GetActive() { return s_ActiveProject; }
-
 		inline static const Config& GetConfig() { return s_ActiveProject->m_Config; }
 		inline static const std::string& GetName() { return s_ActiveProject->m_Config.Name; }
 		inline static const uint32_t& GetWidth() { return s_ActiveProject->m_Config.Width; }
 		inline static const uint32_t& GetHeight() { return s_ActiveProject->m_Config.Height; }
-		/*
-		* Example output = scripts/bin/GE-ScriptCore.dll
-		*/
-		inline static const std::filesystem::path& GetScriptCorePath() { return s_ActiveProject->m_Config.ScriptCorePath; }
-		/*
-		* Example output = scripts/bin/projName.dll
-		*/
-		inline static const std::filesystem::path& GetScriptAppPath() { return s_ActiveProject->m_Config.ScriptAppPath; }
 
 		// Returns RuntimeScene(temp/copy Asset)
 		inline static Ref<Scene> GetRuntimeScene() { return s_ActiveProject->m_Config.RuntimeScene; }
@@ -118,6 +109,15 @@ namespace GE
 			GE_CORE_ASSERT(s_ActiveProject, "Cannot get Project Asset Path. No Active Project.");
 			return std::filesystem::path(GetScriptAssetPath() / path);
 		}
+
+		/*
+		* Example output = scripts/bin/GE-ScriptCore.dll
+		*/
+		inline static const std::filesystem::path& GetScriptCorePath() { return s_ActiveProject->m_Config.ScriptCorePath; }
+		/*
+		* Example output = scripts/bin/projName.dll
+		*/
+		inline static const std::filesystem::path& GetScriptAppPath() { return s_ActiveProject->m_Config.ScriptAppPath; }
 
 #pragma region Asset Manager & Asset Control
 
@@ -181,17 +181,46 @@ namespace GE
 		*/
 		static void SetSceneHandle(UUID handle);
 
-		static void StartScene(const Scene::State& state);
-		static void UpdateScene(Timestep ts);
-		static void StopScene();
-		static void StepScene(int steps);
+		/*
+		* 
+		* @param state : Scene State enum. 0 = Stop, 1 = Run, 2 = Pause
+		*/
+		static void StartScene(const Scene::State& state) { s_ActiveProject->SceneStart(state); }
+		static void UpdateScene(Timestep ts) { s_ActiveProject->SceneUpdate(ts); }
+		static void StopScene() { s_ActiveProject->SceneStop(); }
+		static void StepScene(int steps) { s_ActiveProject->SceneStep(steps); }
+		static bool EventScene(Event& e, Entity entity);
+		static Ref<Scene> ResetScene() { return s_ActiveProject->SceneReset(); }
+
+		static const std::map<uint32_t, std::string>& GetTags() { return s_ActiveProject->m_Config.AllTags; }
+		/*
+		* Returns string value from AllTags map using id key
+		* if id key is not found, will initialize and return id = 0 to "Default"
+		*/
+		static const std::string& GetStrByTag(uint32_t id);
+		/*
+		* Searches Config::AllTags for tag value, then returns id key. 
+		* If not found, Returns 0.
+		* @param tag : tag string. 
+		*/
+		static const uint32_t GetTagFromStr(const std::string& tag);
+		static bool TagExists(const std::string& tag);
+		static bool TagIDExists(uint32_t id);
+		static bool AddTag(const std::string& tag, uint32_t id);
+		static bool RemoveTag(uint32_t id);
+	
+	private:
+		void SceneStart(const Scene::State& state);
+		void SceneUpdate(Timestep ts);
+		void SceneStop();
+		void SceneStep(int steps);
 		/*
 		* If RuntimeScene exists, will call Scripting Events for provided Entity & return if handled. See: GE-ScriptCore::Entity.
 		* Scene needs to be Running || Paused, and an EntityScriptFieldMap must exist for Entity.IDComponent.
 		* @param e : Event to handle
-		* @param entity : entity to call scripting events for
+		* @param entityID : internal entityID of Entity 
 		*/
-		static bool SceneEvent(Event& e, Entity entity);
+		bool SceneEvent(Event& e, Entity entity);
 		/*
 		* Creates temp/copy Scene using current SceneHandle and AssetManager
 		* if successful, will Stop RuntimeScene if necessary amd set new RuntimeScene
@@ -199,24 +228,7 @@ namespace GE
 		* else
 		* * returns false
 		*/
-		static bool ResetScene();
-
-		static const std::map<uint32_t, std::string>& GetTags() { return s_ActiveProject->m_Config.AllTags; }
-		/*
-		* Returns string value from AllTags map using id key
-		* if id key is not found, will initialize and return id = 0 to "Default"
-		*/
-		static const std::string& GetTagByKey(uint32_t id);
-		/*
-		* Searches Config::AllTags for tag value, then returns id key. 
-		* If not found, Returns 0.
-		* @param tag : tag string. 
-		*/
-		static uint32_t GetIDFromTag(const std::string& tag);
-		static bool TagExists(const std::string& tag);
-		static bool TagIDExists(uint32_t id);
-		static bool AddTag(const std::string& tag, uint32_t id);
-		static bool RemoveTag(uint32_t id);
+		Ref<Scene> SceneReset();
 	private: 
 		Config m_Config = Config();
 		Ref<AssetManager> m_AssetManager;

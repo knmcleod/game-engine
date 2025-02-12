@@ -1,5 +1,6 @@
 #include "EditorCamera.h"
 
+#include <GE/Core/Application/Application.h>
 #include <GE/Core/Input/Input.h>
 #include <GE/Project/Project.h>
 #include <GE/Rendering/Renderer/Renderer.h>
@@ -40,37 +41,77 @@ namespace GE
 
 	glm::vec3 EditorCamera::GetVertical() const
 	{
-		return glm::rotate(GetOrientation(), glm::vec3(0.0f, 1.0f, 0.0f));
+		return glm::rotate(glm::quat(glm::vec3(-p_Pitch, -p_Yaw, 0.0f)), glm::vec3(0.0f, 1.0f, 0.0f));
 	}
 	
 	glm::vec3 EditorCamera::GetHorizontal() const
 	{
-		return glm::rotate(GetOrientation(), glm::vec3(1.0f, 0.0f, 0.0f));
+		return glm::rotate(glm::quat(glm::vec3(-p_Pitch, -p_Yaw, 0.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
 	}
 	
 	glm::vec3 EditorCamera::GetDepth() const
 	{
-		return glm::rotate(GetOrientation(), glm::vec3(0.0f, 0.0f, -1.0f));
+		return glm::rotate(glm::quat(glm::vec3(-p_Pitch, -p_Yaw, 0.0f)), glm::vec3(0.0f, 0.0f, -1.0f));
 	}
 	
 	void EditorCamera::OnUpdate(Timestep ts)
 	{
-		if (Input::IsKeyPressed(Input::KEY_LEFT_ALT))
+		if (Application::IsKeyPressed(Input::KEY_LEFT_ALT))
 		{
-			const glm::vec2& mouse{ Input::GetMouseX(), Input::GetMouseY() };
+			const glm::vec2 mouse = Application::GetWindowCursor();
 			glm::vec2 delta = (mouse - m_InitialMousePosition) * 0.003f;
 			m_InitialMousePosition = mouse;
-			if (Input::IsMouseButtonPressed(Input::MOUSE_BUTTON_MIDDLE))
+			if (Application::IsMousePressed(Input::MOUSE_BUTTON_MIDDLE))
 				MousePan(delta);
-			else if (Input::IsMouseButtonPressed(Input::MOUSE_BUTTON_LEFT))
+			else if (Application::IsMousePressed(Input::MOUSE_BUTTON_LEFT))
 				MouseOrbit(delta);
-			else if (Input::IsMouseButtonPressed(Input::MOUSE_BUTTON_RIGHT))
+			else if (Application::IsMousePressed(Input::MOUSE_BUTTON_RIGHT))
 				MouseZoom(delta.y);
 		}
 
-		SceneCamera::OnUpdate(ts);
+		UpdateViewProjection();
 	}
 	
+	void EditorCamera::UpdateViewProjection()
+	{
+		if (p_ViewportWidth == 0 || p_ViewportHeight == 0)
+			return;
+
+		p_AspectRatio = (float)p_ViewportWidth / (float)p_ViewportHeight;
+
+		const glm::mat4& identityMat4 = Renderer::IdentityMat4();
+		glm::mat4 cameraTransform = glm::mat4(0.0f);
+		glm::mat4 cameraRotation = glm::mat4(1.0f);
+		switch (p_ProjectionType)
+		{
+		case ProjectionType::Orthographic:
+		{
+			float orthoLeft = -p_FOV * p_AspectRatio * 0.5f;
+			float orthoRight = p_FOV * p_AspectRatio * 0.5f;
+			float orthoBottom = -p_FOV * 0.5f;
+			float orthoTop = p_FOV * 0.5f;
+
+			p_Projection = glm::ortho(orthoLeft, orthoRight, orthoBottom, orthoTop, p_NearClip, p_FarClip);
+
+			cameraRotation = glm::rotate(identityMat4, p_Roll, { 0, 0, 1 });
+		}
+		break;
+		case ProjectionType::Perspective:
+		{
+			p_Projection = glm::perspective(glm::radians(p_FOV), p_AspectRatio, p_NearClip, p_FarClip);
+
+			CalculatePosition();
+			cameraRotation = glm::rotate(identityMat4, -p_Pitch, { 1, 0, 0 })
+				* glm::rotate(identityMat4, -p_Yaw, { 0, 1, 0 })
+				* glm::rotate(identityMat4, -p_Roll, { 0, 0, 1 });
+		}
+		break;
+		}
+
+		cameraTransform = glm::translate(identityMat4, p_Position) * cameraRotation;
+		p_ViewMatrix = glm::inverse(cameraTransform);
+	}
+
 	void EditorCamera::OnEvent(Event& e)
 	{
 		EventDispatcher dispatcher(e);

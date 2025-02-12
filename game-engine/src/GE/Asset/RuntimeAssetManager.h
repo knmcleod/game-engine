@@ -10,6 +10,7 @@ namespace GE
 {
 	// Foward declaration
 	class Entity;
+	class Scene;
 
 	class RuntimeAssetManager : public AssetManager
 	{
@@ -17,26 +18,40 @@ namespace GE
 		enum class ComponentType
 		{
 			None = 0,
-			ID = 1,
-			Tag = 2,
-			Name = 3,
-			Transform = 4,
-			AudioSource = 5,
-			AudioListener = 6,
-			Render = 7,
-			Camera = 8,
-			SpriteRenderer = 9,
-			CircleRenderer = 10,
-			TextRenderer = 11,
-			Rigidbody2D = 12,
-			BoxCollider2D = 13,
-			CircleCollider2D = 14,
-			NativeScript = 15,
-			Script = 16
+			ID,
+			Tag,
+			Name,
+			Active,
+			Relationship,
+			Transform,
+			AudioSource,
+			AudioListener,
+			Render,
+			Camera,
+			SpriteRenderer,
+			CircleRenderer,
+			TextRenderer,
+			GUICanvas,
+			GUILayout,
+			// TODO : GUIMaskComponent
+			GUIImage,
+			GUIButton,
+			GUIInputField,
+			GUISlider,
+			GUICheckbox,
+			// TODO : GUIScrollRectComponent & GUIScrollbarComponent
+			Rigidbody2D,
+			BoxCollider2D,
+			CircleCollider2D,
+			NativeScript,
+			Script
 		};
 
 		RuntimeAssetManager(const AssetMap& assetMap = AssetMap());
 		virtual ~RuntimeAssetManager() override;
+
+		virtual void InvalidateAssets() override;
+
 		/*
 		* Returns loaded asset from Loaded Asset Map or nullptr
 		*	if Asset Pack loads asset, add to Loaded and return asset
@@ -89,14 +104,14 @@ namespace GE
 		Ref<Asset> DeserializeAsset(const AssetInfo& assetInfo);
 
 		bool SerializeScene(Ref<Asset> asset, AssetInfo& assetInfo);
-		bool SerializeEntity(SceneInfo::EntityInfo& eInfo, const Entity& e);
+		bool SerializeEntity(Ref<Scene>, SceneInfo::EntityInfo& eInfo, const Entity& e);
 		bool SerializeTexture2D(Ref<Asset> asset, AssetInfo& assetInfo);
 		bool SerializeFont(Ref<Asset> asset, AssetInfo& assetInfo);
 		bool SerializeAudio(Ref<Asset> asset, AssetInfo& assetInfo);
 		bool SerializeScript(Ref<Asset> asset, AssetInfo& assetInfo);
 
 		Ref<Asset> DeserializeScene(const AssetInfo& assetInfo);
-		bool DeserializeEntity(const SceneInfo::EntityInfo& eInfo, Entity& e);
+		bool DeserializeEntity(Ref<Scene> scene, const SceneInfo::EntityInfo& eInfo, Entity& e);
 		Ref<Asset> DeserializeTexture2D(const AssetInfo& assetInfo);
 		Ref<Asset> DeserializeFont(const AssetInfo& assetInfo);
 		Ref<Asset> DeserializeAudio(const AssetInfo& assetInfo);
@@ -104,6 +119,7 @@ namespace GE
 
 	private:
 		Ref<AssetPack> m_AssetPack = nullptr;
+		// <uint64_t, Ref<Asset>>
 		AssetMap m_LoadedAssets;
 	};
 

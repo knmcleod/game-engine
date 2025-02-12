@@ -1,62 +1,81 @@
 #pragma once
 
-#include "GE/Core/Time/Timestep.h"
-
-#include "GE/Core/Events/Event.h"
 #include "GE/Core/Events/KeyEvent.h"
 #include "GE/Core/Events/MouseEvent.h"
 
+#include "GE/Rendering/Camera/Camera.h"
+
 namespace GE
 {
-	// Forward declaration
-	class Camera;
+	// Forward declarations
+	class Scene;
 	class Entity;
 
 	class Layer
 	{
+		friend class Application;
 		friend class LayerStack;
 	public:
+		enum class Type
+		{
+			Debug = 0,
+			Layer,
+			GUI
+		};
 		struct Config
 		{
-			// Set by LayerStack when inserted, matches index in stack. Zero is valid.
-			uint64_t ID = 0;
-			// Default true. Should be false if Layer is inherited.
-			bool IsBase = true;
-
 			Config() = default;
 			Config(const Config& other) = default;
-			Config(uint64_t id, bool isBase) : ID(id), IsBase(isBase)
+			Config(uint64_t id) : ID(id)
 			{
 
 			}
+			// Set by LayerStack when inserted, matches index in stack. Zero is valid.
+			uint64_t ID = 0;
 		};
 
 		Layer() = default;
-		Layer(uint64_t id, bool isBase = true);
+		Layer(uint64_t id);
 		virtual ~Layer();
 
 		// Zero is valid
 		inline const uint64_t& GetID() const { return p_Config.ID; }
-		inline bool IsBase() const { return p_Config.IsBase; }
-
-		virtual void OnAttach();
-		virtual void OnDetach();
-		virtual void OnUpdate(Timestep ts);
-
-		virtual void OnEvent(Event& e);
-
 	protected:
 		void ClearID() { p_Config.ID = 0; }
 		void SetID(uint64_t index) { p_Config.ID = index; }
-		bool Validate(Entity entity) const;
+
+		/*
+		* Renders entity & its children recursively. 
+		* Intended to be used by OnRender(Ref<Scene>, const Camera*&).
+		*
+		* @param scene : runtime scene
+		* @param entity : entity to render
+		* @param translationOffset : offset from entity to parent
+		* @param rotationOffset : offset from entity to parent
+		*/
+		virtual void RenderEntity(Ref<Scene> scene, Entity entity, glm::vec3& translationOffset, glm::vec3& rotationOffset);
+		virtual void OnAttach(Ref<Scene> scene);
+		virtual void OnDetach();
+
+		/*
+		* Should be used for Rendering.
+		* Main Framebuffer will always be bound, unless unbound in method.
+		*/
+		virtual void OnUpdate(Ref<Scene> scene, Timestep ts);
+		
 		/*
 		* Renders all Entities in RuntimeScene that are layer valid in using Layer::Validate(Entity)
+		* Should be called in Layer::OnUpdate().
 		*/
-		virtual void OnRender(Camera* camera);
-		virtual bool OnKeyPressed(KeyPressedEvent& e);
-		virtual bool OnMousePressed(MouseButtonPressedEvent& e);
+		virtual void OnRender(Ref<Scene> scene, const Camera*& camera);
 
+		virtual void OnEvent(Event& e);
+		virtual bool OnKeyPressed(KeyPressedEvent& e);
+		virtual bool OnMousePressed(MousePressedEvent& e);
+		virtual bool OnMouseMoved(MouseMovedEvent& e);
+		virtual bool OnMouseScrolled(MouseScrolledEvent& e);
 	protected:
 		Config p_Config = Config();
 	};
+
 }

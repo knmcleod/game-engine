@@ -32,6 +32,7 @@ namespace GE
 			: p_Handle(handle), p_Type(type), p_Status(status) {}
 		virtual ~Asset() {}
 
+		virtual void Invalidate() { p_Type = Type::None;  p_Handle = 0; p_Status = Status::Invalid; }
 		/*
 		*	Returns Copy of Asset by CreateRef<this>()
 		*	By default, returns nullptr.

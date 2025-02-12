@@ -29,7 +29,7 @@ project "demo"
 
 	files
 	{
-		"src/demo/**.cs"
+		"src/**.cs"
 	}
 
 	links

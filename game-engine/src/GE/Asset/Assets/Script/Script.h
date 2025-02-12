@@ -43,6 +43,17 @@ namespace GE
 			m_Data.ClassField = classField;
 		}
 
+		~ScriptField()
+		{
+			Invalidate();
+		}
+
+		void Invalidate()
+		{
+			m_Data.ClassField = nullptr;
+			m_DataBuffer.Release();
+		}
+
 		template<typename T>
 		const T GetValue() const
 		{
@@ -76,10 +87,15 @@ namespace GE
 		~Script();
 
 		/*
+		* Clears internal class
+		*/
+		void Invalidate() override;
+
+		/*
 		* Returns class fullName. Example: "namespace.className"
 		* Do not use for Scripting Asset filepath, 
-		*	instead use Project::GetPathToScriptAsset("GetNamespace()/GetName()")
-		* AssetMetadata filepath = "GetNamespace()/GetName()"
+		*	instead use Project::GetPathToScriptAsset("GetName()")
+		* AssetMetadata filepath = "GetName()"
 		*/
 		const std::string GetFullName() const { return std::string(m_ClassNamespace + "." + m_ClassName); }
 		
@@ -95,6 +111,7 @@ namespace GE
 			return m_Fields.find(name) != m_Fields.end();
 		}
 
+		bool IsCore() const { return m_ClassNamespace == "GE"; }
 	private:
 		std::string m_ClassNamespace;
 		std::string m_ClassName;

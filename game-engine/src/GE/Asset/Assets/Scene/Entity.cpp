@@ -2,94 +2,21 @@
 
 #include "Entity.h"
 #include "Scene.h"
+#include "Components/Components.h"
 
 #include "GE/Core/Input/Input.h"
 #include "GE/Project/Project.h"
 
 namespace GE
 {
-	static std::string GetMouseButtonStringFromKey(int key)
+	Entity::Entity(uint32_t entityID) : p_EntityID(entityID)
 	{
-		switch (key)
-		{
-		case Input::MOUSE_BUTTON_1:
-			return "Mouse1";
-			break;
 
-		case Input::MOUSE_BUTTON_2:
-			return "Mouse2";
-			break;
-
-		case Input::MOUSE_BUTTON_3:
-			return "Mouse3";
-			break;
-
-		case Input::MOUSE_BUTTON_4:
-			return "Mouse4";
-			break;
-
-		case Input::MOUSE_BUTTON_5:
-			return "Mouse5";
-			break;
-
-		case Input::MOUSE_BUTTON_6:
-			return "Mouse6";
-			break;
-
-		case Input::MOUSE_BUTTON_7:
-			return "Mouse7";
-			break;
-
-		case Input::MOUSE_BUTTON_8:
-			return "Mouse8";
-			break;
-
-		default:
-			GE_CORE_ERROR("Unrecognized mouse key");
-			break;
-		}
-		return "None";
-	}
-
-	Entity::Entity(uint32_t entityID, Scene* scene) : p_EntityID(entityID), p_Scene(scene)
-	{
-		if (p_Scene == nullptr && Project::GetRuntimeScene())
-			p_Scene = Project::GetRuntimeScene().get();
 	}
 
 	Entity::~Entity()
 	{
-		p_Scene = nullptr;
-		ClearEntityID();
-	}
 
-	void Entity::OnEvent(Event& e)
-	{
-		EventDispatcher dispatcher(e);
-		dispatcher.Dispatch<MouseButtonPressedEvent>(GE_BIND_EVENT_FN(Entity::OnMousePressed));
-		dispatcher.Dispatch<MouseButtonReleasedEvent>(GE_BIND_EVENT_FN(Entity::OnMouseReleased));
-
-	}
-
-	bool Entity::OnMousePressed(MouseButtonPressedEvent& e)
-	{
-		std::string name = std::string("No Name");
-		if (this->HasComponent<NameComponent>())
-			name = this->GetComponent<NameComponent>().Name;
-		std::string buttonString = GetMouseButtonStringFromKey(e.GetMouseButton());
-		GE_CORE_TRACE("Entity: {0} \n\tMouseButtonPressed : {1}", name.c_str(), buttonString.c_str());
-
-		return false;
-	}
-
-	bool Entity::OnMouseReleased(MouseButtonReleasedEvent& e)
-	{
-		std::string name = std::string("No Name");
-		if (this->HasComponent<NameComponent>())
-			name = this->GetComponent<NameComponent>().Name;
-		std::string buttonString = GetMouseButtonStringFromKey(e.GetMouseButton());
-		GE_CORE_TRACE("Entity: {0} \n\tMouseButtonReleased : {1}", name.c_str(), buttonString.c_str());
-		return false;
 	}
 
 #pragma region OnComponentAdded
@@ -116,10 +43,23 @@ namespace GE
 	}
 
 	template<>
+	void Entity::OnComponentAdded<ActiveComponent>()
+	{
+	}
+
+	template<>
+	void Entity::OnComponentAdded<RelationshipComponent>()
+	{
+
+	}
+
+	template<>
 	void Entity::OnComponentAdded<TransformComponent>()
 	{
 
 	}
+
+#pragma region Audio
 
 	template<>
 	void Entity::OnComponentAdded<AudioSourceComponent>()
@@ -132,6 +72,9 @@ namespace GE
 	{
 
 	}
+#pragma endregion
+
+#pragma region Rendering
 
 	template<>
 	void Entity::OnComponentAdded<RenderComponent>()
@@ -142,26 +85,92 @@ namespace GE
 	template<>
 	void Entity::OnComponentAdded<CameraComponent>()
 	{
-		GetOrAddComponent<RenderComponent>(false);
+
 	}
+
+#pragma region 2D
 
 	template<>
 	void Entity::OnComponentAdded<SpriteRendererComponent>()
 	{
-		GetOrAddComponent<RenderComponent>(false);
+
 	}
 
 	template<>
 	void Entity::OnComponentAdded<CircleRendererComponent>()
 	{
-		GetOrAddComponent<RenderComponent>(false);
+
 	}
 
 	template<>
 	void Entity::OnComponentAdded<TextRendererComponent>()
 	{
-		GetOrAddComponent<RenderComponent>(false);
+
 	}
+#pragma endregion
+
+#pragma region UI
+	template<>
+	void Entity::OnComponentAdded<GUIComponent>()
+	{
+
+	}
+	template<>
+	void Entity::OnComponentAdded<GUICanvasComponent>()
+	{
+
+	}
+	template<>
+	void Entity::OnComponentAdded<GUILayoutComponent>()
+	{
+
+	}
+	template<>
+	void Entity::OnComponentAdded<GUIMaskComponent>()
+	{
+
+	}
+	template<>
+	void Entity::OnComponentAdded<GUIImageComponent>()
+	{
+
+	}
+	template<>
+	void Entity::OnComponentAdded<GUIButtonComponent>()
+	{
+
+	}
+	template<>
+	void Entity::OnComponentAdded<GUIInputFieldComponent>()
+	{
+
+	}
+	template<>
+	void Entity::OnComponentAdded<GUISliderComponent>()
+	{
+
+	}
+	template<>
+	void Entity::OnComponentAdded<GUICheckboxComponent>()
+	{
+
+	}
+
+	template<>
+	void Entity::OnComponentAdded<GUIScrollRectComponent>()
+	{
+
+	}
+	template<>
+	void Entity::OnComponentAdded<GUIScrollbarComponent>()
+	{
+
+	}
+#pragma endregion
+
+#pragma endregion
+
+#pragma region Physics
 
 	template<>
 	void Entity::OnComponentAdded<Rigidbody2DComponent>()
@@ -177,6 +186,9 @@ namespace GE
 	void Entity::OnComponentAdded<CircleCollider2DComponent>()
 	{
 	}
+#pragma endregion
+
+#pragma region Scripting
 
 	template<>
 	void Entity::OnComponentAdded<NativeScriptComponent>()
@@ -188,4 +200,7 @@ namespace GE
 	{
 	}
 #pragma endregion
+
+#pragma endregion
+
 }

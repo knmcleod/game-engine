@@ -80,7 +80,30 @@ namespace GE
 
 #pragma endregion
 
+#pragma region Input Internal Calls
+	static bool Input_IsKeyDown(Input::KeyCode keyCode)
+	{
+		return Application::IsKeyPressed(keyCode);
+	}
+
+	static bool Input_IsMouseDown(Input::MouseCode mouseCode)
+	{
+		return Application::IsMousePressed(mouseCode);
+	}
+#pragma endregion
+
 #pragma region Entity & Component Internal Calls
+
+	static bool Entity_IsHovered(UUID uuid)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			if (Entity hoveredEntity = Application::GetHoveredEntity())
+				return scene->GetComponent<IDComponent>(hoveredEntity).ID == uuid;
+		}
+		return false;
+	}
+
 	static bool Entity_HasComponent(UUID uuid, MonoReflectionType* componentType)
 	{
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
@@ -89,7 +112,7 @@ namespace GE
 			{
 				MonoType* type = mono_reflection_type_get_type(componentType);
 				GE_CORE_ASSERT(Scripting::HasComponentFunc(type), "Unable to find Component Type.");
-				return Scripting::GetHasComponentFunc(type, entity);
+				return Scripting::GetHasComponentFunc(type, scene, entity);
 			}
 		}
 		GE_CORE_ERROR("Scripting: Could not determine if Entity has Component.");
@@ -102,28 +125,28 @@ namespace GE
 		{
 			std::string nameStr = Scripting::MonoStringToString(name);
 			if (Entity entity = scene->GetEntityByName(nameStr))
-				return (uint64_t)entity.GetComponent<IDComponent>().ID;
+				return scene->GetComponent<IDComponent>(entity).ID;
 		}
 		return 0;
 	}
 
 	static MonoObject* Entity_GetScriptInstance(uint64_t uuid)
 	{
-		if(Ref<ScriptInstance> instance = Scripting::GetScriptInstance(uuid))
+		if(Ref<ScriptInstance> instance = Scripting::GetEntityInstance(uuid))
 			return instance->GetMonoObject();
 		return nullptr;
 	}
+#pragma region TransformComponent
 
-// Transform Component
 	static void TransformComponent_GetTranslation(UUID uuid, glm::vec3* translation)
 	{
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TransformComponent>())
+			if (entity && scene->HasComponent<TransformComponent>(entity))
 			{
-				auto& tc = entity.GetComponent<TransformComponent>();
-				*translation = tc.Translation;
+				auto& trsc = scene->GetComponent<TransformComponent>(entity);
+				*translation = trsc.Translation;
 			}
 		}
 	}
@@ -133,32 +156,97 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TransformComponent>())
+			if (entity && scene->HasComponent<TransformComponent>(entity))
 			{
-				auto& tc = entity.GetComponent<TransformComponent>();
-				tc.Translation = *translation;
+				auto& trsc = scene->GetComponent<TransformComponent>(entity);
+				trsc.Translation = *translation;
 
 				// Special case if Entity has Camera
-				// Makes sure Cameras view matrix matches transform
-				if (entity.HasComponent<CameraComponent>())
-				{
-					auto& cc = entity.GetComponent<CameraComponent>();
-					cc.ActiveCamera.SetViewMatrix(tc.GetTransform());
-					cc.ActiveCamera.SetPosition(tc.Translation);
-				}
+				// Ensures SceneCamera moves with parent
+				scene->SyncCamera(entity, trsc.GetOffsetTranslation(), trsc.Rotation);
 			}
 		}
 	}
-	
-// Audio Component
+
+	static void TransformComponent_GetPivot(UUID uuid, glm::vec3* pivot)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<TransformComponent>(entity))
+			{
+				auto& tc = scene->GetComponent<TransformComponent>(entity);
+				*pivot = tc.GetPivotOffset();
+			}
+		}
+	}
+#pragma endregion
+#pragma region ActiveComponent
+	static void ActiveComponent_GetActive(UUID uuid, bool* active)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<ActiveComponent>(entity))
+			{
+				auto& ac = scene->GetComponent<ActiveComponent>(entity);
+				*active = ac.Active;
+			}
+		}
+	}
+
+	static void ActiveComponent_SetActive(UUID uuid, bool* active)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<ActiveComponent>(entity))
+			{
+				auto& ac = scene->GetComponent<ActiveComponent>(entity);
+				ac.Active = *active;
+
+			}
+		}
+	}
+
+	static void ActiveComponent_GetHidden(UUID uuid, bool* hidden)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<ActiveComponent>(entity))
+			{
+				auto& ac = scene->GetComponent<ActiveComponent>(entity);
+				*hidden = ac.Hidden;
+			}
+		}
+	}
+
+	static void ActiveComponent_SetHidden(UUID uuid, bool* hidden)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<ActiveComponent>(entity))
+			{
+				auto& ac = scene->GetComponent<ActiveComponent>(entity);
+				ac.Hidden = *hidden;
+
+			}
+		}
+	}
+#pragma endregion
+
+#pragma region Audio Component
+
 	static void AudioSourceComponent_GetLoop(UUID uuid, bool* loop)
 	{
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<AudioSourceComponent>())
+			if (entity && scene->HasComponent<AudioSourceComponent>(entity))
 			{
-				auto& asc = entity.GetComponent<AudioSourceComponent>();
+				auto& asc = scene->GetComponent<AudioSourceComponent>(entity);
 				*loop = asc.Loop;
 			}
 		}
@@ -169,9 +257,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<AudioSourceComponent>())
+			if (entity && scene->HasComponent<AudioSourceComponent>(entity))
 			{
-				auto& asc = entity.GetComponent<AudioSourceComponent>();
+				auto& asc = scene->GetComponent<AudioSourceComponent>(entity);
 				asc.Loop = *loop;
 			}
 		}
@@ -182,9 +270,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<AudioSourceComponent>())
+			if (entity && scene->HasComponent<AudioSourceComponent>(entity))
 			{
-				auto& asc = entity.GetComponent<AudioSourceComponent>();
+				auto& asc = scene->GetComponent<AudioSourceComponent>(entity);
 				*pitch = asc.Pitch;
 			}
 		}
@@ -195,9 +283,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<AudioSourceComponent>())
+			if (entity && scene->HasComponent<AudioSourceComponent>(entity))
 			{
-				auto& asc = entity.GetComponent<AudioSourceComponent>();
+				auto& asc = scene->GetComponent<AudioSourceComponent>(entity);
 				asc.Pitch = *pitch;
 			}
 		}
@@ -208,9 +296,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<AudioSourceComponent>())
+			if (entity && scene->HasComponent<AudioSourceComponent>(entity))
 			{
-				auto& asc = entity.GetComponent<AudioSourceComponent>();
+				auto& asc = scene->GetComponent<AudioSourceComponent>(entity);
 				*gain = asc.Gain;
 			}
 		}
@@ -221,9 +309,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<AudioSourceComponent>())
+			if (entity && scene->HasComponent<AudioSourceComponent>(entity))
 			{
-				auto& asc = entity.GetComponent<AudioSourceComponent>();
+				auto& asc = scene->GetComponent<AudioSourceComponent>(entity);
 				asc.Gain = *gain;
 			}
 		}
@@ -234,23 +322,23 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<AudioSourceComponent>())
+			if (entity && scene->HasComponent<AudioSourceComponent>(entity))
 			{
 				glm::vec3 position = glm::vec3(0.0);
 				if (translation)
 					position = *translation;
-				else if (entity.HasComponent<TransformComponent>())
+				else if (scene->HasComponent<TransformComponent>(entity))
 				{
-					auto& trsc = entity.GetComponent<TransformComponent>();
+					auto& trsc = scene->GetComponent<TransformComponent>(entity);
 					position = trsc.Translation;
 				}
 
 				glm::vec3 v = glm::vec3(0.0);
 				if (velocity)
 					v = *velocity;
-				else if (entity.HasComponent<Rigidbody2DComponent>())
+				else if (scene->HasComponent<Rigidbody2DComponent>(entity))
 				{
-					auto& rb2D = entity.GetComponent<Rigidbody2DComponent>();
+					auto& rb2D = scene->GetComponent<Rigidbody2DComponent>(entity);
 					if (rb2D.RuntimeBody)
 					{
 						b2Body* body = (b2Body*)rb2D.RuntimeBody;
@@ -259,22 +347,24 @@ namespace GE
 					}
 				}
 
-				auto& asc = entity.GetComponent<AudioSourceComponent>();
+				auto& asc = scene->GetComponent<AudioSourceComponent>(entity);
 				asc.Play(position, v);
 			}
 		}
 	}
+#pragma endregion
 
-// Rigidbody2D Component
+#pragma region Rigidbody2D Component
+
 	// Point is World position
 	static void Rigidbody2DComponent_ApplyLinearImpulse(UUID uuid, glm::vec2* impluse, glm::vec2* point, bool wake)
 	{
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<Rigidbody2DComponent>())
+			if (entity && scene->HasComponent<Rigidbody2DComponent>(entity))
 			{
-				auto& rbc = entity.GetComponent<Rigidbody2DComponent>();
+				auto& rbc = scene->GetComponent<Rigidbody2DComponent>(entity);
 				b2Body* body = (b2Body*)rbc.RuntimeBody;
 				body->ApplyLinearImpulse(b2Vec2(impluse->x, impluse->y), b2Vec2(point->x, point->y), wake);
 
@@ -287,9 +377,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<Rigidbody2DComponent>())
+			if (entity && scene->HasComponent<Rigidbody2DComponent>(entity))
 			{
-				auto& rbc = entity.GetComponent<Rigidbody2DComponent>();
+				auto& rbc = scene->GetComponent<Rigidbody2DComponent>(entity);
 				b2Body* body = (b2Body*)rbc.RuntimeBody;
 				body->ApplyLinearImpulseToCenter(b2Vec2(impluse->x, impluse->y), wake);
 
@@ -302,9 +392,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<Rigidbody2DComponent>())
+			if (entity && scene->HasComponent<Rigidbody2DComponent>(entity))
 			{
-				auto& rbc = entity.GetComponent<Rigidbody2DComponent>();
+				auto& rbc = scene->GetComponent<Rigidbody2DComponent>(entity);
 				b2Body* body = (b2Body*)rbc.RuntimeBody;
 				const b2Vec2& linearVelocity = body->GetLinearVelocity();
 				*velocity = glm::vec2(linearVelocity.x, linearVelocity.y);
@@ -317,9 +407,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(entityID);
-			if (entity && entity.HasComponent<Rigidbody2DComponent>())
+			if (entity && scene->HasComponent<Rigidbody2DComponent>(entity))
 			{
-				auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
+				auto& rb2d = scene->GetComponent<Rigidbody2DComponent>(entity);
 				b2Body* body = (b2Body*)rb2d.RuntimeBody;
 				return Physics::Rigidbody2DTypeFromBox2DBody(body->GetType());
 			}
@@ -332,24 +422,54 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(entityID);
-			if (entity && entity.HasComponent<Rigidbody2DComponent>())
+			if (entity && scene->HasComponent<Rigidbody2DComponent>(entity))
 			{
-				auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
+				auto& rb2d = scene->GetComponent<Rigidbody2DComponent>(entity);
 				b2Body* body = (b2Body*)rb2d.RuntimeBody;
 				body->SetType(Physics::Rigidbody2DTypeToBox2DBody(bodyType));
 			}
 		}
 	}
-	
-// Text Renderer Component
+#pragma endregion
+
+#pragma region Rendering
+
+	static void SpriteRendererComponent_GetColor(UUID uuid, glm::vec4* color)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<SpriteRendererComponent>(entity))
+			{
+				auto& src = scene->GetComponent<SpriteRendererComponent>(entity);
+				*color = src.Color;
+			}
+		}
+	}
+
+	static void SpriteRendererComponent_SetColor(UUID uuid, glm::vec4* color)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<SpriteRendererComponent>(entity))
+			{
+				auto& src = scene->GetComponent<SpriteRendererComponent>(entity);
+				src.Color = *color;
+			}
+		}
+	}
+
+
+#pragma region Text Component
 	static MonoString* TextRendererComponent_GetText(UUID uuid)
 	{
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TextRendererComponent>())
+			if (entity && scene->HasComponent<TextRendererComponent>(entity))
 			{
-				auto& trc = entity.GetComponent<TextRendererComponent>();
+				auto& trc = scene->GetComponent<TextRendererComponent>(entity);
 				return Scripting::StringToMonoString(trc.Text.c_str());
 			}
 		}
@@ -361,9 +481,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TextRendererComponent>())
+			if (entity && scene->HasComponent<TextRendererComponent>(entity))
 			{
-				auto& trc = entity.GetComponent<TextRendererComponent>();
+				auto& trc = scene->GetComponent<TextRendererComponent>(entity);
 				trc.Text = Scripting::MonoStringToString(textString);
 			}
 		}
@@ -374,9 +494,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TextRendererComponent>())
+			if (entity && scene->HasComponent<TextRendererComponent>(entity))
 			{
-				auto& trc = entity.GetComponent<TextRendererComponent>();
+				auto& trc = scene->GetComponent<TextRendererComponent>(entity);
 				*textColor = trc.TextColor;
 			}
 		}
@@ -387,9 +507,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TextRendererComponent>())
+			if (entity && scene->HasComponent<TextRendererComponent>(entity))
 			{
-				auto& trc = entity.GetComponent<TextRendererComponent>();
+				auto& trc = scene->GetComponent<TextRendererComponent>(entity);
 				trc.TextColor = *textColor;
 			}
 		}
@@ -400,9 +520,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TextRendererComponent>())
+			if (entity && scene->HasComponent<TextRendererComponent>(entity))
 			{
-				auto& trc = entity.GetComponent<TextRendererComponent>();
+				auto& trc = scene->GetComponent<TextRendererComponent>(entity);
 				*bgColor = trc.BGColor;
 			}
 		}
@@ -413,9 +533,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TextRendererComponent>())
+			if (entity && scene->HasComponent<TextRendererComponent>(entity))
 			{
-				auto& trc = entity.GetComponent<TextRendererComponent>();
+				auto& trc = scene->GetComponent<TextRendererComponent>(entity);
 				trc.BGColor = *bgColor;
 			}
 		}
@@ -426,9 +546,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TextRendererComponent>())
+			if (entity && scene->HasComponent<TextRendererComponent>(entity))
 			{
-				auto& trc = entity.GetComponent<TextRendererComponent>();
+				auto& trc = scene->GetComponent<TextRendererComponent>(entity);
 				return trc.LineHeightOffset;
 			}
 		}
@@ -440,9 +560,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TextRendererComponent>())
+			if (entity && scene->HasComponent<TextRendererComponent>(entity))
 			{
-				auto& trc = entity.GetComponent<TextRendererComponent>();
+				auto& trc = scene->GetComponent<TextRendererComponent>(entity);
 				trc.LineHeightOffset = lineHeight;
 			}
 		}
@@ -453,9 +573,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TextRendererComponent>())
+			if (entity && scene->HasComponent<TextRendererComponent>(entity))
 			{
-				auto& trc = entity.GetComponent<TextRendererComponent>();
+				auto& trc = scene->GetComponent<TextRendererComponent>(entity);
 				return trc.KerningOffset;
 			}
 		}
@@ -467,9 +587,9 @@ namespace GE
 		if (Ref<Scene> scene = Project::GetRuntimeScene())
 		{
 			Entity entity = scene->GetEntityByUUID(uuid);
-			if (entity && entity.HasComponent<TextRendererComponent>())
+			if (entity && scene->HasComponent<TextRendererComponent>(entity))
 			{
-				auto& trc = entity.GetComponent<TextRendererComponent>();
+				auto& trc = scene->GetComponent<TextRendererComponent>(entity);
 				trc.KerningOffset = lineSpacing;
 			}
 		}
@@ -477,22 +597,323 @@ namespace GE
 
 #pragma endregion
 
-	static bool Input_IsKeyDown(Input::KeyCode keyCode)
+#pragma region GUI
+
+#pragma region Canvas
+	static void GUICanvasComponent_GetControlMouse(UUID uuid, bool* control)
 	{
-		return Input::IsKeyPressed(keyCode);
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUICanvasComponent>(entity))
+			{
+				auto& guiCC = scene->GetComponent<GUICanvasComponent>(entity);
+				*control = guiCC.ControlMouse;
+			}
+		}
 	}
 
-	static bool Input_IsMouseDown(Input::MouseCode mouseCode)
+	static void GUICanvasComponent_SetControlMouse(UUID uuid, bool* control)
 	{
-		return Input::IsMouseButtonPressed(mouseCode);
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUICanvasComponent>(entity))
+			{
+				auto& guiCC = scene->GetComponent<GUICanvasComponent>(entity);
+				guiCC.ControlMouse = *control;
+			}
+		}
 	}
+
+	static void GUICanvasComponent_GetShowMouse(UUID uuid, bool* show)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUICanvasComponent>(entity))
+			{
+				auto& guiCC = scene->GetComponent<GUICanvasComponent>(entity);
+				*show = guiCC.ShowMouse;
+			}
+		}
+	}
+
+	static void GUICanvasComponent_SetShowMouse(UUID uuid, bool* show)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUICanvasComponent>(entity))
+			{
+				auto& guiCC = scene->GetComponent<GUICanvasComponent>(entity);
+				guiCC.ShowMouse = *show;
+			}
+		}
+	}
+
+	static void GUICanvasComponent_GetMode(UUID uuid, int* mode)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUICanvasComponent>(entity))
+			{
+				auto& guiCC = scene->GetComponent<GUICanvasComponent>(entity);
+				*mode = (int)guiCC.Mode;
+			}
+		}
+	}
+
+	static void GUICanvasComponent_SetMode(UUID uuid, int* mode)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUICanvasComponent>(entity))
+			{
+				auto& guiCC = scene->GetComponent<GUICanvasComponent>(entity);
+				guiCC.Mode = (CanvasMode)*mode;
+			}
+		}
+	}
+#pragma endregion
+
+#pragma region Button
+
+	static void GUIButtonComponent_GetEnabledColor(UUID uuid, glm::vec4* color)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIButtonComponent>(entity))
+			{
+				auto& guiBC = scene->GetComponent<GUIButtonComponent>(entity);
+				*color = guiBC.EnabledColor;
+			}
+		}
+	}
+
+	static void GUIButtonComponent_SetEnabledColor(UUID uuid, glm::vec4* color)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIButtonComponent>(entity))
+			{
+				auto& guiBC = scene->GetComponent<GUIButtonComponent>(entity);
+				guiBC.EnabledColor = *color;
+			}
+		}
+	}
+
+	static void GUIButtonComponent_GetHoveredColor(UUID uuid, glm::vec4* hoveredColor)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIButtonComponent>(entity))
+			{
+				auto& guiBC = scene->GetComponent<GUIButtonComponent>(entity);
+				*hoveredColor = guiBC.HoveredColor;
+			}
+		}
+	}
+
+	static void GUIButtonComponent_SetHoveredColor(UUID uuid, glm::vec4* hoveredColor)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIButtonComponent>(entity))
+			{
+				auto& guiBC = scene->GetComponent<GUIButtonComponent>(entity);
+				guiBC.HoveredColor = *hoveredColor;
+			}
+		}
+	}
+#pragma endregion
+
+#pragma region InputField
+
+	static MonoString* GUIInputFieldComponent_GetText(UUID uuid)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIInputFieldComponent>(entity))
+			{
+				auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+				return Scripting::StringToMonoString(guiIFC.Text.c_str());
+			}
+		}
+		return nullptr;
+	}
+
+	static void GUIInputFieldComponent_SetText(UUID uuid, MonoString* textString)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIInputFieldComponent>(entity))
+			{
+				auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+				guiIFC.Text = Scripting::MonoStringToString(textString);
+			}
+		}
+	}
+
+	static void GUIInputFieldComponent_GetTextColor(UUID uuid, glm::vec4* textColor)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIInputFieldComponent>(entity))
+			{
+				auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+				*textColor = guiIFC.TextColor;
+			}
+		}
+	}
+
+	static void GUIInputFieldComponent_SetTextColor(UUID uuid, glm::vec4* textColor)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIInputFieldComponent>(entity))
+			{
+				auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+				guiIFC.TextColor = *textColor;
+			}
+		}
+	}
+
+	static void GUIInputFieldComponent_GetBGColor(UUID uuid, glm::vec4* bgColor)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIInputFieldComponent>(entity))
+			{
+				auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+				*bgColor = guiIFC.BGColor;
+			}
+		}
+	}
+
+	static void GUIInputFieldComponent_SetBGColor(UUID uuid, glm::vec4* bgColor)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIInputFieldComponent>(entity))
+			{
+				auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+				guiIFC.BGColor = *bgColor;
+			}
+		}
+	}
+
+	static float GUIInputFieldComponent_GetLineHeight(UUID uuid)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIInputFieldComponent>(entity))
+			{
+				auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+				return guiIFC.LineHeightOffset;
+			}
+		}
+		return 0.0f;
+	}
+
+	static void GUIInputFieldComponent_SetLineHeight(UUID uuid, float lineHeight)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIInputFieldComponent>(entity))
+			{
+				auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+				guiIFC.LineHeightOffset = lineHeight;
+			}
+		}
+	}
+
+	static float GUIInputFieldComponent_GetLineSpacing(UUID uuid)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIInputFieldComponent>(entity))
+			{
+				auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+				return guiIFC.KerningOffset;
+			}
+		}
+		return 0.0f;
+	}
+
+	static void GUIInputFieldComponent_SetLineSpacing(UUID uuid, float lineSpacing)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUIInputFieldComponent>(entity))
+			{
+				auto& guiIFC = scene->GetComponent<GUIInputFieldComponent>(entity);
+				guiIFC.KerningOffset = lineSpacing;
+			}
+		}
+	}
+
+#pragma endregion
+
+#pragma region Slider
+
+	static void GUISliderComponent_GetFill(UUID uuid, float* fill)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUISliderComponent>(entity))
+			{
+				auto& guiSC = scene->GetComponent<GUISliderComponent>(entity);
+				*fill = guiSC.Fill;
+			}
+		}
+	}
+
+	static void GUISliderComponent_SetFill(UUID uuid, float* fill)
+	{
+		if (Ref<Scene> scene = Project::GetRuntimeScene())
+		{
+			Entity entity = scene->GetEntityByUUID(uuid);
+			if (entity && scene->HasComponent<GUISliderComponent>(entity))
+			{
+				auto& guiSC = scene->GetComponent<GUISliderComponent>(entity);
+				guiSC.Fill = *fill;
+
+			}
+		}
+	}
+#pragma endregion
+
+#pragma endregion
+
+#pragma endregion
+
+#pragma endregion
+
 #pragma endregion
 
 #pragma region Scripting
 
 	Scripting::Data Scripting::s_Data = Scripting::Data();
 
-	std::unordered_map<MonoType*, std::function<bool(Entity)>> Scripting::s_HasComponentsFuncs = std::unordered_map<MonoType*, std::function<bool(Entity)>>();
+	std::unordered_map<MonoType*, std::function<bool(Ref<Scene>, Entity)>> Scripting::s_HasComponentsFuncs = std::unordered_map<MonoType*, std::function<bool(Ref<Scene>, Entity)>>();
 
 	std::unordered_map<std::string, ScriptField::Type> Scripting::s_ScriptFieldTypeNames =
 	{
@@ -532,8 +953,6 @@ namespace GE
 	ScriptField::Type Scripting::MonoTypeToScriptFieldType(MonoType* monoType)
 	{
 		const char* typeName = mono_type_get_name(monoType);
-		ScriptField::Type type = s_ScriptFieldTypeNames.at(typeName);
-
 		if (s_ScriptFieldTypeNames.find(typeName) == s_ScriptFieldTypeNames.end())
 			return ScriptField::Type::None;
 
@@ -561,7 +980,7 @@ namespace GE
 		if (typeStr == "UInt")		return ScriptField::Type::UInt;
 		if (typeStr == "Float")		return ScriptField::Type::Float;
 		if (typeStr == "Byte")		return ScriptField::Type::Byte;
-		if (typeStr == "Bool")		return ScriptField::Type::Bool;
+		if (typeStr == "Boolean")	return ScriptField::Type::Bool;
 		if (typeStr == "Vector2")	return ScriptField::Type::Vector3;
 		if (typeStr == "Vector3")	return ScriptField::Type::Vector3;
 		if (typeStr == "Vector4")	return ScriptField::Type::Vector4;
@@ -613,59 +1032,61 @@ namespace GE
 	}
 #pragma endregion
 
-	MonoMethod* Scripting::GetEntityConstructor()
+	Ref<Script> Scripting::CreateOrReloadScript(const std::string& nameSpace, const std::string& className)
 	{
-		return Scripting::GetMethod(s_Data.EntityScript, ".ctor", 1);
-	}
-
-	Ref<ScriptInstance> Scripting::GetScriptInstance(UUID uuid)
-	{
-		if (s_Data.EntityScriptInstances.find(uuid) != s_Data.EntityScriptInstances.end())
-			return s_Data.EntityScriptInstances.at(uuid);
-		GE_CORE_WARN("Cannot find Script Instance by UUID. Returning nullptr.");
-		return nullptr;
-	}
-
-	ScriptFieldMap& Scripting::GetEntityFields(UUID uuid)
-	{
-		return s_Data.EntityScriptFields[uuid];
-	}
-
-	Ref<Script> Scripting::GetScript(const std::string& fullName)
-	{
-		if (s_Data.Scripts.find(fullName) != s_Data.Scripts.end())
-			return s_Data.Scripts.at(fullName);
-		GE_CORE_WARN("Cannot find Script by fullName. Returning nullptr.");
-		return nullptr;
-	}
-
-	Ref<Script> Scripting::GetScript(UUID handle)
-	{
-		for (const auto& [fullName, script] : s_Data.Scripts)
+		Ref<Script> script = nullptr;
+		if (ScriptExists(className))
 		{
-			if (script->GetHandle() == handle)
-				return script;
+			script = Scripting::GetScript(className);
 		}
-		GE_CORE_WARN("Cannot find Script by uuid. Returning nullptr.");
-		return nullptr;
+		else
+		{
+			script = CreateRef<Script>(nameSpace, className);
+			s_Data.AddScript(className, script);
+		}
+		InstantiateScriptClass(script);
+		return script;
 	}
 
-	void Scripting::SetScriptHandle(const std::string& fullName, UUID handle)
+	void Scripting::InstantiateScriptClass(Ref<Script> script)
 	{
-		if (handle && !fullName.empty() && s_Data.Scripts.find(fullName) != s_Data.Scripts.end())
-			s_Data.Scripts.at(fullName)->p_Handle = handle;
+		if (!script)
+			return;
+
+		script->Invalidate();
+		MonoImage* monoImage = script->IsCore() ? s_Data.CoreAssemblyImage : s_Data.AppAssemblyImage;
+		script->m_Class = mono_class_from_name(monoImage, script->m_ClassNamespace.c_str(), script->m_ClassName.c_str());
+
+		void* iterator = nullptr;
+		while (MonoClassField* monoField = mono_class_get_fields(script->m_Class, &iterator))
+		{
+			const char* fieldName = mono_field_get_name(monoField);
+
+			uint32_t flags = mono_field_get_flags(monoField);
+			if (flags & MONO_FIELD_ATTR_PUBLIC)
+			{
+				MonoType* monoType = mono_field_get_type(monoField);
+
+				ScriptField::Type fieldType = MonoTypeToScriptFieldType(monoType);
+				const char* fieldTypeName = ScriptFieldTypeToString(fieldType);
+
+				script->m_Fields.emplace(fieldName, ScriptField(fieldTypeName, fieldType, monoField));
+			}
+		}
 	}
 
-	MonoMethod* Scripting::GetMethod(UUID scriptHandle, const std::string& name, int parameterCount)
+	MonoMethod* Scripting::GetMethod(UUID scriptHandle, const Method& method)
 	{
 		if (Ref<Script> script = GetScript(scriptHandle))
-			return GetMethod(script, name, parameterCount);
+			return GetMethod(script, method);
 		return nullptr;
 	}
 
-	MonoMethod* Scripting::GetMethod(Ref<Script> script, const std::string& name, int parameterCount)
+	MonoMethod* Scripting::GetMethod(Ref<Script> script, const Method& method)
 	{
-		return mono_class_get_method_from_name(script->m_Class, name.c_str(), parameterCount);
+		if (!script)
+			return nullptr;
+		return mono_class_get_method_from_name(script->m_Class, method.first.c_str(), method.second);
 	}
 
 	MonoObject* Scripting::InvokeMethod(MonoObject* instance, MonoMethod* method, void** params)
@@ -675,48 +1096,18 @@ namespace GE
 		return mono_runtime_invoke(method, instance, params, &exception);
 	}
 
-	bool Scripting::ScriptExists(const std::string& fullName)
-	{
-		return s_Data.Scripts.find(fullName) != s_Data.Scripts.end();
-	}
-
-	bool Scripting::ScriptExists(UUID handle)
-	{
-		for (const auto& [fullname, script] : s_Data.Scripts)
-		{
-			if (script->GetHandle() == handle)
-				return true;
-		}
-		return false;
-	}
-
-	bool Scripting::HasComponentFunc(MonoType* type)
-	{
-		return s_HasComponentsFuncs.find(type) != s_HasComponentsFuncs.end();
-	}
-
-	bool Scripting::GetHasComponentFunc(MonoType* type, Entity entity)
-	{
-		return s_HasComponentsFuncs.at(type)(entity);
-	}
-
 	MonoObject* Scripting::InstantiateScriptObject(UUID scriptHandle, bool isCore)
 	{
 		MonoObject* instance = nullptr;
-		if (ScriptExists(scriptHandle))
+		if (Ref<Script> script = GetScript(scriptHandle))
 		{
-			Ref<Script> script = GetScript(scriptHandle);
-			MonoDomain* domain = (isCore ? s_Data.RootDomain : s_Data.AppDomain);
+			MonoDomain* domain = (isCore ? s_Data.CoreDomain : s_Data.AppDomain);
+			if (!script->m_Class)
+				InstantiateScriptClass(script);
 			instance = mono_object_new(domain, script->m_Class);
 			mono_runtime_object_init(instance);
 		}
 		return instance;
-	}
-
-	void Scripting::InstantiateScriptClass(Ref<Script> script, bool isCore)
-	{
-		MonoImage* monoImage = isCore ? GetCoreImage() : GetAppImage();
-		script->m_Class = mono_class_from_name(monoImage, script->m_ClassNamespace.c_str(), script->m_ClassName.c_str());
 	}
 
 	void Scripting::Init()
@@ -726,11 +1117,10 @@ namespace GE
 		InitMono();
 		RegisterFunctions();
 
-		LoadCoreAssembly(Project::GetPathToAsset(Project::GetScriptCorePath()));
-		LoadAppAssembly(Project::GetPathToAsset(Project::GetScriptAppPath()));
+		s_Data.InitializeCore(Project::GetPathToAsset(Project::GetScriptCorePath()));
+		s_Data.InitializeApp(Project::GetPathToAsset(Project::GetScriptAppPath()));
 
 		LoadAssemblyClasses();
-
 		RegisterComponents();
 
 		s_Data.InstantiateBaseEntity();
@@ -744,170 +1134,69 @@ namespace GE
 
 		ShutdownMono();
 
-		s_Data.Scripts.clear();
-		s_Data.Scripts = std::unordered_map<std::string, Ref<Script>>();
-
-		for (auto& [uuid, instanceFieldMap] : s_Data.EntityScriptFields)
-		{
-			for (auto& [name, instanceField] : instanceFieldMap)
-			{
-				instanceField.m_DataBuffer.Release();
-			}
-		}
-		s_Data.EntityScriptFields.clear();
-		s_Data.EntityScriptFields = std::unordered_map<UUID, ScriptFieldMap>();
 		GE_CORE_INFO("Scripting Shutdown Complete");
-	}
-
-	void Scripting::ReloadAssembly()
-	{
-		GE_CORE_TRACE("Assembly Reload Started.");
-		s_Data.AppAssemblyFileWatcher.reset();
-
-		mono_domain_set(mono_get_root_domain(), false); // Set domain to root domain
-
-		mono_domain_unload(s_Data.AppDomain); // Unload old app domain
-
-		// Reload assemblies
-		LoadCoreAssembly(Project::GetPathToAsset(Project::GetScriptCorePath()));
-		LoadAppAssembly(Project::GetPathToAsset(Project::GetScriptAppPath()));
-
-		LoadAssemblyClasses();
-
-		RegisterComponents();
-
-		s_Data.InstantiateBaseEntity();
-		GE_CORE_TRACE("Assembly Reload Complete");
 	}
 
 	void Scripting::OnStop()
 	{
-		if (!s_Data.EntityScriptInstances.empty())
-			s_Data.EntityScriptInstances.clear();
+		s_Data.ClearInstances();
 	}
 
-	bool Scripting::OnEvent(Event& e, Entity entity)
+	bool Scripting::OnEvent(Event& e, Scene* scene, Entity entity)
 	{
-		UUID uuid = entity.GetComponent<IDComponent>().ID;
-		if (!uuid || s_Data.EntityScriptInstances.find(uuid) == s_Data.EntityScriptInstances.end())
-		{
-			GE_CORE_WARN("Entity Script Instance that does not exist.");
+		if (!scene || !entity)
+		{ 
+			GE_CORE_ERROR("Scripting::OnEvent(Event&, Scene*, Entity) - \n\t Scene or Entity don't exist.");
 			return false;
 		}
 
-		return s_Data.EntityScriptInstances.at(uuid)->InvokeOnEvent(e);
+		UUID uuid = scene->GetComponent<IDComponent>(entity).ID;
+		if (!uuid || !s_Data.EntityInstanceExists(uuid))
+		{
+			GE_CORE_WARN("Scripting::OnEvent(Event&, Scene*, Entity) - \n\tEntity Script Instance that does not exist.");
+			return false;
+		}
+		return s_Data.GetEntityInstance(uuid)->InvokeOnEvent(e);
 	}
 
-	void Scripting::OnCreateScript(Entity entity)
+	void Scripting::OnCreateScript(Scene* scene, Entity entity)
 	{
-		const auto& sc = entity.GetComponent<ScriptComponent>();
+		const auto& sc = scene->GetComponent<ScriptComponent>(entity);
 		if (ScriptExists(sc.AssetHandle))
 		{
-			UUID uuid = entity.GetComponent<IDComponent>().ID;
-			Ref<Script> script = GetScript(sc.AssetHandle);
-			Ref<ScriptInstance> instance = CreateRef<ScriptInstance>(sc.AssetHandle, uuid);
-			s_Data.EntityScriptInstances.emplace(uuid, instance);
-
-			// Script Fields
-			{
-				GE_PROFILE_SCOPE("Scripting::OnCreateScript(Entity) - Script Fields");
-				bool entityFieldsExist = s_Data.EntityScriptFields.find(uuid) != s_Data.EntityScriptFields.end();
-				const ScriptFieldMap& fields = (entityFieldsExist ? s_Data.EntityScriptFields.at(uuid) : script->m_Fields);
-
-				for (const auto& [name, field] : fields)
-				{
-					switch (field.GetType())
-					{
-					case ScriptField::Type::Char:
-					{
-						const char& data = field.GetValue<char>();
-						instance->SetFieldValue(name, data);
-					}
-						break;
-					case ScriptField::Type::Int:
-					{
-						const int& data = field.GetValue<int>();
-						instance->SetFieldValue(name, data);
-					}
-						break;
-					case ScriptField::Type::UInt:
-					{
-						const uint32_t& data = field.GetValue<uint32_t>();
-						instance->SetFieldValue(name, data);
-					}
-						break;
-					case ScriptField::Type::Float:
-					{
-						const float& data = field.GetValue<float>();
-						instance->SetFieldValue(name, data);
-					}
-						break;
-					case ScriptField::Type::Byte:
-					{
-						const uint8_t& data = field.GetValue<uint8_t>();
-						instance->SetFieldValue(name, data);
-					}
-						break;
-					case ScriptField::Type::Bool:
-					{
-						const bool& data = field.GetValue<bool>();
-						instance->SetFieldValue(name, data);
-					}
-						break;
-					case ScriptField::Type::Vector2:
-					{
-						const glm::vec2& data = field.GetValue<glm::vec2>();
-						instance->SetFieldValue(name, data);
-					}
-						break;
-					case ScriptField::Type::Vector3:
-					{
-						const glm::vec3& data = field.GetValue<glm::vec3>();
-						instance->SetFieldValue(name, data);
-					}
-						break;
-					case ScriptField::Type::Vector4:
-					{
-						const glm::vec4& data = field.GetValue<glm::vec4>();
-						instance->SetFieldValue(name, data);
-					}
-						break;
-					case ScriptField::Type::Entity:
-					{
-						const UUID& data = field.GetValue<UUID>();
-						instance->SetFieldValue(name, data);
-					}
-						break;
-					}
-				}
-
-			}
-			instance->InvokeOnCreate();
+			UUID uuid = scene->GetComponent<IDComponent>(entity).ID;
+			Ref<Script> script = s_Data.GetScript(sc.AssetHandle);
+			if(Ref<ScriptInstance> instance = s_Data.CreateEntityInstance(script, uuid))
+				instance->InvokeOnCreate();
 		}
 	}
 
-	void Scripting::OnUpdateScript(Entity entity, float timestep)
+	void Scripting::OnUpdateScript(Scene* scene, Entity entity, float timestep)
 	{
-		UUID uuid = entity.GetComponent<IDComponent>().ID;
-		if (!uuid || s_Data.EntityScriptInstances.find(uuid) == s_Data.EntityScriptInstances.end())
+		if (!scene || !entity)
 		{
-			GE_CORE_WARN("Tried to Update Entity/Script Instance that does not exist");
+			GE_CORE_ERROR("Scripting::OnUpdateScript(Scene*, Entity, float) - \n\t Scene or Entity don't exist.");
 			return;
 		}
 
-		s_Data.EntityScriptInstances.at(uuid)->InvokeOnUpdate(timestep);
+		UUID uuid = scene->GetComponent<IDComponent>(entity).ID;
+		if (!uuid || !s_Data.EntityInstanceExists(uuid))
+		{
+			GE_CORE_WARN("Scripting::OnUpdateScript(Scene*, Entity, Timestep) - \n\tTried to Update Entity Instance that does not exist.");
+			return;
+		}
+		s_Data.GetEntityInstance(uuid)->InvokeOnUpdate(timestep);
 	}
 
 	void Scripting::InitMono()
 	{
-		if (s_Data.RootDomain)
+		if (s_Data.CoreDomain)
 			return;
 
 		GE_CORE_INFO("Mono Init Start");
 		mono_set_assemblies_path("mono/lib");
 
-		s_Data.RootDomain = mono_jit_init("GEJITRuntime");
-		GE_CORE_ASSERT(s_Data.RootDomain, "Mono Scripting initialization failure.");
+		s_Data.InitializeCoreDomain();
 
 		mono_thread_set_main(mono_thread_current());
 
@@ -917,19 +1206,55 @@ namespace GE
 	void Scripting::ShutdownMono()
 	{
 		GE_CORE_INFO("Mono Shutdown Start");
-		if (s_Data.AppDomain && s_Data.RootDomain)
-		{
-			mono_domain_set(mono_get_root_domain(), false);
-			mono_domain_unload(s_Data.AppDomain);
-			s_Data.AppDomain = nullptr;
+		s_Data.ClearDomains();
 
-			mono_jit_cleanup(s_Data.RootDomain);
-			s_Data.RootDomain = nullptr;
-		}
 		GE_CORE_INFO("Mono Shutdown Complete");
 
 	}
 
+	void Scripting::ReloadAssembly()
+	{
+		GE_CORE_TRACE("Assembly Reload Started.");
+		s_Data.ResetFileWatcher();
+
+		mono_domain_set(mono_get_root_domain(), false); // Set domain to root domain
+		mono_domain_unload(s_Data.AppDomain); // Unload old app domain
+
+		// Reload assemblies
+		s_Data.InitializeCore(Project::GetPathToAsset(Project::GetScriptCorePath()));
+		s_Data.InitializeApp(Project::GetPathToAsset(Project::GetScriptAppPath()));
+
+		LoadAssemblyClasses();
+
+		RegisterComponents();
+
+		s_Data.InstantiateBaseEntity();
+		GE_CORE_TRACE("Assembly Reload Complete");
+	}
+
+	MonoDomain* Scripting::LoadCoreDomain(const std::string& file)
+	{
+		return mono_jit_init(file.c_str());
+	}
+
+	MonoDomain* Scripting::LoadAppDomain(const std::string& file)
+	{
+		MonoDomain* appDomain = mono_domain_create_appdomain((char*)file.c_str(), nullptr);
+		mono_domain_set(appDomain, true);
+		return appDomain;
+	}
+
+	void Scripting::ClearCoreDomain(MonoDomain* coreDomain)
+	{
+		mono_jit_cleanup(coreDomain);
+	}
+	
+	void Scripting::ClearAppDomain(MonoDomain* appDomain)
+	{
+		mono_domain_set(mono_get_root_domain(), false);
+		mono_domain_unload(appDomain);
+	}
+	
 	MonoAssembly* Scripting::LoadMonoAssembly(const std::filesystem::path& assemblyPath)
 	{
 		std::ifstream stream(assemblyPath, std::ios::binary | std::ios::ate);
@@ -970,80 +1295,49 @@ namespace GE
 		mono_image_close(image);
 		return assembly;
 	}
-
-	void Scripting::LoadAppAssembly(const std::filesystem::path& filePath)
-	{
-		s_Data.AppAssembly = LoadMonoAssembly(filePath);
-		s_Data.AppAssemblyImage = mono_assembly_get_image(s_Data.AppAssembly);
-		//PrintMonoAssemblyTypes(s_Data.AppAssembly);
-
-		// FileWatch setup - watches given app assembly filePath and call event
-		s_Data.AppAssemblyFileWatcher =
-				CreateScope<filewatch::FileWatch<std::string>>(filePath.string(), OnFileSystemAppAssemblyEvent);
-		s_Data.AssemblyReloadPending = false;
-	}
-
-	void Scripting::LoadCoreAssembly(const std::filesystem::path& filePath)
-	{
-		// Create an App Domain
-		s_Data.AppDomain = mono_domain_create_appdomain("GEScriptRuntime", nullptr);
-		mono_domain_set(s_Data.AppDomain, true);
-
-		s_Data.CoreAssembly = LoadMonoAssembly(filePath);
-		s_Data.CoreAssemblyImage = mono_assembly_get_image(s_Data.CoreAssembly);
-		//PrintMonoAssemblyTypes(s_Data.CoreAssembly);
-	}
 	
+	MonoImage* Scripting::LoadMonoImage(MonoAssembly* assembly)
+	{
+		if (!assembly)
+		{
+			GE_CORE_ERROR("Scripting::LoadMonoImage(MonoAssembly*) - \n\t Could not load Image from Assembly. Assembly does not exist.");
+			return nullptr;
+		}
+		return mono_assembly_get_image(assembly);
+	}
+
 	void Scripting::LoadAssemblyClasses()
 	{
-		const MonoTableInfo* typeDefinitionTable = mono_image_get_table_info(s_Data.AppAssemblyImage, MONO_TABLE_TYPEDEF);
+		MonoImage*& coreImage = s_Data.CoreAssemblyImage;
+		MonoImage*& appImage = s_Data.AppAssemblyImage;
+
+		const MonoTableInfo* typeDefinitionTable = mono_image_get_table_info(appImage, MONO_TABLE_TYPEDEF);
 		int32_t numTypes = mono_table_info_get_rows(typeDefinitionTable);
-		MonoClass* entityClass = mono_class_from_name(s_Data.CoreAssemblyImage, "GE", "Entity");
+		MonoClass* entityClass = mono_class_from_name(coreImage, "GE", "Entity");
 
 		for (int32_t i = 0; i < numTypes; i++)
 		{
 			uint32_t cols[MONO_TYPEDEF_SIZE];
 			mono_metadata_decode_row(typeDefinitionTable, i, cols, MONO_TYPEDEF_SIZE);
 
-			const char* nameSpace = mono_metadata_string_heap(s_Data.AppAssemblyImage, cols[MONO_TYPEDEF_NAMESPACE]);
-			const char* name = mono_metadata_string_heap(s_Data.AppAssemblyImage, cols[MONO_TYPEDEF_NAME]);
+			const char* nameSpace = mono_metadata_string_heap(appImage, cols[MONO_TYPEDEF_NAMESPACE]);
+			const char* name = mono_metadata_string_heap(appImage, cols[MONO_TYPEDEF_NAME]);
 			std::string fullName;
 			if (strlen(nameSpace) != 0)
 				fullName = fmt::format("{}.{}", nameSpace, name);
 			else
 				fullName = name;
 
-			MonoClass* monoClass = mono_class_from_name(s_Data.AppAssemblyImage, nameSpace, name);
+			MonoClass* monoClass = mono_class_from_name(appImage, nameSpace, name);
 			bool isSubClass = mono_class_is_subclass_of(monoClass, entityClass, false);
 			if (!isSubClass)
 				continue;
 
-			Ref<Script> script = CreateRef<Script>(nameSpace, name);
-			s_Data.Scripts[fullName] = script;
-			InstantiateScriptClass(script);
-
-			void* iterator = nullptr;
-			while (MonoClassField* monoField = mono_class_get_fields(monoClass, &iterator))
-			{
-				const char* fieldName = mono_field_get_name(monoField);
-
-				uint32_t flags = mono_field_get_flags(monoField);
-				if (flags & MONO_FIELD_ATTR_PUBLIC)
-				{
-					MonoType* monoType = mono_field_get_type(monoField);
-
-					ScriptField::Type fieldType = MonoTypeToScriptFieldType(monoType);
-					const char* fieldTypeName = ScriptFieldTypeToString(fieldType);
-
-					// Clear any old data first
-					if (script->m_Fields.find(fieldName) != script->m_Fields.end())
-						script->m_Fields.at(fieldName).m_DataBuffer.Release();
-					
-					script->m_Fields[fieldName] = ScriptField(fieldTypeName, fieldType, monoField);
-				}
-			}
+			if (Ref<Script> script = CreateOrReloadScript(nameSpace, name))
+				GE_CORE_TRACE("Loaded {0}::{1} from C#", script->GetNamespace().c_str(), script->GetName().c_str());
 		}
-
+		
+		GE_CORE_INFO("Scripting::LoadAssemblyClasses() - Successful.");
 	}
 
 	void Scripting::RegisterFunctions()
@@ -1054,13 +1348,29 @@ namespace GE
 		GE_ADD_INTERNAL_CALL(Log_Core_Error);
 		GE_ADD_INTERNAL_CALL(Log_Core_Assert);
 
+		GE_ADD_INTERNAL_CALL(Input_IsKeyDown);
+		GE_ADD_INTERNAL_CALL(Input_IsMouseDown);
+
+#pragma region Entity
+
+		GE_ADD_INTERNAL_CALL(Entity_IsHovered);
+
 		GE_ADD_INTERNAL_CALL(Entity_HasComponent);
 		GE_ADD_INTERNAL_CALL(Entity_FindEntityByName);
 		GE_ADD_INTERNAL_CALL(Entity_GetScriptInstance);
 
 		GE_ADD_INTERNAL_CALL(TransformComponent_GetTranslation);
 		GE_ADD_INTERNAL_CALL(TransformComponent_SetTranslation);
+		GE_ADD_INTERNAL_CALL(TransformComponent_GetPivot);
 
+		// TODO : Set ActiveComponent
+		GE_ADD_INTERNAL_CALL(ActiveComponent_GetActive);
+		GE_ADD_INTERNAL_CALL(ActiveComponent_SetActive);
+
+		GE_ADD_INTERNAL_CALL(ActiveComponent_GetHidden);
+		GE_ADD_INTERNAL_CALL(ActiveComponent_SetHidden);
+
+#pragma region Audio
 		GE_ADD_INTERNAL_CALL(AudioSourceComponent_GetLoop);
 		GE_ADD_INTERNAL_CALL(AudioSourceComponent_SetLoop);
 		GE_ADD_INTERNAL_CALL(AudioSourceComponent_GetPitch);
@@ -1068,12 +1378,21 @@ namespace GE
 		GE_ADD_INTERNAL_CALL(AudioSourceComponent_GetGain);
 		GE_ADD_INTERNAL_CALL(AudioSourceComponent_SetGain);
 		GE_ADD_INTERNAL_CALL(AudioSourceComponent_Play);
+#pragma endregion
 
+#pragma region Physics
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_ApplyLinearImpulse);
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_ApplyLinearImpulseToCenter);
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_GetLinearVelocity);
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_GetType);
 		GE_ADD_INTERNAL_CALL(Rigidbody2DComponent_SetType);
+
+#pragma endregion
+
+#pragma region Rendering
+
+		GE_ADD_INTERNAL_CALL(SpriteRendererComponent_GetColor);
+		GE_ADD_INTERNAL_CALL(SpriteRendererComponent_SetColor);
 
 		GE_ADD_INTERNAL_CALL(TextRendererComponent_GetText);
 		GE_ADD_INTERNAL_CALL(TextRendererComponent_SetText);
@@ -1086,8 +1405,38 @@ namespace GE
 		GE_ADD_INTERNAL_CALL(TextRendererComponent_GetLineSpacing);
 		GE_ADD_INTERNAL_CALL(TextRendererComponent_SetLineSpacing);
 
-		GE_ADD_INTERNAL_CALL(Input_IsKeyDown);
-		GE_ADD_INTERNAL_CALL(Input_IsMouseDown);
+#pragma region GUI
+		GE_ADD_INTERNAL_CALL(GUICanvasComponent_GetControlMouse);
+		GE_ADD_INTERNAL_CALL(GUICanvasComponent_SetControlMouse);
+		GE_ADD_INTERNAL_CALL(GUICanvasComponent_GetShowMouse);
+		GE_ADD_INTERNAL_CALL(GUICanvasComponent_SetShowMouse);
+		GE_ADD_INTERNAL_CALL(GUICanvasComponent_GetMode);
+		GE_ADD_INTERNAL_CALL(GUICanvasComponent_SetMode);
+
+		GE_ADD_INTERNAL_CALL(GUIButtonComponent_GetEnabledColor);
+		GE_ADD_INTERNAL_CALL(GUIButtonComponent_SetEnabledColor);
+		GE_ADD_INTERNAL_CALL(GUIButtonComponent_GetHoveredColor);
+		GE_ADD_INTERNAL_CALL(GUIButtonComponent_SetHoveredColor);
+
+		GE_ADD_INTERNAL_CALL(GUIInputFieldComponent_GetText);
+		GE_ADD_INTERNAL_CALL(GUIInputFieldComponent_SetText);
+		GE_ADD_INTERNAL_CALL(GUIInputFieldComponent_GetTextColor);
+		GE_ADD_INTERNAL_CALL(GUIInputFieldComponent_SetTextColor);
+		GE_ADD_INTERNAL_CALL(GUIInputFieldComponent_GetBGColor);
+		GE_ADD_INTERNAL_CALL(GUIInputFieldComponent_SetBGColor);
+		GE_ADD_INTERNAL_CALL(GUIInputFieldComponent_GetLineHeight);
+		GE_ADD_INTERNAL_CALL(GUIInputFieldComponent_SetLineHeight);
+		GE_ADD_INTERNAL_CALL(GUIInputFieldComponent_GetLineSpacing);
+		GE_ADD_INTERNAL_CALL(GUIInputFieldComponent_SetLineSpacing);
+
+		GE_ADD_INTERNAL_CALL(GUISliderComponent_GetFill);
+		GE_ADD_INTERNAL_CALL(GUISliderComponent_SetFill);
+#pragma endregion
+
+#pragma endregion
+
+#pragma endregion
+
 	}
 
 	template<typename T>
@@ -1100,7 +1449,7 @@ namespace GE
 
 		MonoType* managedType = mono_reflection_type_from_name(managedTypeName.data(), Scripting::s_Data.CoreAssemblyImage);
 		if (!managedType) { GE_CORE_ERROR("Could not Register Component. Component Type not found."); return; }
-		s_HasComponentsFuncs[managedType] = [](Entity entity) { return entity.HasComponent<T>(); };
+		s_HasComponentsFuncs[managedType] = [](Ref<Scene> scene, Entity entity) { return scene->HasComponent<T>(entity); };
 	}
 
 	void Scripting::RegisterComponents()
@@ -1111,13 +1460,25 @@ namespace GE
 		//RegisterComponent<TagComponent>();
 		//RegisterComponent<NameComponent>();
 		RegisterComponent<TransformComponent>();
+		RegisterComponent<ActiveComponent>();
+		//RegisterComponent<RelationshipComponent>();
 		RegisterComponent<AudioSourceComponent>();
 		//RegisterComponent<AudioListenerComponent>();
 		//RegisterComponent<RenderComponent>();
 		//RegisterComponent<CameraComponent>();
-		//RegisterComponent<SpriteRendererComponent>();
+		RegisterComponent<SpriteRendererComponent>();
 		//RegisterComponent<CircleRendererComponent>();
 		RegisterComponent<TextRendererComponent>();
+		RegisterComponent<GUICanvasComponent>();
+		RegisterComponent<GUILayoutComponent>();
+		// RegisterComponent<GUIMaskComponent>();
+		RegisterComponent<GUIImageComponent>();
+		RegisterComponent<GUIButtonComponent>();
+		RegisterComponent<GUIInputFieldComponent>();
+		RegisterComponent<GUISliderComponent>();
+		//RegisterComponent<GUICheckboxComponent>();
+		// //RegisterComponent<GUIScrollRectComponent>();
+		//RegisterComponent<GUIScrollbarComponent>();
 		RegisterComponent<Rigidbody2DComponent>();
 		//RegisterComponent<BoxCollider2DComponent>();
 		//RegisterComponent<CircleCollider2DComponent>();
@@ -1125,9 +1486,9 @@ namespace GE
 
 	void Scripting::OnFileSystemAppAssemblyEvent(const std::string& path, const filewatch::Event changeType)
 	{
-		if (!s_Data.AssemblyReloadPending && changeType == filewatch::Event::modified)
+		if (!s_Data.ReloadPending() && changeType == filewatch::Event::modified)
 		{
-			s_Data.AssemblyReloadPending = true;
+			s_Data.QueueReload();
 
 			Application::SubmitToMainAppThread([]()
 				{	
@@ -1143,10 +1504,12 @@ namespace GE
 		m_Instance = Scripting::InstantiateScriptObject(scriptHandle);
 
 		m_Constructor = Scripting::GetEntityConstructor();
-		m_OnCreate = Scripting::GetMethod(scriptHandle, "OnCreate", 0);
-		m_OnUpdate = Scripting::GetMethod(scriptHandle, "OnUpdate", 1);
-		m_OnEvent = Scripting::GetMethod(scriptHandle, "OnEvent", 1);
-
+		m_OnCreate = Scripting::GetMethod(scriptHandle, { "OnCreate", 0 });
+		m_OnUpdate = Scripting::GetMethod(scriptHandle, { "OnUpdate", 1 });
+		m_OnEvent = Scripting::GetMethod(scriptHandle, { "OnEvent", 1 }); // Params : Event(isHandled, Event::Type)
+		m_OnKeyPressedEvent = Scripting::GetMethod(scriptHandle, { "OnKeyPressed", 2 }); // Params : Event(isHandled, Event::Type), KeyCode
+		m_OnMousePressedEvent = Scripting::GetMethod(scriptHandle, { "OnMousePressed", 2 }); // Params : Event(isHandled, Event::Type), MouseCode
+		
 		// Invoke Constructor
 		if(m_Instance)
 		{
@@ -1174,12 +1537,39 @@ namespace GE
 
 	bool ScriptInstance::InvokeOnEvent(Event& e)
 	{
-		if (!m_Instance || !m_OnEvent)
+		if (!m_Instance)
 			return false;
 
-		Event::Type type = e.GetEventType();
-		void* param = &type;
-		Scripting::InvokeMethod(m_Instance, m_OnEvent, &param);
+		switch (e.GetEventType())
+		{
+		case Event::Type::KeyPressed:
+		{
+			if (!m_OnKeyPressedEvent)
+				break;
+			KeyPressedEvent& kpe = *(KeyPressedEvent*)&e;
+			uint32_t keycode = kpe.GetKeyCode();
+			void* params[] = { &e, &keycode };
+			Scripting::InvokeMethod(m_Instance, m_OnKeyPressedEvent, params);
+		}
+			break;
+		case Event::Type::MousePressed:
+		{
+			if (!m_OnMousePressedEvent)
+				break;
+			MousePressedEvent& mpe = *(MousePressedEvent*)&e;
+			uint32_t mouseButton = mpe.GetButton();
+			void* params[] = { &e, &mouseButton };
+			Scripting::InvokeMethod(m_Instance, m_OnMousePressedEvent, params);
+		}
+			break;
+		default:
+			if (!m_OnEvent)
+				break;
+			void* params[] = { &e };
+			Scripting::InvokeMethod(m_Instance, m_OnEvent, params);
+			break;
+		}
+
 		// TODO : Get return from method
 		return false;
 	}

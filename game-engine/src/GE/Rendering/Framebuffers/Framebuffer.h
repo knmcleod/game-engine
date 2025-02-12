@@ -62,9 +62,6 @@ namespace GE
 
 			void SetBounds(const glm::vec2& min, const glm::vec2& max)
 			{
-				if (Bounds[0] == min || Bounds[1] == max)
-					return;
-
 				if (min == glm::vec2() || max == glm::vec2()
 					|| min.x > s_MaxFramebufferSize || max.x > s_MaxFramebufferSize
 					|| min.y > s_MaxFramebufferSize || max.y > s_MaxFramebufferSize)
@@ -79,13 +76,10 @@ namespace GE
 
 			void SetViewport(uint32_t width, uint32_t height)
 			{
-				if (Width == width || Height == height)
-					return;
-
 				if (width == 0 || height == 0
 					|| width > s_MaxFramebufferSize || height > s_MaxFramebufferSize)
 				{
-					GE_CORE_WARN("Failed Framebuffer Resize. Size: {0}, {1}", width, height);
+					GE_CORE_WARN("Failed Framebuffer Resize. Size: ({0}, {1})", width, height);
 					return;
 				}
 				Width = width;

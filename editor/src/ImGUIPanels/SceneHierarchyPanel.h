@@ -20,15 +20,22 @@ namespace GE
 
 		inline const glm::vec4& GetSelectedColor() const { return m_SelectedColor; }
 		inline void ClearSelected() { m_SelectedEntityID = 0; }
-		Entity GetSelectedEntity() const;
-
-		void OnImGuiRender();
-
+	
+		void OnImGuiRender(Ref<Scene> scene);
 	private:
 		void SetSelected(UUID selectedEntity = 0);
 
-		void DrawEntity(Entity entity);
-		void DrawComponents(Entity entity);
+		/*
+		* Using ImGui, draws Entity with children in hierarchy panel
+		* @param scene : active scene
+		* @param child : entity to draw
+		*/
+		void DrawEntity(Ref<Scene> scene, Entity entity);
+
+		/*
+		* Using ImGui, draws Entity Components in property panel
+		*/
+		void DrawComponents(Ref<Scene> scene, Entity entity);
 	private:
 		UUID m_SelectedEntityID = 0;
 		glm::vec4 m_SelectedColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);

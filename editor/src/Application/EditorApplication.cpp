@@ -14,10 +14,8 @@ namespace GE
 	EditorApplication::EditorApplication(const Config& config) : Application(config)
 	{
 		p_LayerStack = CreateRef<EditorLayerStack>();
-		GetLayerStack<EditorLayerStack>()->InsertLayer(CreateRef<EditorLayer>(), "EditorLayer");
-
 		Project::NewAssetManager<EditorAssetManager>()->DeserializeAssets();
-
+		// Attach Layers added through deserialization
 		AttachAllLayers();
 	}
 
@@ -27,6 +25,7 @@ namespace GE
 		Application::Config appConfig;
 		appConfig.Name = "Game Editor";
 		appConfig.Args = args;
+		// TODO : Use editor.gproj
 		// args[1] = project filePath = "projects/demo/demo.gproj"
 		// To Create new Project: 
 		// Project::New()->Save(args[1]);

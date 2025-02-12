@@ -7,11 +7,10 @@ namespace GE
 	class WindowResizeEvent : public Event
 	{
 	public:
-		WindowResizeEvent(unsigned int width, unsigned int height)
-			: m_Width(width), m_Height(height) {}
+		WindowResizeEvent(uint32_t width, uint32_t height) : Event(false, Type::WindowResize), m_Width(width), m_Height(height) {}
 
-		inline unsigned int GetWidth() const { return m_Width; }
-		inline unsigned int GetHeight() const { return m_Height; }
+		inline const uint32_t& GetWidth() const { return m_Width; }
+		inline const uint32_t& GetHeight() const { return m_Height; }
 
 		std::string ToString() const override
 		{
@@ -21,46 +20,40 @@ namespace GE
 		}
 
 		EVENT_CLASS_TYPE(WindowResize)
-		EVENT_CLASS_CATEGORY(Application)
-
 	private:
-		unsigned int m_Width, m_Height;
+		uint32_t m_Width, m_Height;
 	};
 
 	class WindowCloseEvent : public Event
 	{
 	public:
-		WindowCloseEvent() {}
+		WindowCloseEvent() : Event(false, Type::WindowClose) {}
 
 		EVENT_CLASS_TYPE(WindowClose)
-		EVENT_CLASS_CATEGORY(Application)
 	};
 
 	class AppTickEvent : public Event
 	{
 	public:
-		AppTickEvent() {}
+		AppTickEvent() : Event(false, Type::AppTick) {}
 
 		EVENT_CLASS_TYPE(AppTick)
-		EVENT_CLASS_CATEGORY(Application)
 	};
 
 	class AppUpdateEvent : public Event
 	{
 	public:
-		AppUpdateEvent() {}
+		AppUpdateEvent() : Event(false, Type::AppUpdate) {}
 
 		EVENT_CLASS_TYPE(AppUpdate)
-		EVENT_CLASS_CATEGORY(Application)
 	};
 
 	class AppRenderEvent : public Event
 	{
 	public:
-		AppRenderEvent() {}
+		AppRenderEvent() : Event(false, Type::AppRender) {}
 
 		EVENT_CLASS_TYPE(AppRender)
-		EVENT_CLASS_CATEGORY(Application)
 	};
 
 }

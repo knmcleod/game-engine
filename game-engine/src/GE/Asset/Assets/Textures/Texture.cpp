@@ -10,7 +10,7 @@ namespace GE
 {
 	Ref<Texture2D> Texture2D::Create(UUID handle, const Config& textureConfig, Buffer data /*= Buffer()*/)
 	{
-		switch (Renderer::Get()->GetAPI())
+		switch (Renderer::InstanceAPI())
 		{
 		case Renderer::API::None:
 			GE_CORE_ASSERT(false, "No Renderer API given!");

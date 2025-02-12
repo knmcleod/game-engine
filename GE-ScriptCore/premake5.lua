@@ -11,7 +11,7 @@ project "GE-ScriptCore"
 
 	files
 	{
-		"src/GE/**.cs"
+		"src/**.cs"
 	}
 
 	filter "configurations:Debug"

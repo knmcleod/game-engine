@@ -17,9 +17,16 @@ namespace GE
 
 	Script::~Script()
 	{
+		Invalidate();
+	}
+
+	void Script::Invalidate()
+	{
+		m_Class = nullptr;
+
 		for (auto& [name, field] : m_Fields)
 		{
-			field.m_DataBuffer.Release();
+			field.Invalidate();
 		}
 	}
 

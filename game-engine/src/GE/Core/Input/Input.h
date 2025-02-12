@@ -1,18 +1,15 @@
 #pragma once
 
+#include <string>
+
 namespace GE
 {
-	class Input
-	{
-	public:
-		static bool IsKeyPressed(int keycode);
-		static bool IsMouseButtonPressed(int button);
-		static float GetMouseX();
-		static float GetMouseY();
-		static std::pair<float, float> GetMousePosition();
-
+    class Input
+    {
+    public:
         enum KeyCode
         {
+            KEY_NONE = -1,
             /* Printable keys */
             KEY_SPACE = 32,
             KEY_APOSTROPHE = 39, /* ' */
@@ -137,72 +134,86 @@ namespace GE
             KEY_RIGHT_SUPER = 347,
             KEY_MENU = 348
         };
-        
+
         enum MouseCode
         {
-            MOUSE_BUTTON_1  = 0,
-            MOUSE_BUTTON_2  = 1,
-            MOUSE_BUTTON_3  = 2,
-            MOUSE_BUTTON_4  = 3,
-            MOUSE_BUTTON_5  = 4,
-            MOUSE_BUTTON_6  = 5,
-            MOUSE_BUTTON_7  = 6,
-            MOUSE_BUTTON_8  = 7,
-            MOUSE_BUTTON_LAST    =  MOUSE_BUTTON_8,
-            MOUSE_BUTTON_LEFT    =  MOUSE_BUTTON_1,
-            MOUSE_BUTTON_RIGHT   =  MOUSE_BUTTON_2,
-            MOUSE_BUTTON_MIDDLE  =  MOUSE_BUTTON_3,
+            MOUSE_BUTTON_NONE = -1,
+            MOUSE_BUTTON_1 = 0,
+            MOUSE_BUTTON_2 = 1,
+            MOUSE_BUTTON_3 = 2,
+            MOUSE_BUTTON_4 = 3,
+            MOUSE_BUTTON_5 = 4,
+            MOUSE_BUTTON_6 = 5,
+            MOUSE_BUTTON_7 = 6,
+            MOUSE_BUTTON_8 = 7,
+            MOUSE_BUTTON_LAST = MOUSE_BUTTON_8,
+            MOUSE_BUTTON_LEFT = MOUSE_BUTTON_1,
+            MOUSE_BUTTON_RIGHT = MOUSE_BUTTON_2,
+            MOUSE_BUTTON_MIDDLE = MOUSE_BUTTON_3,
 
-                       //	JOYSTICK CODES
-            JOYSTICK_1      =       0,
-            JOYSTICK_2      =       1,
-            JOYSTICK_3      =       2,
-            JOYSTICK_4      =       3,
-            JOYSTICK_5      =       4,
-            JOYSTICK_6      =       5,
-            JOYSTICK_7      =       6,
-            JOYSTICK_8      =       7,
-            JOYSTICK_9      =       8,
-            JOYSTICK_10     =       9,
-            JOYSTICK_11     =       10,
-            JOYSTICK_12     =       11,
-            JOYSTICK_13     =       12,
-            JOYSTICK_14     =       13,
-            JOYSTICK_15     =       14,
-            JOYSTICK_16     =       15,
-            JOYSTICK_LAST   =       JOYSTICK_16,
+            //	JOYSTICK CODES
+            JOYSTICK_1 = 0,
+            JOYSTICK_2 = 1,
+            JOYSTICK_3 = 2,
+            JOYSTICK_4 = 3,
+            JOYSTICK_5 = 4,
+            JOYSTICK_6 = 5,
+            JOYSTICK_7 = 6,
+            JOYSTICK_8 = 7,
+            JOYSTICK_9 = 8,
+            JOYSTICK_10 = 9,
+            JOYSTICK_11 = 10,
+            JOYSTICK_12 = 11,
+            JOYSTICK_13 = 12,
+            JOYSTICK_14 = 13,
+            JOYSTICK_15 = 14,
+            JOYSTICK_16 = 15,
+            JOYSTICK_LAST = JOYSTICK_16,
 
             //GAMEPAD CODES
-            GAMEPAD_BUTTON_A             =  0,
-            GAMEPAD_BUTTON_B             =  1,
-            GAMEPAD_BUTTON_X             =  2,
-            GAMEPAD_BUTTON_Y             =  3,
-            GAMEPAD_BUTTON_LEFT_BUMPER   =  4,
-            GAMEPAD_BUTTON_RIGHT_BUMPER  =  5,
-            GAMEPAD_BUTTON_BACK          =  6,
-            GAMEPAD_BUTTON_START         =  7,
-            GAMEPAD_BUTTON_GUIDE         =  8,
-            GAMEPAD_BUTTON_LEFT_THUMB    =  9,
-            GAMEPAD_BUTTON_RIGHT_THUMB   =  10,
-            GAMEPAD_BUTTON_DPAD_UP       =  11,
-            GAMEPAD_BUTTON_DPAD_RIGHT    =  12,
-            GAMEPAD_BUTTON_DPAD_DOWN     =  13,
-            GAMEPAD_BUTTON_DPAD_LEFT     =  14,
-            GAMEPAD_BUTTON_LAST          =  GAMEPAD_BUTTON_DPAD_LEFT,
+            GAMEPAD_BUTTON_A = 0,
+            GAMEPAD_BUTTON_B = 1,
+            GAMEPAD_BUTTON_X = 2,
+            GAMEPAD_BUTTON_Y = 3,
+            GAMEPAD_BUTTON_LEFT_BUMPER = 4,
+            GAMEPAD_BUTTON_RIGHT_BUMPER = 5,
+            GAMEPAD_BUTTON_BACK = 6,
+            GAMEPAD_BUTTON_START = 7,
+            GAMEPAD_BUTTON_GUIDE = 8,
+            GAMEPAD_BUTTON_LEFT_THUMB = 9,
+            GAMEPAD_BUTTON_RIGHT_THUMB = 10,
+            GAMEPAD_BUTTON_DPAD_UP = 11,
+            GAMEPAD_BUTTON_DPAD_RIGHT = 12,
+            GAMEPAD_BUTTON_DPAD_DOWN = 13,
+            GAMEPAD_BUTTON_DPAD_LEFT = 14,
+            GAMEPAD_BUTTON_LAST = GAMEPAD_BUTTON_DPAD_LEFT,
 
-            GAMEPAD_BUTTON_CROSS      = GAMEPAD_BUTTON_A,
-            GAMEPAD_BUTTON_CIRCLE     = GAMEPAD_BUTTON_B,
-            GAMEPAD_BUTTON_SQUARE     = GAMEPAD_BUTTON_X,
-            GAMEPAD_BUTTON_TRIANGLE   = GAMEPAD_BUTTON_Y,
+            GAMEPAD_BUTTON_CROSS = GAMEPAD_BUTTON_A,
+            GAMEPAD_BUTTON_CIRCLE = GAMEPAD_BUTTON_B,
+            GAMEPAD_BUTTON_SQUARE = GAMEPAD_BUTTON_X,
+            GAMEPAD_BUTTON_TRIANGLE = GAMEPAD_BUTTON_Y,
 
 
-            GAMEPAD_AXIS_LEFT_X         = 0,
-            GAMEPAD_AXIS_LEFT_Y         = 1,
-            GAMEPAD_AXIS_RIGHT_X        = 2,
-            GAMEPAD_AXIS_RIGHT_Y        = 3,
-            GAMEPAD_AXIS_LEFT_TRIGGER   = 4,
-            GAMEPAD_AXIS_RIGHT_TRIGGER  = 5,
-            GAMEPAD_AXIS_LAST           = GAMEPAD_AXIS_RIGHT_TRIGGER
+            GAMEPAD_AXIS_LEFT_X = 0,
+            GAMEPAD_AXIS_LEFT_Y = 1,
+            GAMEPAD_AXIS_RIGHT_X = 2,
+            GAMEPAD_AXIS_RIGHT_Y = 3,
+            GAMEPAD_AXIS_LEFT_TRIGGER = 4,
+            GAMEPAD_AXIS_RIGHT_TRIGGER = 5,
+            GAMEPAD_AXIS_LAST = GAMEPAD_AXIS_RIGHT_TRIGGER
         };
+
+        enum class CursorMode
+        {
+            None = 0,
+            Captured,
+            Normal, // visible with normal behaviour 
+            Hidden, // hidden when over window content area, cursor can leave area.
+            Disabled // hides and grabs the cursor, providing virtual and unlimited cursor movement. Useful for 3D
+        };
+
+        static std::string GetStringFromMouseButton(const MouseCode& button);
+
+        static const char GetCharFromKeyCode(const KeyCode& keycode);
     };
 }

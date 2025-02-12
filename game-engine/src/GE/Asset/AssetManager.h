@@ -68,6 +68,8 @@ namespace GE
 	public:
 		virtual ~AssetManager() = default;
 
+		virtual void InvalidateAssets() = 0;
+
 		virtual Ref<Asset> GetAsset(UUID handle) = 0;
 		virtual const AssetMap& GetLoadedAssets() = 0;
 

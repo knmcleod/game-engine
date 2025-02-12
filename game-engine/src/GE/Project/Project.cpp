@@ -3,7 +3,6 @@
 #include "Project.h"
 #include "Serializer/ProjectSerializer.h"
 
-#include "GE/Asset/Assets/Scene/Scene.h"
 #include "GE/Asset/RuntimeAssetManager.h"
 
 #include "GE/Core/Application/Application.h"
@@ -26,7 +25,6 @@ namespace GE
 	bool Project::Load(const std::filesystem::path& path)
 	{
 		Ref<Project> project = CreateRef<Project>();
-		GE_CORE_INFO("Project Deserialization Start");
 		ProjectSerializer serializer(project);
 		if (serializer.Deserialize(path))
 		{
@@ -40,16 +38,18 @@ namespace GE
 
 	bool Project::Save(const std::filesystem::path& path)
 	{
-		GE_CORE_INFO("Project Serialization Start");
-		ProjectSerializer serializer(s_ActiveProject);
-		if (serializer.Serialize(path))
+		if (s_ActiveProject->m_Config.RuntimeScene && s_ActiveProject->m_Config.RuntimeScene->IsStopped())
 		{
-			s_ActiveProject->m_AssetManager->SerializeAssets();
-			GE_CORE_INFO("Project Serialization Complete");
+			ProjectSerializer serializer(s_ActiveProject);
+			if (serializer.Serialize(path))
+			{
+				s_ActiveProject->m_AssetManager->SerializeAssets();
+				GE_CORE_INFO("Project Serialization Complete");
 
-			// Update for Scene Asset
-			s_ActiveProject->m_AssetManager->DeserializeAssets();
-			return true;
+				// Update for Scene Asset
+				s_ActiveProject->m_AssetManager->DeserializeAssets();
+				return true;
+			}
 		}
 		GE_CORE_ERROR("Project Serialization Failed");
 		return false;
@@ -57,69 +57,67 @@ namespace GE
 
 	void Project::SetSceneHandle(UUID handle)
 	{
-		if (s_ActiveProject->m_Config.RuntimeScene && handle == s_ActiveProject->m_Config.RuntimeScene->GetHandle())
-			return;
-
 		if (s_ActiveProject->m_Config.RuntimeScene && !s_ActiveProject->m_Config.RuntimeScene->IsStopped())
-			s_ActiveProject->m_Config.RuntimeScene->OnStop();
+			s_ActiveProject->SceneStop();
 
 		s_ActiveProject->m_Config.RuntimeScene = GetAssetCopy<Scene>(handle);
 		if (s_ActiveProject->m_Config.RuntimeScene)
 			s_ActiveProject->m_Config.SceneHandle = handle;
 	}
 
-	void Project::StartScene(const Scene::State& state)
+	void Project::SceneStart(const Scene::State& state)
 	{
-		if (Ref<Scene> runtimeScene = GetRuntimeScene())
-			runtimeScene->OnStart(state, Application::GetFramebuffer()->GetWidth(), Application::GetFramebuffer()->GetHeight());
+		if (m_Config.RuntimeScene)
+			m_Config.RuntimeScene->OnStart(state, Application::GetFramebuffer()->GetWidth(), Application::GetFramebuffer()->GetHeight());
 	}
 
-	void Project::UpdateScene(Timestep ts)
+	void Project::SceneUpdate(Timestep ts)
 	{
-		if (Ref<Scene> runtimeScene = GetRuntimeScene())
-			runtimeScene->OnUpdate(ts);
+		if (m_Config.RuntimeScene)
+			m_Config.RuntimeScene->OnUpdate(ts);
 	}
 
-	void Project::StopScene()
+	void Project::SceneStop()
 	{
-		if (Ref<Scene> runtimeScene = GetRuntimeScene())
-			runtimeScene->OnStop();
+		if (m_Config.RuntimeScene)
+			m_Config.RuntimeScene->OnStop();
 	}
 
-	void Project::StepScene(int steps)
+	void Project::SceneStep(int steps)
 	{
-		if (Ref<Scene> runtimeScene = GetRuntimeScene())
-			runtimeScene->OnStep(steps);
+		if (m_Config.RuntimeScene)
+			m_Config.RuntimeScene->OnStep(steps);
 	}
 
 	bool Project::SceneEvent(Event& e, Entity entity)
 	{
-		if (Ref<Scene> runtimeScene = GetRuntimeScene())
+		if (m_Config.RuntimeScene && m_Config.RuntimeScene->HasComponent<IDComponent>(entity))
 		{
-			if (entity && entity.HasComponent<IDComponent>())
-			{
-				return runtimeScene->OnEvent(e, entity);
-			}
+			return m_Config.RuntimeScene->OnEvent(e, entity);
 		}
 
 		return false;
 	}
 
-	bool Project::ResetScene()
+	Ref<Scene> Project::SceneReset()
 	{
-		if (Ref<Scene> newRuntimeScene = GetAssetCopy<Scene>(s_ActiveProject->m_Config.SceneHandle))
+		if (Ref<Scene> newRuntimeScene = GetAssetCopy<Scene>(m_Config.SceneHandle))
 		{
-			if (s_ActiveProject->m_Config.RuntimeScene && !s_ActiveProject->m_Config.RuntimeScene->IsStopped())
-				s_ActiveProject->m_Config.RuntimeScene->OnStop();
-			s_ActiveProject->m_Config.RuntimeScene = newRuntimeScene;
-			return true;
+			if (m_Config.RuntimeScene && !m_Config.RuntimeScene->IsStopped())
+				m_Config.RuntimeScene->OnStop();
+			return m_Config.RuntimeScene = newRuntimeScene;
 		}
-		return false;
+		return nullptr;
 	}
 
 #pragma region Tag Control
 
-	const std::string& Project::GetTagByKey(uint32_t id)
+	bool Project::EventScene(Event& e, Entity entity)
+	{
+		return s_ActiveProject->SceneEvent(e, entity);
+	}
+
+	const std::string& Project::GetStrByTag(uint32_t id)
 	{
 		if (s_ActiveProject->m_Config.AllTags.find(id) != s_ActiveProject->m_Config.AllTags.end())
 		{
@@ -129,7 +127,7 @@ namespace GE
 		return s_ActiveProject->m_Config.AllTags[0] = std::string("Default");
 	}
 
-	uint32_t Project::GetIDFromTag(const std::string& tag)
+	const uint32_t Project::GetTagFromStr(const std::string& tag)
 	{
 		if (!tag.empty())
 		{
@@ -139,7 +137,7 @@ namespace GE
 					return id;
 			}
 		}
-		return 0;
+		return s_ActiveProject->m_Config.AllTags.begin()->first;
 	}
 
 	bool Project::TagExists(const std::string& tag)

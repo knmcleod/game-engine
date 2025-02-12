@@ -104,6 +104,7 @@ namespace GE
 		
 	private:
 		/*
+		* TODO: Move to AssetManager(?)
 		* Returns string containing data.
 		* 
 		* @param path : filePath to read from.

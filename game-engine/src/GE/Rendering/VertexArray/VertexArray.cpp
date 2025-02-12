@@ -10,7 +10,7 @@ namespace GE
 {
 	Ref<VertexArray> VertexArray::Create()
 	{
-		switch (Renderer::Get()->GetAPI())
+		switch (Renderer::InstanceAPI())
 		{
 		case Renderer::API::None:
 			GE_CORE_ASSERT(false, "No Renderer API given!");

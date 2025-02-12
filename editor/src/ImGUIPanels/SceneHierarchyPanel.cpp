@@ -2,20 +2,15 @@
 
 #include "../Application/Layer/EditorLayerStack.h"
 #include "../AssetManager/EditorAssetManager.h"
+#include "../Project/EditorProject.h"
 
 #include "GE/Asset/Assets/Font/Font.h"
-#include "GE/Asset/Assets/Textures/Texture.h"
-
 #include "GE/Audio/AudioManager.h"
-
 #include "GE/Core/Application/Application.h"
 #include "GE/Core/FileSystem/FileSystem.h"
 
 #include "GE/Project/Project.h"
-
 #include "GE/Scripting/Scripting.h"
-
-#include <filesystem>
 
 #include <imgui/imgui.h>
 
@@ -26,26 +21,26 @@ namespace GE
 #pragma region ImGUIDraw
 
 	template<typename T, typename UIFunction>
-	static void DrawComponent(const std::string& name, Entity entity, UIFunction function)
+	static void DrawComponent(Ref<Scene> scene, const std::string& name, Entity entity, UIFunction function)
 	{
-		if (entity.HasComponent<T>())
+		if (scene->HasComponent<T>(entity))
 		{
 			const ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_DefaultOpen
 				| ImGuiTreeNodeFlags_AllowItemOverlap
 				| ImGuiTreeNodeFlags_Framed
 				| ImGuiTreeNodeFlags_SpanAvailWidth;
 
-			auto& component = entity.GetComponent<T>();
+			auto& component = scene->GetComponent<T>(entity);
+			bool removeComponent = false;
 
 			bool open = ImGui::TreeNodeEx((void*)typeid(T).hash_code(), treeNodeFlags, name.c_str());
 			ImGui::SameLine();
 			if (ImGui::Button("+"))
 				ImGui::OpenPopup("ComponentSettings");
 
-			bool removeComponent = false;
 			if (ImGui::BeginPopup("ComponentSettings"))
 			{
-				if (ImGui::MenuItem("Remove Component"))
+				if (ImGui::MenuItem("Remove"))
 					removeComponent = true;
 				ImGui::EndPopup();
 			}
@@ -57,16 +52,16 @@ namespace GE
 			}
 
 			if (removeComponent)
-				entity.RemoveComponent<T>();
+				scene->RemoveComponent<T>(entity);
 		}
 	}
 
 	template<typename T>
-	static void DrawAddComponent(const std::string& name, Entity entity)
+	static void DrawAddComponent(Ref<Scene> scene, const std::string& name, Entity entity)
 	{
-		if (!entity.HasComponent<T>() && ImGui::MenuItem(name.c_str()))
+		if (!scene->HasComponent<T>(entity) && ImGui::MenuItem(name.c_str()))
 		{
-			entity.AddComponent<T>();
+			scene->AddComponent<T>(entity);
 
 			ImGui::CloseCurrentPopup();
 		}
@@ -102,82 +97,154 @@ namespace GE
 	{
 	}
 
-	Entity SceneHierarchyPanel::GetSelectedEntity() const
-	{
-		if (Ref<Scene> runtimeScene = Project::GetRuntimeScene())
-			return runtimeScene->GetEntityByUUID(m_SelectedEntityID);
-		return {};
-	}
-
 	void SceneHierarchyPanel::SetSelected(UUID selectedEntity /*= 0*/)
 	{
 		m_SelectedEntityID = selectedEntity;
 	}
 
-	void SceneHierarchyPanel::OnImGuiRender()
+	void SceneHierarchyPanel::OnImGuiRender(Ref<Scene> scene)
 	{
+		if (scene && ImGui::Begin("Scene Hierarchy"))
 		{
-			ImGui::Begin("Scene Hierarchy");
-
-			if (Ref<Scene> runtimeScene = Project::GetRuntimeScene())
+			std::vector<Entity> entities = scene->GetAllEntitiesWith<RelationshipComponent>();
+			for (Entity entity : entities)
 			{
-				std::vector<Entity> entities = runtimeScene->GetAllEntitiesWith<IDComponent>();
-				for (Entity entity : entities)
-				{
-					DrawEntity(entity);
-				}
-				entities.clear();
-				entities = std::vector<Entity>();
+				auto& idC = scene->GetComponent<IDComponent>(entity);
+				auto& rc = scene->GetComponent<RelationshipComponent>(entity);
+				// Only draw parent Entities in main Hierarchy panel
+				// ChildEntities are handled inside the parent
+				if (rc.GetParent() == idC.ID)
+					DrawEntity(scene, entity);
 
-				if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
-				{
-					m_SelectedEntityID = 0;
-				}
+			}
+			entities.clear();
+			entities = std::vector<Entity>();
 
-				//	Right-Click Blank space
-				if (ImGui::BeginPopupContextWindow(0))
+			ImGui::Dummy(ImGui::GetContentRegionMax());
+			if (ImGui::BeginDragDropTarget())
+			{
+				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_PANEL_ITEM"))
 				{
-					if (ImGui::MenuItem("Create New Entity"))
+					const UUID entityID = *(UUID*)payload->Data;
+					Entity entity = scene->GetEntityByUUID(entityID);
+
+					auto& entityRC = scene->GetOrAddComponent<RelationshipComponent>(entity);
+					if (entityRC.GetParent() != entityID) // Entity is a child
 					{
-						runtimeScene->CreateEntity("New Entity", 0);
+						scene->SetEntityParent(entity, entityID);
 					}
 
-					ImGui::EndPopup();
 				}
+				ImGui::EndDragDropTarget();
 			}
+
+
+			if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
+			{
+				m_SelectedEntityID = 0;
+			}
+
+			//	Right-Click Blank space
+			if (ImGui::BeginPopupContextWindow(0))
+			{
+				if (ImGui::MenuItem("Create New Entity"))
+				{
+					scene->CreateEntity("New Entity", 0);
+				}
+
+				ImGui::EndPopup();
+			}
+
 			ImGui::End();
 		}
-
+		
+		if (scene && ImGui::Begin("Entity Components"))
 		{
-			ImGui::Begin("Properties");
-
-			if (Ref<Scene> runtimeScene = Project::GetRuntimeScene())
-			{
-				if (Entity e = runtimeScene->GetEntityByUUID(m_SelectedEntityID))
-					DrawComponents(e);
-			}
+			if (Entity entity = scene->GetEntityByUUID(m_SelectedEntityID))
+				DrawComponents(scene, entity);
 
 			ImGui::End();
 		}
 	}
 
-	void SceneHierarchyPanel::DrawEntity(Entity entity)
+	static std::string GetStringFromGUIState(const GUIState& state)
 	{
-		auto& name = entity.GetComponent<NameComponent>().Name;
-		auto& id = entity.GetComponent<IDComponent>().ID;
+		switch (state)
+		{
+		case GUIState::Disabled:
+			return "Disabled";
+			break;
+		case GUIState::Enabled:
+			return "Enabled";
+			break;
+		case GUIState::Hovered:
+			return "Hovered";
+			break;
+		case GUIState::Focused:
+			return "Focused";
+			break;
+		case GUIState::Active:
+			return "Active";
+			break;
+		case GUIState::Selected:
+			return "Selected";
+			break;
+		default:
+			break;
+		}
+	}
+	void SceneHierarchyPanel::DrawEntity(Ref<Scene> scene, Entity entity)
+	{
+		if (!scene || !entity)
+			return;
+
+		auto& name = scene->GetComponent<NameComponent>(entity).Name;
+		auto& id = scene->GetComponent<IDComponent>(entity).ID;
+		auto& rc = scene->GetOrAddComponent<RelationshipComponent>(entity);
+
 		ImGuiTreeNodeFlags flags = ((m_SelectedEntityID == id) ? ImGuiTreeNodeFlags_Selected : 0)
-			| ImGuiTreeNodeFlags_OpenOnArrow
-			| ImGuiTreeNodeFlags_SpanAvailWidth;
+			| ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow;
+			
 		bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity, flags, name.c_str());
 		if (ImGui::IsItemClicked())
 		{
 			m_SelectedEntityID = id;
 		}
 
-		bool entityDeleted = false;
-		if (ImGui::BeginPopupContextItem())
+		if (ImGui::BeginDragDropTarget())
 		{
-			if (ImGui::MenuItem("Delete Entity"))
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_PANEL_ITEM"))
+			{
+				const UUID childEntityID = *(UUID*)payload->Data;
+				if (childEntityID != id) // cannot parent self here, only by dragging into hierarchy panel
+				{
+					if (Entity childEntity = scene->GetEntityByUUID(childEntityID))
+					{
+						rc.AddChild(childEntityID);
+
+						scene->SetEntityParent(childEntity, id);
+					}
+				}
+				else
+					GE_WARN("SceneHierarchyPanel::DrawEntity(Entity) - Tried to add self to children.");
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+		if (ImGui::BeginDragDropSource())
+		{
+			const UUID entityID = scene->GetComponent<IDComponent>(entity).ID;
+			ImGui::SetDragDropPayload("SCENE_PANEL_ITEM", &entityID, sizeof(UUID));
+
+			ImGui::EndDragDropSource();
+		}
+
+		bool entityDeleted = false;
+		//	Right-Click Blank space
+
+		if (ImGui::BeginPopupContextWindow(0))
+		{
+			if (ImGui::MenuItem("DeleteEntity"))
 				entityDeleted = true;
 
 			ImGui::EndPopup();
@@ -186,11 +253,13 @@ namespace GE
 		// Show child entities if present
 		if (opened)
 		{
-			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
-			bool childOpened = ImGui::TreeNodeEx((void*)9817239, flags, name.c_str());
-			if (childOpened)
-				ImGui::TreePop();
+			for (const UUID& child : rc.GetChildren())
+			{
+				Entity childEntity = scene->GetEntityByUUID(child);
+				DrawEntity(scene, childEntity);
+			}
 
+			// Pop Parent Entity
 			ImGui::TreePop();
 		}
 
@@ -198,58 +267,81 @@ namespace GE
 		{
 			if (m_SelectedEntityID == id)
 				m_SelectedEntityID = 0;
-			if (Ref<Scene> runtimeScene = Project::GetRuntimeScene())
-				runtimeScene->DestroyEntity(entity);
+			if (scene)
+				scene->DestroyEntity(entity);
 		}
 	}
 
-	void SceneHierarchyPanel::DrawComponents(Entity entity)
+	void SceneHierarchyPanel::DrawComponents(Ref<Scene> scene, Entity entity)
 	{
-		if (entity.HasComponent<NameComponent>())
+		if (scene->HasComponent<NameComponent>(entity))
 		{
-			auto& name = entity.GetComponent<NameComponent>().Name;
+			auto& name = scene->GetComponent<NameComponent>(entity).Name;
 
 			DrawInputText("\n", name);
 		}
 
 		ImGui::SameLine();
-		DrawPopup("AddComponent", entity, [](auto& entity)
+		DrawPopup("+", entity, [scene](auto& entity)
 			{
-				DrawAddComponent<TransformComponent>("Transform", entity);
+				DrawAddComponent<TransformComponent>(scene, "Transform", entity);
 
-				DrawPopup("Audio", entity, [](auto& entity)
+				DrawPopup("Audio", entity, [scene](auto& entity)
 					{
-						DrawAddComponent<AudioSourceComponent>("Audio Source", entity);
-						DrawAddComponent<AudioListenerComponent>("Audio Listener", entity);
+						DrawAddComponent<AudioSourceComponent>(scene, "Audio Source", entity);
+						DrawAddComponent<AudioListenerComponent>(scene, "Audio Listener", entity);
 					});
 
-				DrawPopup("Rendering", entity, [](auto& entity)
+				DrawPopup("Rendering", entity, [scene](auto& entity)
 					{
-						DrawAddComponent<CameraComponent>("Camera", entity);
+						DrawAddComponent<CameraComponent>(scene, "Camera", entity);
 
-						DrawAddComponent<SpriteRendererComponent>("Sprite Renderer", entity);
-						DrawAddComponent<CircleRendererComponent>("Circle Renderer", entity);
-						DrawAddComponent<TextRendererComponent>("Text Renderer", entity);
+						DrawAddComponent<SpriteRendererComponent>(scene, "Sprite Renderer", entity);
+						DrawAddComponent<CircleRendererComponent>(scene, "Circle Renderer", entity);
+						DrawAddComponent<TextRendererComponent>(scene, "Text Renderer", entity);
+
+						DrawPopup("UI", entity, [scene](auto& entity)
+							{
+								DrawAddComponent<GUICanvasComponent>(scene, "Canvas", entity);
+								DrawAddComponent<GUILayoutComponent>(scene, "Layout", entity);
+								// TODO : GUIMaskComponent
+								DrawAddComponent<GUIImageComponent>(scene, "Image", entity);
+								DrawAddComponent<GUIButtonComponent>(scene, "Button", entity);
+								DrawAddComponent<GUIInputFieldComponent>(scene, "Input Field", entity);
+								DrawAddComponent<GUISliderComponent>(scene, "Slider", entity);
+								DrawAddComponent<GUICheckboxComponent>(scene, "Checkbox", entity);
+								// TODO : GUIScrollRectComponent & GUIScrollbarComponent
+							});
 					});
 
-				DrawPopup("Scripting", entity, [](auto& entity)
+				DrawPopup("Scripting", entity, [scene](auto& entity)
 					{
-						DrawAddComponent<NativeScriptComponent>("Native Script", entity);
-						DrawAddComponent<ScriptComponent>("Script", entity);
+						DrawAddComponent<NativeScriptComponent>(scene, "Native Script", entity);
+						DrawAddComponent<ScriptComponent>(scene, "Script", entity);
 					});
 
-				DrawPopup("Physics", entity, [](auto& entity)
+				DrawPopup("Physics", entity, [scene](auto& entity)
 					{
-						DrawAddComponent<Rigidbody2DComponent>("Rigidbody 2D", entity);
-						DrawAddComponent<BoxCollider2DComponent>("Box Collider 2D", entity);
-						DrawAddComponent<CircleCollider2DComponent>("Circle Collider 2D", entity);
+						DrawAddComponent<Rigidbody2DComponent>(scene, "Rigidbody 2D", entity);
+						DrawAddComponent<BoxCollider2DComponent>(scene, "Box Collider 2D", entity);
+						DrawAddComponent<CircleCollider2DComponent>(scene, "Circle Collider 2D", entity);
 					});
 			});
-
-		if (entity.HasComponent<TagComponent>())
+		ImGui::SameLine();
+		if (scene->HasComponent<ActiveComponent>(entity))
 		{
-			auto& tc = entity.GetComponent<TagComponent>();
-			std::string tagStr = Project::GetTagByKey(tc.ID);
+			auto& ac = scene->GetComponent<ActiveComponent>(entity);
+			ImGui::Checkbox("A", &ac.Active);
+			ImGui::SameLine();
+			ImGui::Checkbox("H", &ac.Hidden);
+
+			// TODO : use image buttons, similar to EditorLayer::ImGUI_SceneToolbar(Ref<Scene>)
+		}
+
+		if (scene->HasComponent<TagComponent>(entity))
+		{
+			auto& tc = scene->GetComponent<TagComponent>(entity);
+			std::string tagStr = Project::GetStrByTag(tc.TagID);
 			if (tagStr.empty())
 				tagStr = std::string("None");
 
@@ -257,16 +349,16 @@ namespace GE
 			ImGui::SameLine();
 			if (ImGui::BeginMenu(tagStr.c_str()))
 			{
-				for (const auto& [id, string] : Project::GetTags())
+				for (const auto& [tag, string] : Project::GetTags())
 				{
-					bool isSelected = (tc.ID == id);
+					bool isSelected = (tc.TagID == tag);
 					if (!string.empty() && ImGui::MenuItem(string.c_str(), nullptr, isSelected))
 					{
-						GE_TRACE("Selected Tag : {0}, ID : {1}", string.c_str(), id);
+						GE_TRACE("Selected Tag : {0}, ID : {1}", string.c_str(), tag);
 						if (isSelected) // Clear if already selected
-							tc.ID = 0;
+							tc.TagID = 0;
 						else // Set if not
-							tc.ID = id;
+							tc.TagID = tag;
 					}
 				}
 
@@ -287,10 +379,10 @@ namespace GE
 
 		}
 
-		if (entity.HasComponent<RenderComponent>())
+		if (scene->HasComponent<RenderComponent>(entity))
 		{
 			Ref<EditorLayerStack> editorLayerStack = Application::GetLayerStack<EditorLayerStack>();
-			auto& rc = entity.GetComponent<RenderComponent>();
+			auto& rc = scene->GetComponent<RenderComponent>(entity);
 			std::string layerStr = std::string();
 			if (rc.LayerIDs.empty())
 				layerStr = std::string("None");
@@ -302,7 +394,7 @@ namespace GE
 			ImGui::SameLine();
 			if (ImGui::BeginMenu(layerStr.c_str()))
 			{
-				for (const auto& layer : Application::GetLayers())
+				for (const auto& [id, layer] : Application::GetLayers())
 				{
 					uint64_t layerID = layer->GetID();
 					bool isSelected = rc.IDHandled(layerID);
@@ -322,10 +414,10 @@ namespace GE
 				{
 					if (!m_NewLayerStr.empty())
 					{
-						Application::SubmitToMainAppThread([newLayerStr = m_NewLayerStr]()
+						Application::SubmitToMainAppThread([newLayerStr = m_NewLayerStr, els = editorLayerStack]()
 							{
 								Ref<Layer> layer = CreateRef<Layer>();
-								if (Application::GetLayerStack<EditorLayerStack>()->InsertLayer(layer, newLayerStr))
+								if (els->InsertLayer(layer, newLayerStr))
 									GE_TRACE("Successfully added new Layer to EditorLayerStack.");
 							});
 						m_NewLayerStr.clear();
@@ -336,15 +428,35 @@ namespace GE
 		}
 
 		ImGui::Separator();
-		DrawComponent<TransformComponent>("Transform", entity,
-			[](auto& component)
+		DrawComponent<TransformComponent>(scene, "Transform", entity,
+			[PivotStrs = EditorAssetManager::GetPivotStrs()](auto& component)
 			{
 				ImGui::DragFloat3("Position", glm::value_ptr(component.Translation));
 				ImGui::DragFloat3("Rotation", glm::value_ptr(component.Rotation));
 				ImGui::DragFloat3("Scale", glm::value_ptr(component.Scale));
+
+				const std::string pivotStr = EditorAssetManager::PivotToString(component.GetPivot());
+				ImGui::Text("Pivot:");
+				ImGui::SameLine();
+				if (ImGui::BeginMenu(pivotStr.c_str()))
+				{
+					for (const auto& [pivot, str] : PivotStrs)
+					{
+						bool isSelected = pivotStr == str;
+						if (ImGui::MenuItem(str.c_str(), nullptr, isSelected))
+						{
+							component.SetPivot(pivot);
+						}
+					}
+					ImGui::EndMenu();
+				}
+				// TODO : Custom Pivot(?)
+				//ImGui::DragFloat3("Pivot", glm::value_ptr(component.PivotOffset));
 			});
 
-		DrawComponent<AudioSourceComponent>("Audio Source", entity,
+#pragma region Audio
+
+		DrawComponent<AudioSourceComponent>(scene, "Audio Source", entity,
 			[](auto& component)
 			{
 				ImGui::Checkbox("Loop", &component.Loop);
@@ -373,19 +485,24 @@ namespace GE
 				}
 			});
 
-		DrawComponent<AudioListenerComponent>("Audio Listener", entity,
+		DrawComponent<AudioListenerComponent>(scene, "Audio Listener", entity,
 			[](auto& component)
 			{
 				ImGui::Text("Device", AudioManager::GetDeviceName());
 			});
+#pragma endregion
 
-		DrawComponent<CameraComponent>("Camera", entity,
+#pragma region Rendering
+
+		DrawComponent<CameraComponent>(scene, "Camera", entity,
 			[](CameraComponent& cc)
 			{
-				SceneCamera& camera = cc.ActiveCamera;
+				const SceneCamera& camera = cc.ActiveCamera;
 
 				ImGui::Checkbox("Primary", &cc.Primary);
 				ImGui::Checkbox("Fixed Aspect Ratio", &cc.FixedAspectRatio);
+				float aspectRatio = camera.GetAspectRatio();
+				ImGui::DragFloat("Aspect Ratio", &aspectRatio);
 
 				const char* projectionTypeStrings[] = { "Perspective", "Orthographic" };
 				const char* currentProjectionTypeString = projectionTypeStrings[(int)camera.GetProjectionType()];
@@ -397,7 +514,7 @@ namespace GE
 						if (ImGui::Selectable(projectionTypeStrings[type], isSelected))
 						{
 							currentProjectionTypeString = projectionTypeStrings[type];
-							camera.SetProjectionType((Camera::ProjectionType)type);
+							cc.SetProjectionType((Camera::ProjectionType)type);
 						}
 
 						if (isSelected)
@@ -408,23 +525,23 @@ namespace GE
 
 				float fov = camera.GetFOV();
 				if (ImGui::DragFloat("FOV", &fov))
-					camera.SetFOV(fov);
+					cc.SetFOV(fov);
 
 				float nearClip = camera.GetNearClip();
 				if (ImGui::DragFloat("Near Clip", &nearClip))
-					camera.SetNearClip(nearClip);
+					cc.SetNearClip(nearClip);
 
 				float farClip = camera.GetFarClip();
 				if (ImGui::DragFloat("Far Clip", &farClip))
-					camera.SetFarClip(farClip);
+					cc.SetFarClip(farClip);
 
 			});
 
-		DrawComponent<SpriteRendererComponent>("Sprite Renderer", entity,
+		DrawComponent<SpriteRendererComponent>(scene, "Sprite Renderer", entity,
 			[](auto& component)
 			{
 				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
-
+				ImGui::DragFloat("Tiling Factor", &component.TilingFactor);
 				{
 					if (ImGui::Button("Texture"))
 					{
@@ -464,10 +581,10 @@ namespace GE
 						ImGui::EndDragDropTarget();
 					}
 				}
-				ImGui::DragFloat("Tiling Factor", &component.TilingFactor);
+				
 			});
 
-		DrawComponent<CircleRendererComponent>("Circle Renderer", entity,
+		DrawComponent<CircleRendererComponent>(scene, "Circle Renderer", entity,
 			[](auto& component)
 			{
 				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
@@ -476,24 +593,26 @@ namespace GE
 
 			});
 
-		DrawComponent<TextRendererComponent>("Text Renderer", entity,
-			[](auto& component)
+		DrawComponent<TextRendererComponent>(scene, "Text Renderer", entity,
+			[](TextRendererComponent& trc)
 			{
-				ImGui::ColorEdit4("Text Color", glm::value_ptr(component.TextColor));
-				ImGui::ColorEdit4("Background Color", glm::value_ptr(component.BGColor));
+				ImGui::ColorEdit4("Text Color", glm::value_ptr(trc.TextColor));
+				ImGui::ColorEdit4("Background Color", glm::value_ptr(trc.BGColor));
 
-				ImGui::DragFloat("Kerning", &component.KerningOffset);
-				ImGui::DragFloat("Line Height Spacing", &component.LineHeightOffset);
+				ImGui::DragFloat("Width Spacing", &trc.KerningOffset);
+				ImGui::DragFloat("Height Spacing", &trc.LineHeightOffset);
+				ImGui::DragFloat("TextScalar", &trc.TextScalar);
+				ImGui::DragFloat2("TextOffset", glm::value_ptr(trc.TextOffset));
 
-				std::string& text = component.Text;
+				std::string& text = trc.Text;
 
-				char buffer[256];
-				memset(buffer, 0, sizeof(buffer));
+				char* buffer = new char[sizeof(std::string)];
+				memset(buffer, 0, sizeof(std::string));
 				if (!text.empty())
-					strcpy_s(buffer, sizeof(buffer), text.c_str());
-				if (ImGui::InputTextMultiline("Text", buffer, sizeof(buffer)))
+					strcpy_s(buffer, sizeof(std::string), text.c_str());
+				if (ImGui::InputTextMultiline("Text", buffer, sizeof(std::string)))
 					text = std::string(buffer);
-
+				delete[](buffer);
 				{
 					Ref<Asset> font = nullptr;
 					if (ImGui::Button("Font"))
@@ -504,7 +623,7 @@ namespace GE
 							font = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
 							if (font)
 							{
-								component.AssetHandle = font->GetHandle();
+								trc.AssetHandle = font->GetHandle();
 
 							}
 						}
@@ -518,7 +637,7 @@ namespace GE
 							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
 							if (asset->GetType() == Asset::Type::Font)
 							{
-								component.AssetHandle = asset->GetHandle();
+								trc.AssetHandle = asset->GetHandle();
 							}
 							else
 							{
@@ -538,13 +657,747 @@ namespace GE
 
 			});
 
-		DrawComponent<NativeScriptComponent>("Native Script", entity,
+#pragma region UI
+		DrawComponent<GUIComponent>(scene, "GUI Component", entity,
+			[](GUIComponent& guiC)
+			{
+				std::string lastStateStr = "Last State : " + GetStringFromGUIState(guiC.LastState);
+				ImGui::Text(lastStateStr.c_str());
+
+				std::string currentStateStr = "Current State : " + GetStringFromGUIState(guiC.CurrentState);
+				ImGui::Text(currentStateStr.c_str());
+
+				ImGui::Checkbox("IsNavigatable", &guiC.IsNavigatable);
+			});
+
+		DrawComponent<GUICanvasComponent>(scene, "GUI Canvas", entity,
+			[CanvasModeStrs = EditorAssetManager::GetCanvasModeStrs()](GUICanvasComponent& guiCC)
+			{
+				ImGui::Checkbox("Control Mouse", &guiCC.ControlMouse);
+				ImGui::Checkbox("Show Mouse", &guiCC.ShowMouse);
+				const std::string modeStr = EditorAssetManager::CanvasModeToStr(guiCC.Mode);
+				ImGui::Text("Mode:");
+				ImGui::SameLine();
+				if (ImGui::BeginMenu(modeStr.c_str()))
+				{
+					for (const auto& [mode, str] : CanvasModeStrs)
+					{
+						bool isSelected = modeStr == str;
+						if (ImGui::MenuItem(str.c_str(), nullptr, isSelected))
+						{
+							guiCC.Mode = mode;
+						}
+					}
+					ImGui::EndMenu();
+				}
+			});
+
+		DrawComponent<GUILayoutComponent>(scene, "GUI Layout", entity,
+			[LayoutModeStrs = EditorAssetManager::GetLayoutModeStrs()](GUILayoutComponent& guiLOC)
+			{
+				const std::string modeStr = EditorAssetManager::LayoutModeToStr(guiLOC.Mode);
+				ImGui::Text("Mode:");
+				ImGui::SameLine();
+				if (ImGui::BeginMenu(modeStr.c_str()))
+				{
+					for (const auto& [mode, str] : LayoutModeStrs)
+					{
+						bool isSelected = modeStr == str;
+						if (ImGui::MenuItem(str.c_str(), nullptr, isSelected))
+						{
+							guiLOC.Mode = mode;
+						}
+					}
+					ImGui::EndMenu();
+				}
+				ImGui::DragFloat2("StartingOffset", glm::value_ptr(guiLOC.StartingOffset));
+				ImGui::DragFloat2("ChildSize", glm::value_ptr(guiLOC.ChildSize));
+				ImGui::DragFloat2("ChildPadding", glm::value_ptr(guiLOC.ChildPadding));
+			});
+		
+		// TODO : GUIMaskComponent
+
+		DrawComponent<GUIImageComponent>(scene, "GUI Image", entity,
+			[](GUIImageComponent& guiIC)
+			{
+				ImGui::ColorEdit4("Color", glm::value_ptr(guiIC.Color));
+				ImGui::Text("Texture");
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+					{
+						const UUID handle = *(UUID*)payload->Data;
+
+						Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+						if (asset->GetType() == Asset::Type::Texture2D)
+						{
+							guiIC.TextureHandle = asset->GetHandle();
+						}
+						else
+						{
+							GE_WARN("Asset Type is not Texture2D.");
+						}
+					}
+					ImGui::EndDragDropTarget();
+				}
+
+				ImGui::DragFloat("Tiling Factor", &guiIC.TilingFactor);
+
+			});
+
+		DrawComponent<GUIButtonComponent>(scene, "GUI Button", entity,
+			[](GUIButtonComponent& guiBC)
+			{
+				// Text
+				{
+					ImGui::ColorEdit4("Text Color", glm::value_ptr(guiBC.TextColor));
+					ImGui::ColorEdit4("Background Color", glm::value_ptr(guiBC.BGColor));
+
+					ImGui::DragFloat("Kerning", &guiBC.KerningOffset);
+					ImGui::DragFloat("Line Height Spacing", &guiBC.LineHeightOffset);
+
+					std::string& text = guiBC.Text;
+
+					char* buffer = new char[256];
+					memset(buffer, 0, sizeof(buffer));
+					if (!text.empty())
+						strcpy_s(buffer, sizeof(buffer), text.c_str());
+					if (ImGui::InputTextMultiline("Text", buffer, sizeof(buffer)))
+						text = std::string(buffer);
+					delete[](buffer);
+
+					ImGui::Text("Font Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Font)
+							{
+								guiBC.FontAssetHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Font.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+				}
+				
+				// Textures + Colors
+				{
+					ImGui::ColorEdit4("Background Color", glm::value_ptr(guiBC.BackgroundColor));
+					ImGui::Text("Background Texture");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiBC.BackgroundTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Disabled Color", glm::value_ptr(guiBC.DisabledColor));
+					ImGui::Text("Disabled Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiBC.DisabledTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Enabled Color", glm::value_ptr(guiBC.EnabledColor));
+					ImGui::Text("Enabled Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiBC.EnabledTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Hovered Color", glm::value_ptr(guiBC.HoveredColor));
+					ImGui::Text("Hovered Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiBC.HoveredTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Selected Color", glm::value_ptr(guiBC.SelectedColor));
+					ImGui::Text("Selected Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiBC.SelectedTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Foreground Color", glm::value_ptr(guiBC.ForegroundColor));
+					ImGui::Text("Foreground Texture");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiBC.ForegroundTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+				}
+
+			});
+
+		DrawComponent<GUIInputFieldComponent>(scene, "GUI Input Field", entity,
+			[](GUIInputFieldComponent& guiIFC)
+			{
+				// Font
+				{
+					ImGui::ColorEdit4("Text Color", glm::value_ptr(guiIFC.TextColor));
+					ImGui::ColorEdit4("Background Color", glm::value_ptr(guiIFC.BGColor));
+
+					ImGui::DragFloat("Width Spacing", &guiIFC.KerningOffset);
+					ImGui::DragFloat("Height Spacing", &guiIFC.LineHeightOffset);
+					ImGui::DragFloat("Text Size Scalar", &guiIFC.TextScalar);
+					ImGui::DragFloat2("Text Starting Offset", glm::value_ptr(guiIFC.TextStartingOffset));
+					ImGui::DragFloat2("Text Padding", glm::value_ptr(guiIFC.Padding));
+
+					std::string& text = guiIFC.Text;
+
+					char* buffer = new char[sizeof(std::string)];
+					memset(buffer, 0, sizeof(std::string));
+					if (!text.empty())
+						strcpy_s(buffer, sizeof(std::string), text.c_str());
+					if (ImGui::InputTextMultiline("Input", buffer, sizeof(std::string)))
+						text = std::string(buffer);
+					delete[](buffer);
+					{
+						Ref<Asset> font = nullptr;
+						if (ImGui::Button("Font"))
+						{
+							std::string filePath = FileSystem::LoadFromFileDialog("TTF(*.ttf)\0*.ttf\0");
+							if (!filePath.empty())
+							{
+								font = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
+								if (font)
+								{
+									guiIFC.FontAssetHandle = font->GetHandle();
+
+								}
+							}
+						}
+						if (ImGui::BeginDragDropTarget())
+						{
+							if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+							{
+								const UUID handle = *(UUID*)payload->Data;
+
+								Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+								if (asset->GetType() == Asset::Type::Font)
+								{
+									guiIFC.FontAssetHandle = asset->GetHandle();
+								}
+								else
+								{
+									GE_WARN("Asset Type is not Font.");
+								}
+							}
+							ImGui::EndDragDropTarget();
+						}
+
+						if (font)
+						{
+							Ref<Texture2D> fontAtlas = Project::GetAsset<Font>(font->GetHandle())->GetAtlasTexture();
+							if (fontAtlas != nullptr)
+								ImGui::Image((ImTextureID)(uint64_t)fontAtlas->GetID(), { 512, 512 }, { 0, 1 }, { 1, 0 });
+						}
+					}
+				}
+				
+				// Texture
+				{
+					ImGui::ColorEdit4("Color", glm::value_ptr(guiIFC.BackgroundColor));
+					ImGui::Checkbox("Fill BG", &guiIFC.FillBackground);
+					ImGui::DragFloat2("Fill Size", glm::value_ptr(guiIFC.TextSize));
+					if(ImGui::Button("Texture"))
+					{
+						std::string filePath = FileSystem::LoadFromFileDialog("PNG(*.png)\0*.png\0");
+						if (!filePath.empty())
+						{
+							Ref<Asset> texture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
+							if (texture)
+							{
+								guiIFC.BackgroundTextureHandle = texture->GetHandle();
+							}
+						}
+					}
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset)
+							{
+								if (asset->GetType() == Asset::Type::Texture2D)
+								{
+									guiIFC.BackgroundTextureHandle = asset->GetHandle();
+								}
+								else
+								{
+									GE_WARN("Asset Type is not Texture2D.");
+								}
+							}
+							else
+							{
+								GE_ERROR("Cannot assign Asset. Asset not found in AssetManager.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+				}
+			});
+
+		DrawComponent<GUISliderComponent>(scene, "GUI Slider", entity,
+			[SliderDirectionStrs = EditorAssetManager::GetSliderDirStrs()](GUISliderComponent& guiSC)
+			{
+				const std::string directionStr = EditorAssetManager::SliderDirectionToString(guiSC.Direction);
+				ImGui::Text("Direction:");
+				ImGui::SameLine();
+				if (ImGui::BeginMenu(directionStr.c_str()))
+				{
+					for (const auto& [direction, str] : SliderDirectionStrs)
+					{
+						bool isSelected = directionStr == str;
+						if (ImGui::MenuItem(str.c_str(), nullptr, isSelected))
+						{
+							guiSC.Direction = direction;
+						}
+					}
+					ImGui::EndMenu();
+				}
+
+				ImGui::DragFloat("Fill", &guiSC.Fill, 0.25f, 0.0f, 1.0f);
+
+				// Textures
+				{
+					ImGui::ColorEdit4("BG Color", glm::value_ptr(guiSC.BackgroundColor));
+					if (ImGui::Button("BG Texture"))
+					{
+						std::string filePath = FileSystem::LoadFromFileDialog("PNG(*.png)\0*.png\0");
+						if (!filePath.empty())
+						{
+							Ref<Asset> texture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
+							if (texture)
+							{
+								guiSC.BackgroundTextureHandle = texture->GetHandle();
+							}
+						}
+					}
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset)
+							{
+								if (asset->GetType() == Asset::Type::Texture2D)
+								{
+									guiSC.BackgroundTextureHandle = asset->GetHandle();
+								}
+								else
+								{
+									GE_WARN("Asset Type is not Texture2D.");
+								}
+							}
+							else
+							{
+								GE_ERROR("Cannot assign Asset. Asset not found in AssetManager.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Disabled Color", glm::value_ptr(guiSC.DisabledColor));
+					ImGui::Text("Disabled Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiSC.DisabledTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Enabled Color", glm::value_ptr(guiSC.EnabledColor));
+					ImGui::Text("Enabled Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiSC.EnabledTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Hovered Color", glm::value_ptr(guiSC.HoveredColor));
+					ImGui::Text("Hovered Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiSC.HoveredTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Selected Color", glm::value_ptr(guiSC.SelectedColor));
+					ImGui::Text("Selected Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiSC.SelectedTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("FG Color", glm::value_ptr(guiSC.ForegroundColor));
+					if (ImGui::Button("FG Texture"))
+					{
+						std::string filePath = FileSystem::LoadFromFileDialog("PNG(*.png)\0*.png\0");
+						if (!filePath.empty())
+						{
+							Ref<Asset> texture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
+							if (texture)
+							{
+								guiSC.ForegroundTextureHandle = texture->GetHandle();
+							}
+						}
+					}
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset)
+							{
+								if (asset->GetType() == Asset::Type::Texture2D)
+								{
+									guiSC.ForegroundTextureHandle = asset->GetHandle();
+								}
+								else
+								{
+									GE_WARN("Asset Type is not Texture2D.");
+								}
+							}
+							else
+							{
+								GE_ERROR("Cannot assign Asset. Asset not found in AssetManager.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+				}
+			});
+			
+		DrawComponent<GUICheckboxComponent>(scene, "GUI Checkbox", entity,
+				[](GUICheckboxComponent& guiCB)
+				{
+					ImGui::ColorEdit4("BG Color", glm::value_ptr(guiCB.BackgroundColor));
+					if (ImGui::Button("BGTexture"))
+				{
+					std::string filePath = FileSystem::LoadFromFileDialog("PNG(*.png)\0*.png\0");
+					if (!filePath.empty())
+					{
+						Ref<Asset> texture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
+						if (texture)
+						{
+							guiCB.BackgroundTextureHandle = texture->GetHandle();
+						}
+					}
+				}
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset)
+							{
+								if (asset->GetType() == Asset::Type::Texture2D)
+								{
+									guiCB.BackgroundTextureHandle = asset->GetHandle();
+								}
+								else
+								{
+									GE_WARN("Asset Type is not Texture2D.");
+								}
+							}
+							else
+							{
+								GE_ERROR("Cannot assign Asset. Asset not found in AssetManager.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Disabled Color", glm::value_ptr(guiCB.DisabledColor));
+					ImGui::Text("Disabled Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiCB.DisabledTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Enabled Color", glm::value_ptr(guiCB.EnabledColor));
+					ImGui::Text("Enabled Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiCB.EnabledTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Hovered Color", glm::value_ptr(guiCB.HoveredColor));
+					ImGui::Text("Hovered Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiCB.HoveredTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("Selected Color", glm::value_ptr(guiCB.SelectedColor));
+					ImGui::Text("Selected Texture Asset");
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset->GetType() == Asset::Type::Texture2D)
+							{
+								guiCB.SelectedTextureHandle = asset->GetHandle();
+							}
+							else
+							{
+								GE_WARN("Asset Type is not Texture2D.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::ColorEdit4("FG Color", glm::value_ptr(guiCB.ForegroundColor));
+					if (ImGui::Button("FG Texture"))
+					{
+						std::string filePath = FileSystem::LoadFromFileDialog("PNG(*.png)\0*.png\0");
+						if (!filePath.empty())
+						{
+							Ref<Asset> texture = Project::GetAssetManager<EditorAssetManager>()->GetAsset(filePath);
+							if (texture)
+							{
+								guiCB.ForegroundTextureHandle = texture->GetHandle();
+							}
+						}
+					}
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_PANEL_ITEM"))
+						{
+							const UUID handle = *(UUID*)payload->Data;
+
+							Ref<Asset> asset = Project::GetAssetManager()->GetAsset(handle);
+							if (asset)
+							{
+								if (asset->GetType() == Asset::Type::Texture2D)
+								{
+									guiCB.ForegroundTextureHandle = asset->GetHandle();
+								}
+								else
+								{
+									GE_WARN("Asset Type is not Texture2D.");
+								}
+							}
+							else
+							{
+								GE_ERROR("Cannot assign Asset. Asset not found in AssetManager.");
+							}
+						}
+						ImGui::EndDragDropTarget();
+					}
+				});
+
+		// TODO : GUIScrollRectComponent & GUIScrollbarComponent
+
+#pragma endregion
+
+#pragma endregion
+
+#pragma region Scripting
+
+		DrawComponent<NativeScriptComponent>(scene, "Native Script", entity,
 			[](auto& component)
 			{
 			});
 
-		DrawComponent<ScriptComponent>("Script", entity,
-			[entity, scene = Project::GetRuntimeScene()](ScriptComponent& sc) mutable
+		DrawComponent<ScriptComponent>(scene, "Script", entity,
+			[entity, scene](ScriptComponent& sc) mutable
 			{
 				bool exists = Scripting::ScriptExists(sc.AssetHandle);
 				if (!exists)
@@ -567,7 +1420,7 @@ namespace GE
 				{
 					if (Ref<Script> script = Scripting::GetScript(sc.AssetHandle))
 					{
-						UUID entityUUID = entity.GetComponent<IDComponent>().ID;
+						UUID entityUUID = scene->GetComponent<IDComponent>(entity).ID;
 						const ScriptFieldMap& classFieldMaps = script->GetFields();
 						if (scene->IsStopped())
 						{
@@ -637,7 +1490,7 @@ namespace GE
 						}
 						else
 						{
-							Ref<ScriptInstance> instance = Scripting::GetScriptInstance(entityUUID);
+							Ref<ScriptInstance> instance = Scripting::GetEntityInstance(entityUUID);
 							if (instance)
 							{
 								for (const auto& [name, field] : classFieldMaps)
@@ -712,8 +1565,11 @@ namespace GE
 					ImGui::PopStyleColor();
 
 			});
+#pragma endregion
 
-		DrawComponent<Rigidbody2DComponent>("Rigidbody 2D", entity,
+#pragma region Physics
+
+		DrawComponent<Rigidbody2DComponent>(scene, "Rigidbody 2D", entity,
 			[](auto& component)
 			{
 				const char* bodyTypeStrings[] = { "Static", "Dynamic", "Kinematic" };
@@ -740,7 +1596,7 @@ namespace GE
 				ImGui::Checkbox("Fixed Rotation", &component.FixedRotation);
 			});
 
-		DrawComponent<BoxCollider2DComponent>("Box Collider 2D", entity,
+		DrawComponent<BoxCollider2DComponent>(scene, "Box Collider 2D", entity,
 			[](auto& component)
 			{
 				ImGui::DragFloat2("Offset", glm::value_ptr(component.Offset));
@@ -754,7 +1610,7 @@ namespace GE
 
 			});
 
-		DrawComponent<CircleCollider2DComponent>("Circle Collider 2D", entity,
+		DrawComponent<CircleCollider2DComponent>(scene, "Circle Collider 2D", entity,
 			[](auto& component)
 			{
 				ImGui::DragFloat2("Offset", glm::value_ptr(component.Offset));
@@ -767,6 +1623,8 @@ namespace GE
 				ImGui::Checkbox("Show", &component.Show);
 
 			});
+#pragma endregion
+
 	}
 
 }

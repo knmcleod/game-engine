@@ -85,8 +85,14 @@ namespace GE
             this.w = w;
         }
 
+        public bool IsEqual(Vector4 other)
+        {
+            return x == other.x && y == other.y && z == other.z && w == other.w;
+        }
+
         public static Vector4 Zero => new Vector4(0.0f);
         public Vector2 XY => new Vector2(this.x, this.y);
+
         public static Vector4 operator *(Vector4 v, float scale)
         {
             return new Vector4(v.x * scale, v.y * scale, v.z * scale, v.w * scale);

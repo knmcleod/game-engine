@@ -8,6 +8,7 @@ namespace GE
 {
     public class Event
     {
+        // Formated the same in C# & C++
         public enum Type
         {
             None,
@@ -17,7 +18,14 @@ namespace GE
             MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled
         }
 
-        // TODO: Get Type from C++ using Type enum. Event::Type should be formated the same in C# & C++
-        public Type GetEventType() { return Type.None; }
+        public Event(bool isHandled, Type type)
+        {
+            this.isHandled = isHandled;
+            this.type = type;
+        }
+
+        protected bool isHandled;
+        protected Type type;
     }
+
 }

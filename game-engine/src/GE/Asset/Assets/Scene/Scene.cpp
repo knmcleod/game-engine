@@ -29,12 +29,12 @@ namespace GE
 	}
 
 	template<typename T>
-	static void CopyComponentIfExists(Entity to, Entity from)
+	static void CopyComponentIfExists(Scene* scene, Entity to, Entity from)
 	{
-		if (from.HasComponent<T>())
+		if (scene && scene->HasComponent<T>(from))
 		{
-			T component = from.GetComponent<T>();
-			to.AddOrReplaceComponent<T>(component);
+			T& component = scene->GetComponent<T>(from);
+			scene->AddOrReplaceComponent<T>(to, component);
 		}
 	}
 
@@ -68,21 +68,37 @@ namespace GE
 			{
 				UUID uuid = sceneRegistry.get<IDComponent>(e).ID;
 				const auto& name = sceneRegistry.get<NameComponent>(e).Name;
-				uint32_t tagID = sceneRegistry.get<TagComponent>(e).ID;
+				uint32_t tagID = sceneRegistry.get<TagComponent>(e).TagID;
 				Entity entity = newScene->CreateEntityWithUUID(uuid, name, tagID);
 				entityMap.emplace(uuid, entity);
 			}
 
+			CopyComponent<ActiveComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<RelationshipComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<TransformComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			
 			CopyComponent<AudioSourceComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<AudioListenerComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			
 			CopyComponent<RenderComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<CameraComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<SpriteRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<CircleRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<TextRendererComponent>(newSceneRegistry, sceneRegistry, entityMap);
+
+			CopyComponent<GUIComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<GUICanvasComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<GUILayoutComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			// TODO : GUIMaskComponent
+			CopyComponent<GUIImageComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<GUIButtonComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<GUIInputFieldComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<GUISliderComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			CopyComponent<GUICheckboxComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			// TODO : GUIScrollRectComponent & GUIScrollbarComponent
 			CopyComponent<NativeScriptComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<ScriptComponent>(newSceneRegistry, sceneRegistry, entityMap);
+			
 			CopyComponent<Rigidbody2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<BoxCollider2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
 			CopyComponent<CircleCollider2DComponent>(newSceneRegistry, sceneRegistry, entityMap);
@@ -93,7 +109,7 @@ namespace GE
 
 	void Scene::OnResizeViewport(uint32_t width, uint32_t height)
 	{
-		if ((width == 0 || height == 0))
+		if (width == 0 || height == 0)
 		{
 			GE_CORE_WARN("Scene failed to resize viewport\n\tWidth: {0}\n\tHeight: {1}", width, height);
 			return;
@@ -101,16 +117,19 @@ namespace GE
 		m_Config.SetViewport(width, height);
 
 		// Resize non-fixed aspect ratio cameras
-		auto view = m_Registry.view<CameraComponent>();
-		for (auto entity : view)
+		std::vector<Entity> entities = GetAllEntitiesWith<CameraComponent>();
+		for (Entity entity : entities)
 		{
-			auto& camera = view.get<CameraComponent>(entity);
-			if (!camera.FixedAspectRatio)
+			UUID uuid = GetComponent<IDComponent>(entity).ID;
+			auto& cc = GetComponent<CameraComponent>(entity);
+			if (!cc.FixedAspectRatio)
 			{
-				auto& c = camera.ActiveCamera;
-				SyncEntityCamera(&c);
+				cc.ActiveCamera.SetViewport(m_Config.ViewportWidth, m_Config.ViewportHeight);
 			}
 		}
+
+		entities.clear();
+		entities = std::vector<Entity>();
 	}
 
 	void Scene::OnStart(State state, uint32_t viewportWidth, uint32_t viewportHeight)
@@ -129,7 +148,7 @@ namespace GE
 			OnPauseStart();
 			break;
 		default:
-			GE_CORE_INFO("Cannot Start Scene.\n\tState: {0}", SceneUtils::SceneStateToString(state));
+			GE_CORE_ERROR("Cannot Start Scene with State::{0}.", SceneUtils::SceneStateToString(state));
 			break;
 		}
 	}
@@ -154,7 +173,7 @@ namespace GE
 	void Scene::OnStop()
 	{
 		m_Config.CurrentState = State::Stop;
-		
+
 		DestroyScripting();
 		DestroyAudio();
 		DestroyPhysics2D();
@@ -165,24 +184,13 @@ namespace GE
 		m_Config.StepFrames += steps;
 	}
 
-	bool Scene::OnEvent(Event& e, Entity entity) const
+	bool Scene::OnEvent(Event& e, Entity entity)
 	{
 		if (!IsStopped())
 		{
-			return Scripting::OnEvent(e, entity);
+			return Scripting::OnEvent(e, this, entity);
 		}
 		return false;
-	}
-
-	void Scene::ResetEntityRenderComponents()
-	{
-		std::vector<Entity> entities = GetAllEntitiesWith<RenderComponent>();
-		for (Entity entity : entities)
-		{
-			entity.GetComponent<RenderComponent>().Rendered = false;
-		}
-		entities.clear();
-		entities = std::vector<Entity>();
 	}
 
 	void Scene::OnRuntimeStart()
@@ -223,22 +231,15 @@ namespace GE
 
 	void Scene::InitializePhysics2D()
 	{
+		GE_PROFILE_FUNCTION();
+
 		m_PhysicsWorld = new b2World({ 0.0f, -9.8f });
 		std::vector<Entity> entities = GetAllEntitiesWith<Rigidbody2DComponent>();
 		for (Entity entity : entities)
 		{
-			auto& tc = GetComponent<TransformComponent>(entity);
+			auto& trsc = GetComponent<TransformComponent>(entity);
 			auto& rb2D = GetComponent<Rigidbody2DComponent>(entity);
-
-			b2BodyDef bodyDef;
-			bodyDef.type = Physics::Rigidbody2DTypeToBox2DBody(rb2D.Type);
-			bodyDef.position.Set(tc.Translation.x, tc.Translation.y);
-			bodyDef.angle = tc.Rotation.z;
-
-			b2Body* body = m_PhysicsWorld->CreateBody(&bodyDef);
-			body->SetFixedRotation(rb2D.FixedRotation);
-
-			rb2D.RuntimeBody = body;
+			const glm::vec3& translation = trsc.GetOffsetTranslation();
 
 			//	Box Collider
 			{
@@ -247,9 +248,21 @@ namespace GE
 				{
 					auto& bc2D = GetComponent<BoxCollider2DComponent>(entity);
 
+					b2BodyDef bodyDef;
+					bodyDef.type = Physics::Rigidbody2DTypeToBox2DBody(rb2D.Type);
+					// TODO : Offset for Middle Pivots(?)
+					bodyDef.position.Set(translation.x, translation.y);
+					bodyDef.angle = trsc.Rotation.z;
+
+					b2Body* body = m_PhysicsWorld->CreateBody(&bodyDef);
+					body->SetFixedRotation(rb2D.FixedRotation);
+					rb2D.RuntimeBody = body;
+
+					float halfW = (bc2D.Size.x * trsc.Scale.x) * 0.5f;
+					float halfH = (bc2D.Size.y * trsc.Scale.y) * 0.5f;
+
 					b2PolygonShape polygonShape;
-					polygonShape.SetAsBox(bc2D.Size.x * tc.Scale.x,
-						bc2D.Size.y * tc.Scale.y);
+					polygonShape.SetAsBox(halfW, halfH);
 
 					b2FixtureDef fixtureDef;
 					fixtureDef.shape = &polygonShape;
@@ -269,10 +282,21 @@ namespace GE
 				{
 					auto& cc2D = GetComponent<CircleCollider2DComponent>(entity);
 
-					b2CircleShape circleShape;
-					circleShape.m_p.Set(cc2D.Offset.x, cc2D.Offset.y);
-					circleShape.m_radius = tc.Scale.x * cc2D.Radius;
+					b2BodyDef bodyDef;
+					bodyDef.type = Physics::Rigidbody2DTypeToBox2DBody(rb2D.Type);
+					bodyDef.position.Set(translation.x, translation.y);
+					bodyDef.angle = trsc.Rotation.z;
 
+					b2Body* body = m_PhysicsWorld->CreateBody(&bodyDef);
+					body->SetFixedRotation(rb2D.FixedRotation);
+
+					rb2D.RuntimeBody = body;
+
+					b2CircleShape circleShape;
+					
+					circleShape.m_p.Set(cc2D.Offset.x, cc2D.Offset.y);
+					circleShape.m_radius = cc2D.Radius * trsc.Scale.x;
+		
 					b2FixtureDef fixtureDef;
 					fixtureDef.shape = &circleShape;
 					fixtureDef.density = cc2D.Density;
@@ -290,7 +314,7 @@ namespace GE
 	
 	void Scene::UpdatePhysics2D(Timestep ts)
 	{
-		GE_PROFILE_SCOPE("Scene - UpdatePhysics2D");
+		GE_PROFILE_FUNCTION();
 		if (m_PhysicsWorld)
 		{
 			const int32_t velocityInteration = 5;
@@ -300,16 +324,15 @@ namespace GE
 			std::vector<Entity> entities = GetAllEntitiesWith<Rigidbody2DComponent>();
 			for (Entity entity : entities)
 			{
-				auto& transformComponent = GetComponent<TransformComponent>(entity);
+				auto& trsc = GetComponent<TransformComponent>(entity);
 				auto& rb2D = GetComponent<Rigidbody2DComponent>(entity);
 
 				GE_CORE_ASSERT(rb2D.RuntimeBody != nullptr, "Rigidbody2DComponent has no Runtime Body.");
 				b2Body* body = (b2Body*)rb2D.RuntimeBody;
 				const auto& position = body->GetPosition();
-				transformComponent.Translation.x = position.x;
-				transformComponent.Translation.y = position.y;
-
-				transformComponent.Rotation.z = body->GetAngle();
+				trsc.Translation.x = position.x;
+				trsc.Translation.y = position.y;
+				trsc.Rotation.z = glm::degrees(body->GetAngle());
 			}
 			entities.clear();
 			entities = std::vector<Entity>();
@@ -318,6 +341,7 @@ namespace GE
 
 	void Scene::DestroyPhysics2D()
 	{
+		GE_PROFILE_FUNCTION();
 		delete m_PhysicsWorld;
 		m_PhysicsWorld = nullptr;
 	}
@@ -326,16 +350,16 @@ namespace GE
 #pragma region Scripting
 	void Scene::InitializeScripting()
 	{
-		GE_PROFILE_SCOPE("InitializeScripting");
+		GE_PROFILE_FUNCTION();
 
 		std::vector<Entity> nscEntities = GetAllEntitiesWith<NativeScriptComponent>();
 		for (Entity entity : nscEntities)
 		{
-			auto& nsc = entity.GetComponent<NativeScriptComponent>();
+			auto& nsc = GetComponent<NativeScriptComponent>(entity);
 			if (!nsc.Instance)
 			{
 				nsc.Instance = nsc.InstantiateScript();
-				nsc.Instance->SetID(entity);
+				nsc.Instance->p_EntityID = entity;
 				nsc.Instance->OnCreate();
 			}
 		}
@@ -345,20 +369,21 @@ namespace GE
 		std::vector<Entity> scEntities = GetAllEntitiesWith<ScriptComponent>();
 		for (Entity entity : scEntities)
 		{
-			Scripting::OnCreateScript(entity);
+			Scripting::OnCreateScript(this, entity);
 		}
 		scEntities.clear();
 		scEntities = std::vector<Entity>();
+	
 	}
 
 	void Scene::UpdateScripting(Timestep ts)
 	{
-		GE_PROFILE_SCOPE("UpdateScripting");
+		GE_PROFILE_FUNCTION();
 
 		std::vector<Entity> nscEntities = GetAllEntitiesWith<NativeScriptComponent>();
 		for (Entity entity : nscEntities)
 		{
-			auto& nsc = entity.GetComponent<NativeScriptComponent>();
+			auto& nsc = GetComponent<NativeScriptComponent>(entity);
 			nsc.Instance->OnUpdate(ts);
 		}
 		nscEntities.clear();
@@ -367,7 +392,7 @@ namespace GE
 		std::vector<Entity> scEntities = GetAllEntitiesWith<ScriptComponent>();
 		for (Entity entity : scEntities)
 		{
-			Scripting::OnUpdateScript(entity, ts);
+			Scripting::OnUpdateScript(this, entity, ts);
 		}
 		scEntities.clear();
 		scEntities = std::vector<Entity>();
@@ -376,7 +401,7 @@ namespace GE
 
 	void Scene::DestroyScripting()
 	{
-		GE_PROFILE_SCOPE("DestroyScripting");
+		GE_PROFILE_FUNCTION();
 		Scripting::OnStop();
 	}
 #pragma endregion
@@ -384,12 +409,13 @@ namespace GE
 #pragma region Audio
 	void Scene::InitializeAudio() 
 	{
+		GE_PROFILE_FUNCTION();
 		std::vector<Entity> entities = GetAllEntitiesWith<AudioSourceComponent>();
 		for (Entity entity : entities)
 		{
 			auto& asc = GetComponent<AudioSourceComponent>(entity);
 			auto& trsc = GetComponent<TransformComponent>(entity);
-			
+
 			glm::vec3 velocity = glm::vec3(0.0);
 			// TODO : check for physics RB and assign velocity if possible
 			AudioManager::GenerateSource(asc, trsc.Translation, velocity);
@@ -400,12 +426,12 @@ namespace GE
 
 	void Scene::UpdateAudio(Timestep ts)
 	{
+		GE_PROFILE_FUNCTION();
 		std::vector<Entity> listenerEntities = GetAllEntitiesWith<AudioListenerComponent>();
 		for (Entity entity : listenerEntities)
 		{
 			auto& alc = GetComponent<AudioListenerComponent>(entity);
 			auto& trsc = GetComponent<TransformComponent>(entity);
-
 			glm::vec3 velocity = glm::vec3(0.0);
 			if (HasComponent<Rigidbody2DComponent>(entity))
 			{
@@ -449,6 +475,7 @@ namespace GE
 
 	void Scene::DestroyAudio()
 	{
+		GE_PROFILE_FUNCTION();
 		std::vector<Entity> entities = GetAllEntitiesWith<AudioSourceComponent>();
 		for (Entity entity : entities)
 		{
@@ -463,34 +490,117 @@ namespace GE
 
 #pragma region Entity Control
 
+#pragma region OnEntityComponentAdded
 	template<typename T>
-	void Scene::OnEntityComponentAdded(Entity e)
+	void Scene::OnEntityComponentAdded(Entity entity, T& component)
 	{
-		e.OnComponentAdded<T>();
+		entity.OnComponentAdded<T>();
 	}
 
 	template<>
-	void Scene::OnEntityComponentAdded<CameraComponent>(Entity e)
+	void Scene::OnEntityComponentAdded<CameraComponent>(Entity entity, CameraComponent& cc)
 	{
-		SyncEntityCamera(&GetComponent<CameraComponent>(e).ActiveCamera);
-		e.OnComponentAdded<CameraComponent>();
+		cc.ActiveCamera.SetViewport(m_Config.ViewportWidth, m_Config.ViewportHeight);
+		entity.OnComponentAdded<CameraComponent>();
 	}
+
+	template<>
+	void Scene::OnEntityComponentAdded<RelationshipComponent>(Entity entity, RelationshipComponent& rsc)
+	{
+		if(HasComponent<IDComponent>(entity))
+			rsc.Parent = GetComponent<IDComponent>(entity).ID;
+		entity.OnComponentAdded<RelationshipComponent>();
+	}
+
+#pragma region GUI
+	template<>
+	void Scene::OnEntityComponentAdded<GUICanvasComponent>(Entity entity, GUICanvasComponent& component)
+	{
+		GetOrAddComponent<GUIComponent>(entity);
+	}
+	template<>
+	void Scene::OnEntityComponentAdded<GUIMaskComponent>(Entity entity, GUIMaskComponent& component)
+	{
+		GetOrAddComponent<GUIComponent>(entity);
+	}
+	template<>
+	void Scene::OnEntityComponentAdded<GUIImageComponent>(Entity entity, GUIImageComponent& component)
+	{
+		GetOrAddComponent<GUIComponent>(entity);
+	}
+	template<>
+	void Scene::OnEntityComponentAdded<GUIButtonComponent>(Entity entity, GUIButtonComponent& component)
+	{
+		GetOrAddComponent<GUIComponent>(entity);
+	}
+	template<>
+	void Scene::OnEntityComponentAdded<GUIInputFieldComponent>(Entity entity, GUIInputFieldComponent& component)
+	{
+		GetOrAddComponent<GUIComponent>(entity);
+	}
+	template<>
+	void Scene::OnEntityComponentAdded<GUISliderComponent>(Entity entity, GUISliderComponent& component)
+	{
+		GetOrAddComponent<GUIComponent>(entity);
+	}
+	template<>
+	void Scene::OnEntityComponentAdded<GUICheckboxComponent>(Entity entity, GUICheckboxComponent& component)
+	{
+		GetOrAddComponent<GUIComponent>(entity);
+	}
+
+	template<>
+	void Scene::OnEntityComponentAdded<GUIScrollRectComponent>(Entity entity, GUIScrollRectComponent& component)
+	{
+		GetOrAddComponent<GUIComponent>(entity);
+	}
+	template<>
+	void Scene::OnEntityComponentAdded<GUIScrollbarComponent>(Entity entity, GUIScrollbarComponent& component)
+	{
+		GetOrAddComponent<GUIComponent>(entity);
+	}
+#pragma endregion
+
+#pragma endregion
 
 	bool Scene::EntityExists(Entity e)
 	{
+		if (!e)
+			return false;
 		return m_Registry.any_of(e);
 	}
 
 	Entity Scene::GetPrimaryCameraEntity(uint64_t layerID)
 	{
 		Entity retEntity = {};
-		std::vector<Entity> entities = GetAllEntitiesWith<CameraComponent, RenderComponent>();
+		std::vector<Entity> entities = GetAllEntitiesWith<CameraComponent>();
 		for (Entity entity : entities)
 		{
-			const auto& cc = entity.GetComponent<CameraComponent>();
-			const auto& rc = entity.GetComponent<RenderComponent>();
+			auto& rc = GetComponent<RenderComponent>(entity);
+			auto& cc = GetComponent<CameraComponent>(entity);
 			if (cc.Primary && rc.IDHandled(layerID))
+			{
 				retEntity = entity;
+				cc.ActiveCamera.SetViewport(m_Config.ViewportWidth, m_Config.ViewportHeight);
+			}
+		}
+		entities.clear();
+		entities = std::vector<Entity>();
+		return retEntity;
+	}
+
+	Entity Scene::GetGUICanvasEntity(uint64_t layerID)
+	{
+		Entity retEntity = {};
+		std::vector<Entity> entities = GetAllEntitiesWith<GUICanvasComponent>();
+		for (Entity entity : entities)
+		{
+			auto& ac = GetComponent<ActiveComponent>(entity);
+			if (ac.Active && !ac.Hidden)
+			{
+				retEntity = entity;
+				break;
+			}
 		}
 		entities.clear();
 		entities = std::vector<Entity>();
@@ -505,9 +615,12 @@ namespace GE
 			std::vector<Entity> entities = GetAllEntitiesWith<IDComponent>();
 			for (Entity entity : entities)
 			{
-				const auto& idc = entity.GetComponent<IDComponent>();
+				const auto& idc = GetComponent<IDComponent>(entity);
 				if (uuid == idc.ID)
+				{
 					retEntity = entity;
+					break;
+				}
 			}
 			entities.clear();
 			entities = std::vector<Entity>();
@@ -517,23 +630,107 @@ namespace GE
 
 	Entity Scene::GetEntityByName(const std::string& name)
 	{
+		Entity retEntity = {};
+		if (name.empty())
+			return retEntity;
+
 		std::vector<Entity> entities = GetAllEntitiesWith<NameComponent>();
 		for (Entity entity : entities)
 		{
-			const auto& nc = entity.GetComponent<NameComponent>();
+			const auto& nc = GetComponent<NameComponent>(entity);
 			if (name == nc.Name)
-				return entity;
+			{
+				retEntity = entity;
+				break;
+			}
 		}
-		return { };
+		entities.clear();
+		entities = std::vector<Entity>();
+		return retEntity;
 	}
 
-	void Scene::SyncEntityCamera(Camera* camera) const
+	void Scene::GetTotalOffset(Entity entity, glm::vec3& translation, glm::vec3& rotation)
 	{
-		const glm::vec2 vp = camera->GetViewport();
-		if (vp.x != m_Config.ViewportWidth && vp.y != m_Config.ViewportHeight)
-			camera->SetViewport(m_Config.ViewportWidth, m_Config.ViewportWidth);
+		// Valid Entity
+		if (entity && HasComponent<RelationshipComponent>(entity))
+		{
+			auto& idc = GetComponent<IDComponent>(entity);
+			auto& rc = GetComponent<RelationshipComponent>(entity);
+			// Entity is a child
+			if (rc.Parent != idc.ID)
+			{
+				auto& trsc = GetComponent<TransformComponent>(entity);
+				if (Entity parentEntity = GetEntityByUUID(rc.Parent))
+				{
+					// Add parent offset
+					auto& parentTRSC = GetComponent<TransformComponent>(parentEntity);
+					translation += parentTRSC.Translation;
+					rotation += parentTRSC.Rotation;
+					GetTotalOffset(parentEntity, translation, rotation);
+				}
+			}
+		}
 	}
 
+	std::vector<Entity> Scene::GetAllRenderEntities(const uint64_t& layerID)
+	{
+		std::vector<Entity> renderEntities = std::vector<Entity>();
+
+		std::vector<Entity> entities = GetAllEntitiesWith<RenderComponent>();
+		for (Entity entity : entities)
+		{
+			auto& rc = GetComponent<RenderComponent>(entity);
+			for (uint64_t id : rc.LayerIDs)
+			{
+				if (id == layerID)
+				{
+					renderEntities.push_back(entity);
+				}
+			}
+		}
+
+		entities.clear();
+		entities = std::vector<Entity>();
+		return renderEntities;
+	}
+
+	void Scene::SetEntityParent(Entity child, const UUID& parentID)
+	{
+		auto& childIDC = GetOrAddComponent<IDComponent>(child);
+		auto& childRSC = GetOrAddComponent<RelationshipComponent>(child);
+		if (childRSC.Parent != childIDC.ID) // Parent isn't self, meaning parent needs to know it no longer has this child
+		{
+			if (Entity parent = GetEntityByUUID(childRSC.Parent))
+			{
+				auto& parentRSC = GetComponent<RelationshipComponent>(parent);
+				parentRSC.RemoveChild(childIDC.ID);
+			}
+		}
+		childRSC.Parent = parentID;
+	}
+
+	void Scene::ResetEntityRenderComponents()
+	{
+		std::vector<Entity> entities = GetAllEntitiesWith<RenderComponent>();
+		for (Entity entity : entities)
+		{
+			GetComponent<RenderComponent>(entity).Rendered = false;
+		}
+		entities.clear();
+		entities = std::vector<Entity>();
+	}
+
+	void Scene::SyncCamera(Entity entity, const glm::vec3& position, const glm::vec3& rotation)
+	{
+		if (HasComponent<CameraComponent>(entity))
+		{
+			auto& cc = GetComponent<CameraComponent>(entity);
+			cc.ActiveCamera.SetViewport(m_Config.ViewportWidth, m_Config.ViewportWidth);
+			cc.ActiveCamera.SetPosition(position);
+			cc.ActiveCamera.SetRotation(rotation);
+		}
+	}
+	
 	Entity Scene::CreateEntity(const std::string& name, uint32_t tagID)
 	{
 		return CreateEntityWithUUID(UUID(), name, tagID);
@@ -542,11 +739,13 @@ namespace GE
 	Entity Scene::CreateEntityWithUUID(UUID uuid, const std::string& name, uint32_t tagID)
 	{
 		entt::entity internalEntity = m_Registry.create();
-		Entity entity = Entity((uint32_t)internalEntity, this);
+		Entity entity = Entity((uint32_t)internalEntity);
 
 		AddComponent<IDComponent>(entity, uuid);
 		AddComponent<TagComponent>(entity, tagID);
 		AddComponent<NameComponent>(entity, name);
+		AddComponent<ActiveComponent>(entity);
+		AddComponent<RelationshipComponent>(entity, uuid);
 		AddComponent<TransformComponent>(entity);
 		AddComponent<RenderComponent>(entity, false);
 		return entity;
@@ -554,53 +753,109 @@ namespace GE
 
 	Entity Scene::DuplicateEntity(Entity entity)
 	{
-		std::string name = entity.GetComponent<NameComponent>().Name;
-		uint32_t tagID = entity.GetComponent<TagComponent>().ID;
+		std::string name = GetComponent<NameComponent>(entity).Name;
+		uint32_t tagID = GetComponent<TagComponent>(entity).TagID;
 		Entity newEntity = CreateEntity(name, tagID);
 
-		CopyComponentIfExists<TransformComponent>(newEntity, entity);
-		CopyComponentIfExists<RenderComponent>(newEntity, entity);
-		CopyComponentIfExists<CameraComponent>(newEntity, entity);
-		CopyComponentIfExists<SpriteRendererComponent>(newEntity, entity);
-		CopyComponentIfExists<CircleRendererComponent>(newEntity, entity);
-		CopyComponentIfExists<TextRendererComponent>(newEntity, entity);
-		CopyComponentIfExists<AudioSourceComponent>(newEntity, entity);
-		CopyComponentIfExists<AudioListenerComponent>(newEntity, entity);
-		CopyComponentIfExists<NativeScriptComponent>(newEntity, entity);
-		CopyComponentIfExists<ScriptComponent>(newEntity, entity);
-		CopyComponentIfExists<Rigidbody2DComponent>(newEntity, entity);
-		CopyComponentIfExists<BoxCollider2DComponent>(newEntity, entity);
-		CopyComponentIfExists<CircleCollider2DComponent>(newEntity, entity);
+		CopyComponentIfExists<ActiveComponent>(this, newEntity, entity);
+		CopyComponentIfExists<RelationshipComponent>(this, newEntity, entity);
+		CopyComponentIfExists<TransformComponent>(this, newEntity, entity);
 
+		CopyComponentIfExists<RenderComponent>(this, newEntity, entity);
+		CopyComponentIfExists<CameraComponent>(this, newEntity, entity);
+		CopyComponentIfExists<SpriteRendererComponent>(this, newEntity, entity);
+		CopyComponentIfExists<CircleRendererComponent>(this, newEntity, entity);
+		CopyComponentIfExists<TextRendererComponent>(this, newEntity, entity);
+
+		CopyComponentIfExists<GUIComponent>(this, newEntity, entity);
+		CopyComponentIfExists<GUICanvasComponent>(this, newEntity, entity);
+		CopyComponentIfExists<GUILayoutComponent>(this, newEntity, entity);
+		// TODO : GUIMaskComponent
+		CopyComponentIfExists<GUIImageComponent>(this, newEntity, entity);
+		CopyComponentIfExists<GUIButtonComponent>(this, newEntity, entity);
+		CopyComponentIfExists<GUIInputFieldComponent>(this, newEntity, entity);
+		CopyComponentIfExists<GUISliderComponent>(this, newEntity, entity);
+		CopyComponentIfExists<GUICheckboxComponent>(this, newEntity, entity);
+		// TODO : GUIScrollRectComponent & GUIScrollbarComponent
+
+		CopyComponentIfExists<AudioSourceComponent>(this, newEntity, entity);
+		CopyComponentIfExists<AudioListenerComponent>(this, newEntity, entity);
+
+		CopyComponentIfExists<NativeScriptComponent>(this, newEntity, entity);
+		CopyComponentIfExists<ScriptComponent>(this, newEntity, entity);
+
+		CopyComponentIfExists<Rigidbody2DComponent>(this, newEntity, entity);
+		CopyComponentIfExists<BoxCollider2DComponent>(this, newEntity, entity);
+		CopyComponentIfExists<CircleCollider2DComponent>(this, newEntity, entity);
 		return newEntity;
 	}
 
 	Entity Scene::CopyEntity(Entity entity)
 	{
-		Entity newEntity = CreateEntityWithUUID(entity.GetComponent<IDComponent>().ID, 
-			entity.GetComponent<NameComponent>().Name, entity.GetComponent<TagComponent>().ID);
+		Entity newEntity = CreateEntityWithUUID(GetComponent<IDComponent>(entity).ID,
+			GetComponent<NameComponent>(entity).Name, GetComponent<TagComponent>(entity).TagID);
 
-		CopyComponentIfExists<TransformComponent>(newEntity, entity);
-		CopyComponentIfExists<RenderComponent>(newEntity, entity);
-		CopyComponentIfExists<CameraComponent>(newEntity, entity);
-		CopyComponentIfExists<SpriteRendererComponent>(newEntity, entity);
-		CopyComponentIfExists<CircleRendererComponent>(newEntity, entity);
-		CopyComponentIfExists<TextRendererComponent>(newEntity, entity);
-		CopyComponentIfExists<AudioSourceComponent>(newEntity, entity);
-		CopyComponentIfExists<AudioListenerComponent>(newEntity, entity);
-		CopyComponentIfExists<NativeScriptComponent>(newEntity, entity);
-		CopyComponentIfExists<ScriptComponent>(newEntity, entity);
-		CopyComponentIfExists<Rigidbody2DComponent>(newEntity, entity);
-		CopyComponentIfExists<BoxCollider2DComponent>(newEntity, entity);
-		CopyComponentIfExists<CircleCollider2DComponent>(newEntity, entity);
+		CopyComponentIfExists<ActiveComponent>(this, newEntity, entity);
+		CopyComponentIfExists<RelationshipComponent>(this,newEntity, entity);
+		CopyComponentIfExists<TransformComponent>(this,newEntity, entity);
 
+		CopyComponentIfExists<RenderComponent>(this,newEntity, entity);
+		CopyComponentIfExists<CameraComponent>(this,newEntity, entity);
+		CopyComponentIfExists<SpriteRendererComponent>(this,newEntity, entity);
+		CopyComponentIfExists<CircleRendererComponent>(this,newEntity, entity);
+		CopyComponentIfExists<TextRendererComponent>(this,newEntity, entity);
+
+		CopyComponentIfExists<GUIComponent>(this, newEntity, entity);
+		CopyComponentIfExists<GUICanvasComponent>(this, newEntity, entity);
+		CopyComponentIfExists<GUILayoutComponent>(this, newEntity, entity);
+		// TODO : GUIMaskComponent
+		CopyComponentIfExists<GUIImageComponent>(this, newEntity, entity);
+		CopyComponentIfExists<GUIButtonComponent>(this,newEntity, entity);
+		CopyComponentIfExists<GUIInputFieldComponent>(this,newEntity, entity);
+		CopyComponentIfExists<GUISliderComponent>(this,newEntity, entity);
+		CopyComponentIfExists<GUICheckboxComponent>(this, newEntity, entity);
+		// TODO : GUIScrollRectComponent & GUIScrollbarComponent
+
+		CopyComponentIfExists<AudioSourceComponent>(this,newEntity, entity);
+		CopyComponentIfExists<AudioListenerComponent>(this,newEntity, entity);
+
+		CopyComponentIfExists<NativeScriptComponent>(this,newEntity, entity);
+		CopyComponentIfExists<ScriptComponent>(this,newEntity, entity);
+
+		CopyComponentIfExists<Rigidbody2DComponent>(this,newEntity, entity);
+		CopyComponentIfExists<BoxCollider2DComponent>(this,newEntity, entity);
+		CopyComponentIfExists<CircleCollider2DComponent>(this,newEntity, entity);
 		return newEntity;
 	}
 
 	void Scene::DestroyEntity(Entity entity)
 	{
+		auto& idc = GetComponent<IDComponent>(entity);
+		auto& rsc = GetComponent<RelationshipComponent>(entity);
+
+		// Clear self from parent, if parent != self
+		if (rsc.Parent != idc.ID)
+		{
+			if (Entity parent = GetEntityByUUID(rsc.Parent))
+			{
+				auto& parentRSC = GetComponent<RelationshipComponent>(parent);
+				parentRSC.RemoveChild(idc.ID);
+			}
+		}
+
+		// Clear all children from registry
+		for (const UUID& childID : rsc.Children)
+		{
+			if (Entity child = GetEntityByUUID(childID))
+			{
+				// Setting childs parent == childs/self 
+				// because it doesn't need to remove itself from its parent, in this case.
+				auto& childRSC = GetComponent<RelationshipComponent>(child);
+				childRSC.Parent = childID;
+				DestroyEntity(child);
+			}
+		}
 		m_Registry.destroy(entity);
-		entity.ClearEntityID();
 	}
 
 #pragma endregion

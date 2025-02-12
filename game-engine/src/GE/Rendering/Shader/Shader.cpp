@@ -11,7 +11,7 @@ namespace GE
 {
 	Ref<Shader> Shader::Create(const std::string& name, const std::string& vertexSrc, const std::string& fragmentSrc)
 	{
-		switch (Renderer::Get()->GetAPI())
+		switch (Renderer::InstanceAPI())
 		{
 		case Renderer::API::None:
 			GE_CORE_ASSERT(false, "No Renderer API given!");
@@ -27,7 +27,7 @@ namespace GE
 
 	Ref<Shader> Shader::Create(const std::string& path)
 	{
-		switch (Renderer::Get()->GetAPI())
+		switch (Renderer::InstanceAPI())
 		{
 		case Renderer::API::None:
 			GE_CORE_ASSERT(false, "No Renderer API given!");

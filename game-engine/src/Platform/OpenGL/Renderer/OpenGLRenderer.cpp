@@ -2,6 +2,9 @@
 
 #include "OpenGLRenderer.h"
 
+#include "GE/Asset/Assets/Scene/Entity.h"
+#include "GE/Asset/Assets/Scene/Scene.h"
+
 #include "GE/Project/Project.h"
 
 #include "GE/Rendering/Camera/Camera.h"
@@ -17,11 +20,6 @@ namespace GE
 	OpenGLRenderer::OpenGLRenderer()
 	{
 		GE_PROFILE_FUNCTION();
-
-		glEnable(GL_DEPTH);
-		glEnable(GL_BLEND);
-
-		glBlendFunc(GL_SRC0_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	}
 
@@ -41,7 +39,7 @@ namespace GE
 		{
 			GE_PROFILE_SCOPE("OpenGLRenderer - Init() : Quad/Sprite Rendering Setup");
 
-			// TODO: Let vertexArray control buffers?
+			// TODO: Let vertexArray initialize buffers(?)
 			//Creates Vertex Array
 			s_Data.quadData.VertexArray = VertexArray::Create();
 
@@ -52,9 +50,9 @@ namespace GE
 				{ GE::Math::Type::Float3,	"a_Position"	 },
 				{ GE::Math::Type::Float4,	"a_Color"		 },
 				{ GE::Math::Type::Float2,	"a_TextureCoord" },
-				{ GE::Math::Type::Int,	"a_TextureIndex" },
+				{ GE::Math::Type::Int,		"a_TextureIndex" },
 				{ GE::Math::Type::Float,	"a_TilingFactor" },
-				{ GE::Math::Type::Int,	"a_EntityID"	 }
+				{ GE::Math::Type::Int,		"a_EntityID"	 }
 			};
 			s_Data.quadData.VertexBuffer->SetLayout(layout);
 
@@ -80,10 +78,50 @@ namespace GE
 
 			s_Data.spriteData.TextureSlots[0] = s_Data.spriteData.EmptyTexture;
 
-			s_Data.quadData.Vertices[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
-			s_Data.quadData.Vertices[1] = { 0.5f, -0.5f, 0.0f, 1.0f };
-			s_Data.quadData.Vertices[2] = { 0.5f, 0.5f, 0.0f, 1.0f };
-			s_Data.quadData.Vertices[3] = { -0.5f, 0.5f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::Center][0] = { -0.5f, -0.5f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::Center][1] = { 0.5f, -0.5f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::Center][2] = { 0.5f, 0.5f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::Center][3] = { -0.5f, 0.5f, 0.0f, 1.0f };
+
+			s_Data.quadData.PivotPoints[Pivot::LowerLeft][0] = { 0.0f, 0.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::LowerLeft][1] = { 1.0f, 0.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::LowerLeft][2] = { 1.0f, 1.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::LowerLeft][3] = { 0.0f, 1.0f, 0.0f, 1.0f };
+
+			s_Data.quadData.PivotPoints[Pivot::TopLeft][0] = { 0.0f, 0.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::TopLeft][1] = { 1.0f, 0.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::TopLeft][2] = { 1.0f, -1.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::TopLeft][3] = { 0.0f, -1.0f, 0.0f, 1.0f };
+
+			s_Data.quadData.PivotPoints[Pivot::TopRight][0] = { 0.0f, 0.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::TopRight][1] = { 0.0f, -1.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::TopRight][2] = { -1.0f, -1.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::TopRight][3] = { -1.0f, 0.0f, 0.0f, 1.0f };
+
+			s_Data.quadData.PivotPoints[Pivot::LowerRight][0] = { 0.0f, 0.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::LowerRight][1] = { 0.0f, 1.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::LowerRight][2] = { -1.0f, 1.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::LowerRight][3] = { -1.0f, 0.0f, 0.0f, 1.0f };
+
+			s_Data.quadData.PivotPoints[Pivot::MiddleRight][0] = { 0.0f, 0.5f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::MiddleRight][1] = { -1.0f, 0.5f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::MiddleRight][2] = { -1.0f, -0.5f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::MiddleRight][3] = { 0.0f, -0.5f, 0.0f, 1.0f };
+
+			s_Data.quadData.PivotPoints[Pivot::TopMiddle][0] = { -0.5f, 0.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::TopMiddle][1] = { -0.5f, -1.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::TopMiddle][2] = { 0.5f, -1.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::TopMiddle][3] = { 0.5f, 0.0f, 0.0f, 1.0f };
+
+			s_Data.quadData.PivotPoints[Pivot::MiddleLeft][0] = { 0.0f, -0.5f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::MiddleLeft][1] = { 1.0f, -0.5f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::MiddleLeft][2] = { 1.0f, 0.5f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::MiddleLeft][3] = { 0.0f, 0.5f, 0.0f, 1.0f };
+
+			s_Data.quadData.PivotPoints[Pivot::BottomMiddle][0] = { 0.5f, 0.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::BottomMiddle][1] = { 0.5f, 1.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::BottomMiddle][2] = { -0.5f, 1.0f, 0.0f, 1.0f };
+			s_Data.quadData.PivotPoints[Pivot::BottomMiddle][3] = { -0.5f, 0.0f, 0.0f, 1.0f };
 		}
 
 		// Circle Rendering Setup
@@ -193,11 +231,11 @@ namespace GE
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 
-	void OpenGLRenderer::Start(const Camera& camera)
+	void OpenGLRenderer::Start(const Camera*& camera)
 	{
 		GE_PROFILE_FUNCTION();
 
-		const glm::mat4& viewProjection = camera.GetViewProjection();
+		const glm::mat4 viewProjection = camera->GetViewProjection();
 		s_Data.quadData.Shader->SetMat4("u_ViewProjection", viewProjection);
 		s_Data.circleData.Shader->SetMat4("u_ViewProjection", viewProjection);
 		s_Data.lineData.Shader->SetMat4("u_ViewProjection", viewProjection);
@@ -305,6 +343,93 @@ namespace GE
 		return s_Data.lineData.Width;
 	}
 
+	const Renderer::QuadData::Vertices& OpenGLRenderer::GetVertices(const Pivot& pivot)
+	{	
+		if (s_Data.quadData.PivotPoints.find(pivot) != s_Data.quadData.PivotPoints.end())
+			return s_Data.quadData.PivotPoints.at(Pivot::Center);
+		return s_Data.quadData.PivotPoints.at(pivot);
+	}
+
+	glm::vec2 OpenGLRenderer::GetTextSize(UUID fontHandle, const glm::vec2& offset, 
+		const float& scalar, const float& kerningOffset, const float& lineHeightOffset, const std::string& text, const glm::vec2& padding)
+	{
+		glm::vec2 ret = glm::vec2(1.0f);
+
+		Ref<Font> font = Project::GetAsset<Font>(fontHandle);
+		if (!font || !font->GetAtlasTexture() || !font->GetMSDFData())
+			return ret;
+
+		Ref<Texture2D> atlasTexture = font->GetAtlasTexture();
+		Ref<Font::MSDFData> msdfData = font->GetMSDFData();
+
+		const auto& metrics = msdfData->FontGeometry.getMetrics();
+		double fsScale = scalar / (metrics.ascenderY - metrics.descenderY);
+		double x = 0.0 + offset.x;
+		double y = 0.0 + offset.y;
+
+		float texelWidth = 1.0f / (float)atlasTexture->GetWidth();
+		float texelHeight = 1.0f / (float)atlasTexture->GetHeight();
+
+		for (size_t i = 0; i < text.size(); i++)
+		{
+			char character = text[i];
+			if (character == '\r')
+				continue;
+
+			if (character == '\n' || character == '\0')
+			{
+				x = 0.0;
+				y += fsScale * metrics.lineHeight + lineHeightOffset;
+				continue;
+			}
+			if (auto glyph = msdfData->FontGeometry.getGlyph(character))
+			{
+				if (!glyph)
+				{
+					if (character == '\t')
+						glyph = msdfData->FontGeometry.getGlyph(' ');
+					if (!glyph)
+						glyph = msdfData->FontGeometry.getGlyph('?');
+				}
+
+				double al, ab, ar, at;
+				glyph->getQuadAtlasBounds(al, ab, ar, at);
+				glm::vec2 texCoordMin((float)al, (float)ab);
+				glm::vec2 texCoordMax((float)ar, (float)at);
+
+				double pl, pb, pr, pt;
+				glyph->getQuadPlaneBounds(pl, pb, pr, pt);
+				glm::vec2 quadMin((float)pl, (float)pb);
+				glm::vec2 quadMax((float)pr, (float)pt);
+
+				quadMin *= fsScale;
+				quadMax *= fsScale;
+				quadMin += glm::vec2(x, y);
+				quadMax += glm::vec2(x, y);
+
+				texCoordMin *= glm::vec2(texelWidth, texelHeight);
+				texCoordMax *= glm::vec2(texelWidth, texelHeight);
+
+				if (i < text.size() - 1)
+				{
+					double advance = glyph->getAdvance();
+					char nextCharacter = text[i + 1];
+					msdfData->FontGeometry.getAdvance(advance, character, nextCharacter);
+
+					x += fsScale * advance + kerningOffset;
+				}
+			}
+		}
+
+		if (!text.empty())
+		{
+			if (x >= ret.x)
+				ret.x = (float)x + padding.x;
+			ret.y = y <= 0.0 ? 1.0f : (float)y + padding.y;
+		}
+		return ret;
+	}
+
 	void OpenGLRenderer::DrawIndices(Ref<VertexArray> vertexArray, uint32_t indexCount)
 	{
 		vertexArray->Bind();
@@ -333,16 +458,19 @@ namespace GE
 #pragma endregion
 
 #pragma region Sprite/Quad
-	void OpenGLRenderer::SetQuadData(const glm::mat4& transform, const uint32_t& textureIndex,
+
+	void OpenGLRenderer::SetQuadData(const glm::mat4& transform, const Pivot& pivot, const uint32_t& textureIndex,
 		const glm::vec2 textureCoords[4], const float& tilingFactor, const glm::vec4& color, const uint32_t& entityID)
 	{
-		if (transform == glm::mat4())
-			GE_CORE_WARN("");
-		constexpr size_t quadVertexCount = 4;
-
-		for (size_t i = 0; i < quadVertexCount; i++)
+		if (s_Data.quadData.PivotPoints.find(pivot) == s_Data.quadData.PivotPoints.end())
 		{
-			s_Data.quadData.VertexBufferPtr->Position = transform * s_Data.quadData.Vertices[i];
+			GE_CORE_ERROR("OpenGLRenderer::SetQuadData() Failed - Unknown Pivot");
+			return;
+		}
+		QuadData::Vertices& vertices = s_Data.quadData.PivotPoints.at(pivot);
+		for (int i = 0; i < 4; i++)
+		{
+			s_Data.quadData.VertexBufferPtr->Position = transform * vertices[i];
 			s_Data.quadData.VertexBufferPtr->Color = color;
 			s_Data.quadData.VertexBufferPtr->TextureCoord = textureCoords[i];
 			s_Data.quadData.VertexBufferPtr->TextureIndex = textureIndex;
@@ -350,7 +478,8 @@ namespace GE
 			s_Data.quadData.VertexBufferPtr->EntityID = (uint64_t)entityID;
 			s_Data.quadData.VertexBufferPtr++;
 		}
-
+	
+		// Update Index & Spawn Count
 		s_Data.quadData.IndexCount += 6;
 		s_Data.Stats.SpawnCount++;
 	}
@@ -363,7 +492,7 @@ namespace GE
 		s_Data.spriteData.TextureSlotIndex = 1;
 	}
 
-	void OpenGLRenderer::DrawQuadColor(const glm::mat4& transform, const glm::vec4& color, const uint32_t& entityID)
+	void OpenGLRenderer::DrawQuadColor(const glm::mat4& transform, const Pivot& pivot, const glm::vec4& color, const uint32_t& entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
@@ -374,10 +503,10 @@ namespace GE
 		const uint32_t textureIndex = 0; // White Texture
 		const float tilingFactor = 1.0f;
 
-		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, color, entityID);
+		SetQuadData(transform, pivot, textureIndex, textureCoords, tilingFactor, color, entityID);
 	}
 
-	void OpenGLRenderer::DrawQuadTexture(const glm::mat4& transform, Ref<Texture2D> texture, const float& tilingFactor, 
+	void OpenGLRenderer::DrawQuadTexture(const glm::mat4& transform, const Pivot& pivot, Ref<Texture2D> texture, const float& tilingFactor,
 		const glm::vec4& color, const uint32_t& entityID)
 	{
 		if (s_Data.quadData.IndexCount >= s_Data.MaxIndices)
@@ -395,7 +524,7 @@ namespace GE
 			}
 		}
 
-		if (textureIndex == 0)
+		if (textureIndex == 0 && texture)
 		{
 			if (s_Data.spriteData.TextureSlotIndex >= s_Data.spriteData.MaxTextureSlots)
 				Flush();
@@ -405,11 +534,11 @@ namespace GE
 			s_Data.spriteData.TextureSlotIndex++;
 		}
 
-		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, color, entityID);
+		SetQuadData(transform, pivot, textureIndex, textureCoords, tilingFactor, color, entityID);
 
 	}
 
-	void OpenGLRenderer::DrawQuadSubTexture(const glm::mat4& transform, Ref<SubTexture2D> subTexture, 
+	void OpenGLRenderer::DrawQuadSubTexture(const glm::mat4& transform, const Pivot& pivot, Ref<SubTexture2D> subTexture,
 		const float& tilingFactor, const glm::vec4& tintColor, const uint32_t& entityID)
 	{
 		GE_PROFILE_FUNCTION();
@@ -444,35 +573,69 @@ namespace GE
 			s_Data.spriteData.TextureSlotIndex++;
 		}
 
-		SetQuadData(transform, textureIndex, textureCoords, tilingFactor, tintColor, entityID);
+		SetQuadData(transform, pivot, textureIndex, textureCoords, tilingFactor, tintColor, entityID);
 	}
 
-	void OpenGLRenderer::DrawSprite(const glm::mat4& transform, const SpriteRendererComponent& component, const uint32_t& entityID)
+	void OpenGLRenderer::DrawSprite(const glm::mat4& transform, const Pivot& pivot, const SpriteRendererComponent& src, const uint32_t& entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
-		if (component.AssetHandle)
+		if (src.AssetHandle)
 		{
-			Ref<Texture2D> texture = Project::GetAsset<Texture2D>(component.AssetHandle);
-			DrawQuadTexture(transform, texture, component.TilingFactor, component.Color, entityID);
+			Ref<Texture2D> texture = Project::GetAsset<Texture2D>(src.AssetHandle);
+			DrawQuadTexture(transform, pivot, texture, src.TilingFactor, src.Color, entityID);
 		}
 		else
-			DrawQuadColor(transform, component.Color, entityID);
+			DrawQuadColor(transform, pivot, src.Color, entityID);
 
 	}
 
 #pragma endregion
 
 #pragma region Circle
-	void OpenGLRenderer::SetCircleData(const glm::mat4& transform, const glm::vec4& color, const float& radius, 
-		const float& thickness, const float& fade, const uint32_t& entityID)
+	void OpenGLRenderer::SetCircleData(const glm::mat4& transform, const Pivot& pivot, const float& radius, const float& thickness, const float& fade,
+		const glm::vec4& color, const uint32_t& entityID) 
 	{
-		constexpr size_t circleVertexCount = 4;
-
-		for (size_t i = 0; i < circleVertexCount; i++)
+		if (s_Data.quadData.PivotPoints.find(pivot) == s_Data.quadData.PivotPoints.end())
 		{
-			s_Data.circleData.VertexBufferPtr->Position = transform * s_Data.quadData.Vertices[i];
-			s_Data.circleData.VertexBufferPtr->LocalPosition = s_Data.quadData.Vertices[i] * 2.0f;
+			GE_CORE_ERROR("OpenGLRenderer::SetCircleData() Failed - Unknown Pivot");
+			return;
+		}
+		QuadData::Vertices& vertices = s_Data.quadData.PivotPoints.at(pivot);
+		for (int i = 0; i < 4; i++)
+		{
+			glm::vec3 pivotOffset = vertices[i];
+			switch (pivot)
+			{
+			case Pivot::Center: // Default
+				break;
+			case Pivot::LowerLeft:
+				pivotOffset -= glm::vec3(0.5f, 0.5f, 0.0f);
+				break;
+			case Pivot::TopLeft:
+				pivotOffset += glm::vec3(-0.5f, 0.5f, 0.0f);
+				break;
+			case Pivot::TopRight:
+				pivotOffset += glm::vec3(0.5f, 0.5f, 0.0f);
+				break;
+			case Pivot::LowerRight:
+				pivotOffset += glm::vec3(0.5f, -0.5f, 0.0f);
+				break;
+			case Pivot::MiddleRight:
+				pivotOffset += glm::vec3(0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::TopMiddle:
+				pivotOffset += glm::vec3(0.0f, 0.5f, 0.0f);
+				break;
+			case Pivot::MiddleLeft:
+				pivotOffset -= glm::vec3(0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::BottomMiddle:
+				pivotOffset -= glm::vec3(0.0f, 0.5f, 0.0f);
+				break;
+			}
+			s_Data.circleData.VertexBufferPtr->Position = transform * vertices[i];
+			s_Data.circleData.VertexBufferPtr->LocalPosition = pivotOffset * 2.0f;
 			s_Data.circleData.VertexBufferPtr->Color = color;
 			s_Data.circleData.VertexBufferPtr->Radius = radius;
 			s_Data.circleData.VertexBufferPtr->Thickness = thickness;
@@ -481,6 +644,7 @@ namespace GE
 			s_Data.circleData.VertexBufferPtr++;
 		}
 
+		// Update Index & Spawn Count
 		s_Data.circleData.IndexCount += 6;
 		s_Data.Stats.SpawnCount++;
 	}
@@ -492,20 +656,20 @@ namespace GE
 
 	}
 
-	void OpenGLRenderer::DrawCircle(const glm::mat4& transform, const glm::vec4& color, const float& radius, 
-		const float& thickness, const float& fade, const uint32_t& entityID)
+	void OpenGLRenderer::DrawCircle(const glm::mat4& transform, const Pivot& pivot, const float& radius, const float& thickness, const float& fade,
+		const glm::vec4& color, const uint32_t& entityID)
 	{
 		GE_PROFILE_FUNCTION();
 
 		if (s_Data.circleData.IndexCount >= s_Data.MaxIndices)
 			Flush();
 
-		SetCircleData(transform, color, radius, thickness, fade, entityID);
+		SetCircleData(transform, pivot, radius, thickness, fade, color, entityID);
 	}
 
-	void OpenGLRenderer::DrawCircle(const glm::mat4& transform, const CircleRendererComponent& component, const uint32_t& entityID)
+	void OpenGLRenderer::DrawCircle(const glm::mat4& transform, const Pivot& pivot, const CircleRendererComponent& crc, const uint32_t& entityID)
 	{
-		DrawCircle(transform, component.Color, component.Radius, component.Thickness, component.Fade, entityID);
+		DrawCircle(transform, pivot, crc.Radius, crc.Thickness, crc.Fade, crc.Color, entityID);
 	}
 
 #pragma endregion
@@ -545,13 +709,16 @@ namespace GE
 		SetLineData(initialPosition, finalPosition, color, entityID);
 	}
 
-	void OpenGLRenderer::DrawRectangle(const glm::mat4& transform, const glm::vec4& color, const uint32_t& entityID)
+	void OpenGLRenderer::DrawRectangle(const glm::mat4& transform, const Pivot& pivot, const glm::vec4& color, const uint32_t& entityID)
 	{
-		glm::vec3 lineVertices[4];
-		for (size_t i = 0; i < 4; i++)
+		if (s_Data.quadData.PivotPoints.find(pivot) == s_Data.quadData.PivotPoints.end())
 		{
-			lineVertices[i] = transform * s_Data.quadData.Vertices[i];
+			GE_CORE_ERROR("OpenGLRenderer::DrawRectangle() Failed - Unknown Pivot");
+			return;
 		}
+		QuadData::Vertices& vertices = s_Data.quadData.PivotPoints.at(pivot);
+		glm::vec3 lineVertices[4] = { transform * vertices[0], transform * vertices[1], 
+			transform * vertices[2], transform * vertices[3] };
 
 		DrawLine(lineVertices[0], lineVertices[1], color, entityID);
 		DrawLine(lineVertices[1], lineVertices[2], color, entityID);
@@ -604,26 +771,26 @@ namespace GE
 		s_Data.textData.VertexBufferPtr = s_Data.textData.VertexBufferBase;
 	}
 
-	void OpenGLRenderer::DrawString(const glm::mat4& transform, const std::string& text, Ref<Font> font, 
-		const glm::vec4& textColor, const glm::vec4& bgColor, const float& kerningOffset, const float& lineHeightOffset, const uint32_t& entityID)
+	void OpenGLRenderer::DrawString(const glm::mat4& transform, const std::string& text, Ref<Font> font,
+		const glm::vec4& textColor, const glm::vec4& bgColor, const float& kerningOffset, const float& lineHeightOffset,
+		const float& scalar, const glm::vec2& offset, const uint32_t& entityID)
 	{
+		if (!font || !font->GetMSDFData() || !font->GetAtlasTexture())
+			return;
+
 		if (s_Data.textData.IndexCount >= s_Data.MaxIndices)
 			Flush();
 
-		const auto& fontGeometry = font->GetMSDFData()->FontGeometry;
-		if (!&fontGeometry)
-			return;
-
 		Ref<Texture2D> atlas = font->GetAtlasTexture();
-		if (!atlas)
-			return;
-		
 		s_Data.textData.AtlasTexture = atlas;
+		float texelWidth = 1.0f / (float)s_Data.textData.AtlasTexture->GetWidth();
+		float texelHeight = 1.0f / (float)s_Data.textData.AtlasTexture->GetHeight();
 
-		const auto& metrics = fontGeometry.getMetrics();
-		double fsScale = 1.0 / (metrics.ascenderY - metrics.descenderY);
-		double x = 0.0;
-		double y = 0.0;
+		Ref<Font::MSDFData> msdfData = font->GetMSDFData();
+		const auto& metrics = msdfData->FontGeometry.getMetrics();
+		double fsScale = scalar / (metrics.ascenderY - metrics.descenderY);
+		double x = 0.0 + offset.x;
+		double y = 0.0 + offset.y;
 
 		for (size_t i = 0; i < text.size(); i++)
 		{
@@ -631,19 +798,19 @@ namespace GE
 			if (character == '\r')
 				continue;
 
-			if (character == '\n')
+			if (character == '\n' || character == '\0')
 			{
 				x = 0;
 				y -= fsScale * metrics.lineHeight + lineHeightOffset;
 				continue;
 			}
-			auto glyph = fontGeometry.getGlyph(character);
+			auto glyph = msdfData->FontGeometry.getGlyph(character);
 			if (!glyph)
 			{
 				if (character == '\t')
-					glyph = fontGeometry.getGlyph(' ');
+					glyph = msdfData->FontGeometry.getGlyph(' ');
 				if (!glyph)
-					glyph = fontGeometry.getGlyph('?');
+					glyph = msdfData->FontGeometry.getGlyph('?');
 				if (!glyph)
 				{
 					GE_CORE_ERROR("Could not get Text Glyph.");
@@ -666,8 +833,6 @@ namespace GE
 			quadMin += glm::vec2(x, y);
 			quadMax += glm::vec2(x, y);
 
-			float texelWidth = 1.0f / s_Data.textData.AtlasTexture->GetWidth();
-			float texelHeight = 1.0f / s_Data.textData.AtlasTexture->GetHeight();
 			texCoordMin *= glm::vec2(texelWidth, texelHeight);
 			texCoordMax *= glm::vec2(texelWidth, texelHeight);
 
@@ -677,26 +842,646 @@ namespace GE
 			{
 				double advance = glyph->getAdvance();
 				char nextCharacter = text[i + 1];
-				fontGeometry.getAdvance(advance, character, nextCharacter);
+				msdfData->FontGeometry.getAdvance(advance, character, nextCharacter);
 
 				x += fsScale * advance + kerningOffset;
 			}
 		}
-
 	}
 
-	void OpenGLRenderer::DrawString(const glm::mat4& transform, const TextRendererComponent& component, const uint32_t& entityID)
+	void OpenGLRenderer::DrawString(const glm::mat4& transform, const TextRendererComponent& trc, const uint32_t& entityID)
 	{
-		Ref<Font> font = Project::GetAsset<Font>(component.AssetHandle);
+		Ref<Font> font = Project::GetAsset<Font>(trc.AssetHandle);
 		if (font)
 		{
-			DrawString(transform, component.Text, font,
-				component.TextColor, component.BGColor,
-				component.KerningOffset, component.LineHeightOffset,
+			DrawString(transform, trc.Text, font, trc.TextColor, trc.BGColor,
+				trc.KerningOffset, trc.LineHeightOffset, trc.TextScalar, trc.TextOffset,
 				entityID);
 		}
 	}
 	
+#pragma endregion
+
+#pragma region GUI
+
+	/*
+	* Used by GUIComponents with Fonts(Button, InputField)
+	*/
+	static glm::vec3 GetFontOffset(const Pivot& pivot, const glm::vec2& scalar)
+	{
+		glm::vec3 ret = glm::vec3(0.0f);
+		switch (pivot)
+		{
+		case Pivot::Center:
+			ret = glm::vec3(-0.5f * scalar.x, 0.5f * scalar.y, 0.0f);
+			break;
+		case Pivot::LowerLeft:
+			ret = glm::vec3(0.0f, scalar.y, 0.0f);
+			break;
+		case Pivot::TopLeft:
+			break;
+		case Pivot::TopRight:
+			ret = glm::vec3(-scalar.x, 0.0f, 0.0f);
+			break;
+		case Pivot::LowerRight:
+			ret = glm::vec3(-scalar.x, scalar.y, 0.0f);
+			break;
+		case Pivot::MiddleRight:
+			ret = glm::vec3(-scalar.x, 0.5f * scalar.y, 0.0f);
+			break;
+		case Pivot::TopMiddle:
+			ret = glm::vec3(-0.5f * scalar.x, 0.0f, 0.0f);
+			break;
+		case Pivot::MiddleLeft:
+			ret = glm::vec3(0.0f, 0.5f * scalar.y, 0.0f);
+			break;
+		case Pivot::BottomMiddle:
+			ret = glm::vec3(-0.5f * scalar.x, scalar.y, 0.0f);
+			break;
+		default:
+			GE_CORE_WARN("OpenGLRenderer::GetFontOffset(const Pivot&, const glm::vec2&) - Unknown Pivot. Returning offset(0, 0).");
+			break;
+		}
+		return ret;
+	}
+	void OpenGLRenderer::DrawButton(const glm::mat4& transform, const Pivot& pivot, const GUIButtonComponent& guiBC, const GUIState& state, const uint32_t& entityID)
+	{
+		if (Ref<Texture2D> bgTexture = Project::GetAsset<Texture2D>(guiBC.BackgroundTextureHandle))
+			DrawQuadTexture(transform, pivot, bgTexture, 1.0f, guiBC.BackgroundColor, entityID);
+		else
+			DrawQuadColor(transform, pivot, guiBC.BackgroundColor, entityID);
+
+		Ref<Texture2D> currentTexture = nullptr;
+		glm::vec4 currentColor = glm::vec4(1.0f);
+		switch (state)
+		{
+		case GUIState::Disabled:
+		{
+			currentTexture = Project::GetAsset<Texture2D>(guiBC.DisabledTextureHandle);
+			currentColor = guiBC.DisabledColor;
+		}
+		break;
+		case GUIState::Enabled:
+		{
+			currentTexture = Project::GetAsset<Texture2D>(guiBC.EnabledTextureHandle);
+			currentColor = guiBC.EnabledColor;
+		}
+		break;
+		case GUIState::Hovered:
+		case GUIState::Focused:
+		{
+			currentTexture = Project::GetAsset<Texture2D>(guiBC.HoveredTextureHandle);
+			currentColor = guiBC.HoveredColor;
+		}
+		break;
+		case GUIState::Active:
+		case GUIState::Selected:
+		{
+			currentTexture = Project::GetAsset<Texture2D>(guiBC.SelectedTextureHandle);
+			currentColor = guiBC.SelectedColor;
+		}
+		break;
+		default:
+			GE_CORE_WARN("OpenGLRenderer::DrawButton() - Unknown GUIState.");
+			break;
+		}
+
+		if (currentTexture)
+			DrawQuadTexture(transform, pivot, currentTexture, 1.0f, currentColor, entityID);
+		else
+			DrawQuadColor(transform, pivot, currentColor, entityID);
+
+		if (Ref<Font> font = Project::GetAsset<Font>(guiBC.FontAssetHandle))
+		{
+			glm::vec3 offset = GetFontOffset(pivot, guiBC.TextSize);
+			glm::mat4 fontTransform = glm::translate(transform, offset);
+
+			DrawString(fontTransform, guiBC.Text, font, guiBC.TextColor, guiBC.BGColor,
+				guiBC.KerningOffset, guiBC.LineHeightOffset, guiBC.TextScalar, guiBC.TextStartingOffset, entityID);
+		}
+		if (Ref<Texture2D> fgTexture = Project::GetAsset<Texture2D>(guiBC.ForegroundTextureHandle))
+			DrawQuadTexture(transform, pivot, fgTexture, 1.0f, guiBC.ForegroundColor, entityID);
+		else
+			DrawQuadColor(transform, pivot, guiBC.ForegroundColor, entityID);
+
+	}
+
+	void OpenGLRenderer::DrawInputField(const glm::mat4& transform, const Pivot& pivot, const GUIInputFieldComponent& guiIFC, const GUIState& state, const uint32_t& entityID)
+	{
+		glm::mat4 bgTransform = glm::scale(transform, glm::vec3(glm::vec2(guiIFC.TextSize), 1.0f));
+		if (Ref<Texture2D> texture2D = Project::GetAsset<Texture2D>(guiIFC.BackgroundTextureHandle))
+			DrawQuadTexture(bgTransform, pivot, texture2D, 1.0f, guiIFC.BackgroundColor, entityID);
+		else
+			DrawQuadColor(bgTransform, pivot, guiIFC.BackgroundColor, entityID);
+
+		if (Ref<Font> font = Project::GetAsset<Font>(guiIFC.FontAssetHandle))
+		{
+			glm::vec3 offset = GetFontOffset(pivot, guiIFC.TextSize);
+			glm::mat4 fontTransform = glm::translate(transform, offset);
+			DrawString(fontTransform, guiIFC.Text, font, guiIFC.TextColor, guiIFC.BGColor,
+				guiIFC.KerningOffset, guiIFC.LineHeightOffset, guiIFC.TextScalar, guiIFC.TextStartingOffset, entityID);
+		}
+	}
+
+	static Pivot PivotFromSliderDirection(const SliderDirection& sliderDirection)
+	{
+		switch (sliderDirection)
+		{
+		case SliderDirection::Left:
+			return Pivot::MiddleRight;
+		case SliderDirection::Center:
+			return Pivot::Center;
+		case SliderDirection::Right:
+			return Pivot::MiddleLeft;
+		case SliderDirection::Top:
+			return Pivot::BottomMiddle;
+		case SliderDirection::Middle:
+			return Pivot::Center;
+		case SliderDirection::Bottom:
+			return Pivot::TopMiddle;
+		}
+		GE_CORE_WARN("OpenGLRenderer::PivotFromSliderDirection() - Unknown SliderDirection.\n\tReturning Center Pivot.");
+		return Pivot::Center;
+	}
+
+	/*
+	* Returns the offset of GUISliderComponent::Middleground based on the entitys pivot & the components pivot
+	* 
+	* @param pPivot : entity pivot
+	* @param cPivot : GUISliderComponent Pivot from PivotFromSliderDirection(const SliderDirection&, const HorizontalDirection& horizontalDirection, const VerticalDirection&)
+	*/
+	static const glm::vec3 GetSliderOffset(const Pivot& pPivot, const Pivot& cPivot)
+	{
+		glm::vec3 ret = glm::vec3(0.0f);
+		switch (pPivot)
+		{
+		case Pivot::Center:
+		{
+			switch (cPivot)
+			{
+			case Pivot::Center:
+				break;
+			case Pivot::LowerLeft:
+				ret = glm::vec3(0.5f, 0.5f, 0.0f);
+				break;
+			case Pivot::TopLeft:
+				ret = glm::vec3(0.5f, -0.5f, 0.0f);
+				break;
+			case Pivot::TopRight:
+				ret = glm::vec3(-0.5f, -0.5f, 0.0f);
+				break;
+			case Pivot::LowerRight:
+				ret = glm::vec3(-0.5f, 0.5f, 0.0f);
+				break;
+			case Pivot::MiddleRight:
+				ret = glm::vec3(-0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::TopMiddle:
+				ret = glm::vec3(0.0f, -0.5f, 0.0f);
+				break;
+			case Pivot::MiddleLeft:
+				ret = glm::vec3(0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::BottomMiddle:
+				ret = glm::vec3(0.0f, 0.5f, 0.0f);
+				break;
+			default:
+				break;
+			}
+		}
+		break;
+		case Pivot::LowerLeft:
+		{
+			switch (cPivot)
+			{
+			case Pivot::Center:
+				ret = glm::vec3(-0.5f, -0.5f, 0.0f);
+				break;
+			case Pivot::LowerLeft:
+				break;
+			case Pivot::TopLeft:
+				ret = glm::vec3(0.0f, -1.0f, 0.0f);
+				break;
+			case Pivot::TopRight:
+				ret = glm::vec3(-1.0f, -1.0f, 0.0f);
+				break;
+			case Pivot::LowerRight:
+				ret = glm::vec3(-1.0f, 0.0f, 0.0f);
+				break;
+			case Pivot::MiddleRight:
+				ret = glm::vec3(-1.0f, -0.5f, 0.0f);
+				break;
+			case Pivot::TopMiddle:
+				ret = glm::vec3(-0.5f, -1.0f, 0.0f);
+				break;
+			case Pivot::MiddleLeft:
+				ret = glm::vec3(0.0f, -0.5f, 0.0f);
+				break;
+			case Pivot::BottomMiddle:
+				ret = glm::vec3(-0.5f, 0.0f, 0.0f);
+				break;
+			default:
+				break;
+			}
+		}
+		break;
+		case Pivot::TopLeft:
+		{
+			switch (cPivot)
+			{
+			case Pivot::Center:
+				ret = glm::vec3(-0.5f, 0.5f, 0.0f);
+				break;
+			case Pivot::LowerLeft:
+				ret = glm::vec3(0.0f, 1.0f, 0.0f);
+				break;
+			case Pivot::TopLeft:
+				break;
+			case Pivot::TopRight:
+				ret = glm::vec3(-1.0f, 0.0f, 0.0f);
+				break;
+			case Pivot::LowerRight:
+				ret = glm::vec3(-1.0f, 1.0f, 0.0f);
+				break;
+			case Pivot::MiddleRight:
+				ret = glm::vec3(-1.0f, 0.5f, 0.0f);
+				break;
+			case Pivot::TopMiddle:
+				ret = glm::vec3(-0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::MiddleLeft:
+				ret = glm::vec3(0.0f, 0.5f, 0.0f);
+				break;
+			case Pivot::BottomMiddle:
+				ret = glm::vec3(-0.5f, 1.0f, 0.0f);
+				break;
+			default:
+				break;
+			}
+		}
+		break;
+		case Pivot::TopRight:
+		{
+			switch (cPivot)
+			{
+			case Pivot::Center:
+				ret = glm::vec3(0.5f, 0.5f, 0.0f);
+				break;
+			case Pivot::LowerLeft:
+				ret = glm::vec3(1.0f, 1.0f, 0.0f);
+				break;
+			case Pivot::TopLeft:
+				ret = glm::vec3(1.0f, 0.0f, 0.0f);
+				break;
+			case Pivot::TopRight:
+				break;
+			case Pivot::LowerRight:
+				ret = glm::vec3(0.0f, 1.0f, 0.0f);
+				break;
+			case Pivot::MiddleRight:
+				ret = glm::vec3(0.0f, 0.5f, 0.0f);
+				break;
+			case Pivot::TopMiddle:
+				ret = glm::vec3(0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::MiddleLeft:
+				ret = glm::vec3(1.0f, 0.5f, 0.0f);
+				break;
+			case Pivot::BottomMiddle:
+				ret = glm::vec3(0.5f, 1.0f, 0.0f);
+				break;
+			default:
+				break;
+			}
+		}
+		break;
+		case Pivot::LowerRight:
+		{
+			switch (cPivot)
+			{
+			case Pivot::Center:
+				ret = glm::vec3(0.5f, -0.5f, 0.0f);
+				break;
+			case Pivot::LowerLeft:
+				ret = glm::vec3(1.0f, 0.0f, 0.0f);
+				break;
+			case Pivot::TopLeft:
+				ret = glm::vec3(1.0f, -1.0f, 0.0f);
+				break;
+			case Pivot::TopRight:
+				ret = glm::vec3(0.0f, -1.0f, 0.0f);
+				break;
+			case Pivot::LowerRight:
+				break;
+			case Pivot::MiddleRight:
+				ret = glm::vec3(0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::TopMiddle:
+				ret = glm::vec3(0.5f, -1.0f, 0.0f);
+				break;
+			case Pivot::MiddleLeft:
+				ret = glm::vec3(1.0f, -0.5f, 0.0f);
+				break;
+			case Pivot::BottomMiddle:
+				ret = glm::vec3(0.5f, 0.0f, 0.0f);
+				break;
+
+			default:
+				break;
+			}
+		}
+		break;
+		case Pivot::MiddleRight:
+		{
+			switch (cPivot)
+			{
+			case Pivot::Center:
+				ret = glm::vec3(0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::LowerLeft:
+				ret = glm::vec3(1.0f, 0.5f, 0.0f);
+				break;
+			case Pivot::TopLeft:
+				ret = glm::vec3(1.0f, -0.5f, 0.0f);
+				break;
+			case Pivot::TopRight:
+				ret = glm::vec3(0.0f, -0.5f, 0.0f);
+				break;
+			case Pivot::LowerRight:
+				ret = glm::vec3(0.0f, 0.5f, 0.0f);
+				break;
+			case Pivot::MiddleRight:
+				break;
+			case Pivot::TopMiddle:
+				ret = glm::vec3(0.5f, -0.5f, 0.0f);
+				break;
+			case Pivot::MiddleLeft:
+				ret = glm::vec3(1.0f, 0.0f, 0.0f);
+				break;
+			case Pivot::BottomMiddle:
+				ret = glm::vec3(0.5f, 0.5f, 0.0f);
+				break;
+			default:
+				break;
+			}
+		}
+		break;
+		case Pivot::TopMiddle:
+		{
+			switch (cPivot)
+			{
+			case Pivot::Center:
+				ret = glm::vec3(0.0f, 0.5f, 0.0f);
+				break;
+			case Pivot::LowerLeft:
+				ret = glm::vec3(0.5f, 1.0f, 0.0f);
+				break;
+			case Pivot::TopLeft:
+				ret = glm::vec3(0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::TopRight:
+				ret = glm::vec3(-0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::LowerRight:
+				ret = glm::vec3(-0.5f, 1.0f, 0.0f);
+				break;
+			case Pivot::MiddleRight:
+				ret = glm::vec3(-0.5f, 0.5f, 0.0f);
+				break;
+			case Pivot::TopMiddle:
+				break;
+			case Pivot::MiddleLeft:
+				ret = glm::vec3(0.5f, 0.5f, 0.0f);
+				break;
+			case Pivot::BottomMiddle:
+				ret = glm::vec3(0.5f, 1.0f, 0.0f);
+				break;
+			default:
+				break;
+			}
+		}
+		break;
+		case Pivot::MiddleLeft:
+		{
+			switch (cPivot)
+			{
+			case Pivot::Center:
+				ret = glm::vec3(-0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::LowerLeft:
+				ret = glm::vec3(0.0f, 0.5f, 0.0f);
+				break;
+			case Pivot::TopLeft:
+				ret = glm::vec3(0.0f, -0.5f, 0.0f);
+				break;
+			case Pivot::TopRight:
+				ret = glm::vec3(-1.0f, -0.5f, 0.0f);
+				break;
+			case Pivot::LowerRight:
+				ret = glm::vec3(-1.0f, 0.5f, 0.0f);
+				break;
+			case Pivot::MiddleRight:
+				ret = glm::vec3(-1.0f, 0.5f, 0.0f);
+				break;
+			case Pivot::TopMiddle:
+				ret = glm::vec3(-0.5f, -0.5f, 0.0f);
+				break;
+			case Pivot::MiddleLeft:
+				break;
+			case Pivot::BottomMiddle:
+				ret = glm::vec3(0.5f, 0.5f, 0.0f);
+				break;
+			default:
+				break;
+			}
+		}
+		break;
+		case Pivot::BottomMiddle:
+		{
+			switch (cPivot)
+			{
+			case Pivot::Center:
+				ret = glm::vec3(0.0f, -0.5f, 0.0f);
+				break;
+			case Pivot::LowerLeft:
+				ret = glm::vec3(0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::TopLeft:
+				ret = glm::vec3(0.5f, -1.0f, 0.0f);
+				break;
+			case Pivot::TopRight:
+				ret = glm::vec3(-0.5f, -0.5f, 0.0f);
+				break;
+			case Pivot::LowerRight:
+				ret = glm::vec3(-0.5f, 0.0f, 0.0f);
+				break;
+			case Pivot::MiddleRight:
+				ret = glm::vec3(-0.5f, -0.5f, 0.0f);
+				break;
+			case Pivot::TopMiddle:
+				ret = glm::vec3(0.0f, -1.0f, 0.0f);
+				break;
+			case Pivot::MiddleLeft:
+				ret = glm::vec3(0.5f, -0.5f, 0.0f);
+				break;
+			case Pivot::BottomMiddle:
+				break;
+			default:
+				break;
+			}
+		}
+		break;
+		default:
+			break;
+		}
+		return ret;
+	}
+	static const glm::vec3 GetSliderScalar(const SliderDirection& direction, const float& current)
+	{
+		glm::vec3 ret = glm::vec3(0.0f);
+		float tempCurrent = current;
+		if (tempCurrent > 1.0f)
+			tempCurrent = 1.0f;
+		else if (tempCurrent < 0.0f)
+			tempCurrent = 0.0f;
+
+		switch (direction)
+		{
+		case SliderDirection::Left:
+		case SliderDirection::Center:
+		case SliderDirection::Right:
+			ret = glm::vec3(1.0f - tempCurrent, 0.0f, 0.0f);
+			break;
+		case SliderDirection::Top:
+		case SliderDirection::Middle:
+		case SliderDirection::Bottom:
+			ret = glm::vec3(0.0f, 1.0f - tempCurrent, 0.0f);
+			break;
+		default:
+			break;
+		}
+		return ret;
+	}
+	void OpenGLRenderer::DrawSlider(const glm::mat4& transform, const Pivot& pivot, const GUISliderComponent& guiSC, const GUIState& state, const uint32_t& entityID)
+	{
+		// Background
+		if (Ref<Texture2D> texture2D = Project::GetAsset<Texture2D>(guiSC.BackgroundTextureHandle))
+			DrawQuadTexture(transform, pivot, texture2D, 1.0f, guiSC.BackgroundColor, entityID);
+		else
+			DrawQuadColor(transform, pivot, guiSC.BackgroundColor, entityID);
+
+		// Middleground
+		if (guiSC.Fill > 0.0f)
+		{
+			Pivot mgPivot = PivotFromSliderDirection(guiSC.Direction);
+			glm::vec3 pivotOffset = GetSliderOffset(pivot, mgPivot);
+			glm::vec3 mgScalar = GetSliderScalar(guiSC.Direction, guiSC.Fill);
+			glm::mat4 mgTransformOffset = glm::translate(s_Data.IdentityMat4, pivotOffset) * glm::scale(s_Data.IdentityMat4, mgScalar);
+			
+			Ref<Texture2D> currentTexture = nullptr;
+			glm::vec4 currentColor = glm::vec4(1.0f);
+			switch (state)
+			{
+			case GUIState::Disabled:
+			{
+				currentTexture = Project::GetAsset<Texture2D>(guiSC.DisabledTextureHandle);
+				currentColor = guiSC.DisabledColor;
+			}
+			break;
+			case GUIState::Enabled:
+			{
+				currentTexture = Project::GetAsset<Texture2D>(guiSC.EnabledTextureHandle);
+				currentColor = guiSC.EnabledColor;
+			}
+			break;
+			case GUIState::Hovered:
+			case GUIState::Focused:
+			{
+				currentTexture = Project::GetAsset<Texture2D>(guiSC.HoveredTextureHandle);
+				currentColor = guiSC.HoveredColor;
+			}
+			break;
+			case GUIState::Active:
+			case GUIState::Selected:
+			{
+				currentTexture = Project::GetAsset<Texture2D>(guiSC.SelectedTextureHandle);
+				currentColor = guiSC.SelectedColor;
+			}
+			break;
+			default:
+				GE_CORE_WARN("OpenGLRenderer::DrawCheckbox() - Unknown GUIState.");
+				break;
+			}
+
+			if (currentTexture)
+				DrawQuadTexture(transform - mgTransformOffset, mgPivot, currentTexture, 1.0f, currentColor, entityID);
+			else
+				DrawQuadColor(transform - mgTransformOffset, mgPivot, currentColor, entityID);
+		}
+
+		// Foreground
+		if (Ref<Texture2D> texture2D = Project::GetAsset<Texture2D>(guiSC.ForegroundTextureHandle))
+			DrawQuadTexture(transform, pivot, texture2D, 1.0f, guiSC.ForegroundColor, entityID);
+		else
+			DrawQuadColor(transform, pivot, guiSC.ForegroundColor, entityID);
+
+	}
+
+	void OpenGLRenderer::DrawCheckbox(const glm::mat4& transform, const Pivot& pivot, const GUICheckboxComponent& guiCB, const GUIState& state, const uint32_t& entityID)
+	{
+		// Background
+		if (Ref<Texture2D> bgTexture = Project::GetAsset<Texture2D>(guiCB.BackgroundTextureHandle))
+			DrawQuadTexture(transform, pivot, bgTexture, 1.0f, guiCB.BackgroundColor, entityID);
+		else
+			DrawQuadColor(transform, pivot, guiCB.BackgroundColor, entityID);
+		
+		Ref<Texture2D> currentTexture = nullptr;
+		glm::vec4 currentColor = glm::vec4(1.0f);
+		switch (state)
+		{
+		case GUIState::Disabled:
+		{
+			currentTexture = Project::GetAsset<Texture2D>(guiCB.DisabledTextureHandle);
+			currentColor = guiCB.DisabledColor;
+		}
+		break;
+		case GUIState::Enabled:
+		{
+			currentTexture = Project::GetAsset<Texture2D>(guiCB.EnabledTextureHandle);
+			currentColor = guiCB.EnabledColor;
+		}
+		break;
+		case GUIState::Hovered:
+		case GUIState::Focused:
+		{
+			currentTexture = Project::GetAsset<Texture2D>(guiCB.HoveredTextureHandle);
+			currentColor = guiCB.HoveredColor;
+		}
+		break;
+		case GUIState::Active:
+		case GUIState::Selected:
+		{
+			currentTexture = Project::GetAsset<Texture2D>(guiCB.SelectedTextureHandle);
+			currentColor = guiCB.SelectedColor;
+		}
+		break;
+		default:
+			GE_CORE_WARN("OpenGLRenderer::DrawCheckbox() - Unknown GUIState.");
+			break;
+		}
+
+		if (currentTexture)
+			DrawQuadTexture(transform, pivot, currentTexture, 1.0f, currentColor, entityID);
+		else
+			DrawQuadColor(transform, pivot, currentColor, entityID);
+
+		// Foreground
+		if (Ref<Texture2D> fgTexture = Project::GetAsset<Texture2D>(guiCB.ForegroundTextureHandle))
+			DrawQuadTexture(transform, pivot, fgTexture, 1.0f, guiCB.ForegroundColor, entityID);
+		else
+			DrawQuadColor(transform, pivot, guiCB.ForegroundColor, entityID);
+	
+	}
 #pragma endregion
 
 #pragma endregion

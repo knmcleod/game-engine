@@ -131,6 +131,7 @@ namespace GE
 
 	void OpenGLFramebuffer::Resize(uint32_t width, uint32_t height, const glm::vec2& min, const glm::vec2& max)
 	{	
+		Renderer::ResizeViewport(0, 0, width, height);
 		m_Config.SetViewport(width, height);
 		m_Config.SetBounds(min, max);
 

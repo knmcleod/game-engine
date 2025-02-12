@@ -81,24 +81,30 @@ namespace GE
 		if (!projectData)
 			return false;
 
-		m_Project->m_Config.Name = projectData["Name"].as<std::string>();
-		GE_CORE_TRACE("Deserializing Project\n\tFilePath: {0}\n\tName: {1}", filePath.string(), m_Project->m_Config.Name);
+		if(auto& name = projectData["Name"])
+			m_Project->m_Config.Name = name.as<std::string>();
+		GE_CORE_TRACE("Deserializing Project\n\tFilePath: {0}\n\tName: {1}", 
+			filePath.string(), m_Project->m_Config.Name);
 
-		m_Project->m_Config.Width = projectData["Width"].as<uint32_t>();
-		m_Project->m_Config.Height = projectData["Height"].as<uint32_t>();
-		// UUID. See AssetManager
-		m_Project->m_Config.SceneHandle = projectData["SceneHandle"].as<uint64_t>();
-		// Example = projects/demo
-		m_Project->m_Config.ProjectPath = projectData["ProjectPath"].as<std::string>(); // equivalent to filePath.parent_path()
-		// Example = assets
-		m_Project->m_Config.AssetPath = projectData["AssetPath"].as<std::string>();
-		// Example = scripts/src, relative to AssetPath
-		m_Project->m_Config.ScriptAssetPath = projectData["ScriptAssetPath"].as<std::string>();
+		if(auto& width = projectData["Width"])
+			m_Project->m_Config.Width = width.as<uint32_t>();
+		if (auto& height = projectData["Height"])
+			m_Project->m_Config.Height = height.as<uint32_t>();
 
-		// Example = scripts/bin/GE-ScriptCore.dll
-		m_Project->m_Config.ScriptCorePath = projectData["ScriptCorePath"].as<std::string>();
-		// Example = scripts/bin/projName.dll
-		m_Project->m_Config.ScriptAppPath = projectData["ScriptAppPath"].as<std::string>();
+		if(auto& sceneHandle = projectData["SceneHandle"]) // UUID. See AssetManager
+			m_Project->m_Config.SceneHandle = sceneHandle.as<uint64_t>();
+
+		if (auto& projectPath = projectData["ProjectPath"]) // Example = projects/demo
+			m_Project->m_Config.ProjectPath = projectPath.as<std::string>(); // equivalent to filePath.parent_path()
+		if (auto& assetPath = projectData["AssetPath"]) // Example = assets
+			m_Project->m_Config.AssetPath = assetPath.as<std::string>();
+		if (auto& scriptAssetPath = projectData["ScriptAssetPath"]) // Example = scripts/src, relative to AssetPath
+			m_Project->m_Config.ScriptAssetPath = scriptAssetPath.as<std::string>();
+
+		if(auto& scriptCorePath = projectData["ScriptCorePath"]) // Example = scripts/bin/GE-ScriptCore.dll
+			m_Project->m_Config.ScriptCorePath = scriptCorePath.as<std::string>();
+		if (auto& scriptAppPath = projectData["ScriptAppPath"]) // Example = scripts/bin/projName.dll
+			m_Project->m_Config.ScriptAppPath = scriptAppPath.as<std::string>();
 
 		return true;
 	}

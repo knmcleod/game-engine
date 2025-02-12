@@ -2,48 +2,53 @@
 
 #include "Layer.h"
 
-#include <vector>
+#include <map>
 
 namespace GE
 {
 	class LayerStack
 	{
 		friend class Application;
+		using Layers = std::map<uint64_t, Ref<Layer>>;
 	public:
-		LayerStack() = default;
+		LayerStack();
 		virtual ~LayerStack();
-
-		// Inserts Layer at next Index & sets Layer ID
-		virtual bool InsertLayer(Ref<Layer> layer);
-		// Sets Layers[layerID] = nullptr && layerID = 0
-		virtual bool RemoveLayer(Ref<Layer> layer);
-
-		/*
-		* Returns Layer at index if exists, 
-		*	otherwise returns nullptr 
-		* @param index : index in stack
-		*/
-		Ref<Layer> GetLayerAtIndex(uint64_t index) const
-		{ 
-			if (index >= p_Layers.size())
-				return nullptr;
-			return p_Layers.at(index);
-		}
 
 		bool LayerExists(uint64_t index)
 		{
-			for (auto& layer : p_Layers)
-			{
-				if (layer->GetID() == index)
-					return true;
-			}
-			return false;
+			return p_Layers.find(index) != p_Layers.end();
 		}
 
+		/* 
+		* Inserts Layer at next Index & sets Layer::ID
+		*/
+		virtual bool AddLayer(Ref<Layer> layer);
+		/*
+		* Inserts Layer at Layer::ID. 
+		* Resizes & moves preexisting Layers as needed.
+		* Layer::ID will be updated
+		*/
+		virtual bool InsertLayer(Ref<Layer> layer);
+		/*
+		* Returns true if id is found & removed.
+		* Will set Layer::ID = 0.
+		*/
+		virtual bool RemoveLayer(const uint64_t& id);
+
 	protected:
-		std::vector<Ref<Layer>>::iterator begin() { return p_Layers.begin(); }
-		std::vector<Ref<Layer>>::iterator end() { return p_Layers.end(); }
+		/*
+		* Returns Layer at index, even if index isn't initialized.
+		* Can return nullptr
+		* @param index : position
+		*/
+		Ref<Layer> GetLayerAtIndex(uint64_t index)
+		{
+			return p_Layers[index];
+		}
+
+		Layers::iterator begin() { return p_Layers.begin(); }
+		Layers::iterator end() { return p_Layers.end(); }
 	protected:
-		std::vector<Ref<Layer>> p_Layers = std::vector<Ref<Layer>>();
+		Layers p_Layers = Layers();
 	};
 }

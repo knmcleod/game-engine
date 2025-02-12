@@ -2,6 +2,9 @@
 
 #include "Layer.h"
 
+#include "GE/Asset/Assets/Scene/Entity.h"
+#include "GE/Asset/Assets/Scene/Scene.h"
+
 #include "GE/Core/Application/Application.h"
 #include "GE/Core/Input/Input.h"
 
@@ -10,10 +13,10 @@
 
 namespace GE
 {
-	Layer::Layer(uint64_t id, bool isBase)
+	Layer::Layer(uint64_t id)
 	{
 		GE_PROFILE_FUNCTION();
-		p_Config = Config(id, isBase);
+		p_Config = Config(id);
 	}
 
 	Layer::~Layer()
@@ -21,25 +24,58 @@ namespace GE
 		GE_PROFILE_FUNCTION();
 	}
 
-	bool Layer::Validate(Entity entity) const
+	void Layer::RenderEntity(Ref<Scene> scene, Entity entity, glm::vec3& translationOffset, glm::vec3& rotationOffset)
 	{
-		if (entity && entity.HasComponent<RenderComponent>())
+		GE_PROFILE_FUNCTION();
+		if (!scene || !entity)
+			return; 
+
+		auto& idc = scene->GetComponent<IDComponent>(entity);
+		auto& ac = scene->GetComponent<ActiveComponent>(entity);
+		auto& rc = scene->GetComponent<RenderComponent>(entity);
+		if (rc.Rendered || (!ac.Active || ac.Hidden) || !rc.IDHandled(p_Config.ID))
+			return; // Entity; 1: Shouldn't be rendered. 2: Should be active && visible. 3: Should handle current LayerID
+
+		auto& trsc = scene->GetComponent<TransformComponent>(entity);
+
+		// First, render self/parent
+		if (scene->HasComponent<SpriteRendererComponent>(entity))
 		{
-			// Validate that layer should handle Entity
-			RenderComponent rc = entity.GetComponent<RenderComponent>();
-			for (uint64_t id : rc.LayerIDs)
+			auto& src = scene->GetComponent<SpriteRendererComponent>(entity);
+			Renderer::Draw(trsc.GetTransform(translationOffset, rotationOffset), trsc.GetPivot(), src, entity);
+			rc.Rendered = true;
+		}
+
+		if (scene->HasComponent<CircleRendererComponent>(entity))
+		{
+			auto& crc = scene->GetComponent<CircleRendererComponent>(entity);
+			Renderer::Draw(trsc.GetTransform(translationOffset, rotationOffset), trsc.GetPivot(), crc, entity);
+			rc.Rendered = true;
+		}
+
+		if (scene->HasComponent<TextRendererComponent>(entity))
+		{
+			auto& trc = scene->GetComponent<TextRendererComponent>(entity);
+			Renderer::Draw(trsc.GetTransform(translationOffset, rotationOffset), trc, entity);
+			rc.Rendered = true;
+		}
+
+		// Then, render children offset from self/parent
+		auto& rsc = scene->GetComponent<RelationshipComponent>(entity);
+		if (!rsc.GetChildren().empty())
+		{
+			translationOffset += trsc.Translation;
+			rotationOffset += trsc.Rotation;
+			for (const UUID& childID : rsc.GetChildren())
 			{
-				if (id == p_Config.ID)
-				{
-					// Entity validated
-					return true;
-				}
+				Entity childEntity = scene->GetEntityByUUID(childID);
+				RenderEntity(scene, childEntity, translationOffset, rotationOffset);
 			}
 		}
-		return false;
+
 	}
 
-	void Layer::OnAttach()
+	void Layer::OnAttach(Ref<Scene> scene)
 	{
 		GE_PROFILE_FUNCTION();
 
@@ -51,65 +87,45 @@ namespace GE
 
 	}
 
-	void Layer::OnUpdate(Timestep ts)
+	void Layer::OnUpdate(Ref<Scene> scene, Timestep ts)
 	{
 		GE_PROFILE_FUNCTION();
 
-		Ref<Scene> runtimeScene = Project::GetRuntimeScene();
-		if (runtimeScene && !runtimeScene->IsStopped())
+		if (scene && !scene->IsStopped())
 		{
-			if (Entity entity = runtimeScene->GetPrimaryCameraEntity(p_Config.ID))
+			if (Entity entity = scene->GetPrimaryCameraEntity(p_Config.ID))
 			{
-				Camera* camera = &entity.GetComponent<CameraComponent>().ActiveCamera;
-				OnRender(camera);
+				auto& cc = scene->GetComponent<CameraComponent>(entity);
+				cc.OnUpdate(ts);
+				const Camera* camera = &cc.ActiveCamera;
+				OnRender(scene, camera);
 			}
 		}
 	}
 
-	void Layer::OnRender(Camera* camera)
+	void Layer::OnRender(Ref<Scene> scene, const Camera*& camera)
 	{
-		GE_PROFILE_SCOPE("Layer::OnRender()");
+		GE_PROFILE_FUNCTION();
 
-		if (Ref<Scene> runtimeScene = Project::GetRuntimeScene())
+		if (scene && camera)
 		{
-			if (camera)
+			Renderer::Open(camera);
+
+			std::vector<Entity> entities = scene->GetAllRenderEntities(p_Config.ID);
+			for (Entity entity : entities)
 			{
-				Renderer::Open(*camera);
-
-				std::vector<Entity> entities = runtimeScene->GetAllEntitiesWith<RenderComponent>();
-				for (Entity entity : entities)
+				auto& idc = scene->GetComponent<IDComponent>(entity);
+				auto& rsc = scene->GetComponent<RelationshipComponent>(entity);
+				if (idc.ID == rsc.GetParent()) // Is Parent
 				{
-					auto& rc = entity.GetComponent<RenderComponent>();
-					if (rc.Rendered || !Validate(entity))
-						continue;
-					rc.Rendered = true;
-
-					auto& trsc = entity.GetComponent<TransformComponent>();
-
-					if (entity.HasComponent<SpriteRendererComponent>())
-					{
-						auto& src = entity.GetComponent<SpriteRendererComponent>();
-						Renderer::DrawTexture(trsc.GetTransform(), src, entity);
-					}
-
-					if (entity.HasComponent<CircleRendererComponent>())
-					{
-						auto& crc = entity.GetComponent<CircleRendererComponent>();
-						Renderer::DrawSphere(trsc.GetTransform(), crc, entity);
-					}
-
-					if (entity.HasComponent<TextRendererComponent>())
-					{
-						auto& trc = entity.GetComponent<TextRendererComponent>();
-						Renderer::DrawTxt(trsc.GetTransform(), trc, entity);
-					}
-			
+					Layer::RenderEntity(scene, entity, glm::vec3(0.0f), glm::vec3(0.0f));
 				}
-				entities.clear();
-				entities = std::vector<Entity>();
-
-				Renderer::Close();
 			}
+
+			entities.clear();
+			entities = std::vector<Entity>();
+
+			Renderer::Close();
 		}
 	}
 
@@ -117,35 +133,28 @@ namespace GE
 	{
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<KeyPressedEvent>(GE_BIND_EVENT_FN(OnKeyPressed));
-		dispatcher.Dispatch<MouseButtonPressedEvent>(GE_BIND_EVENT_FN(OnMousePressed));
+		dispatcher.Dispatch<MousePressedEvent>(GE_BIND_EVENT_FN(OnMousePressed));
+		dispatcher.Dispatch<MouseMovedEvent>(GE_BIND_EVENT_FN(OnMouseMoved));
+		dispatcher.Dispatch<MouseScrolledEvent>(GE_BIND_EVENT_FN(OnMouseScrolled));
+
 	}
 
 	bool Layer::OnKeyPressed(KeyPressedEvent& e)
 	{
-		switch (e.GetKeyCode())
-		{
-		case Input::KEY_0:
-			break;
-		default:
-			break;
-		}
 		return false;
 	}
 
-	bool Layer::OnMousePressed(MouseButtonPressedEvent& e)
+	bool Layer::OnMousePressed(MousePressedEvent& e)
+	{		
+		return false;
+	}
+	bool Layer::OnMouseMoved(MouseMovedEvent& e)
 	{
-		switch (e.GetMouseButton())
-		{
-		case Input::MouseCode::MOUSE_BUTTON_1:
-		{
-			Entity hoveredEntity = Application::GetHoveredEntity();
-			if(Validate(hoveredEntity))
-				return Project::SceneEvent(e, hoveredEntity);
-		}
-			break;
-		default:
-			break;
-		}
+		return false;
+	}
+
+	bool Layer::OnMouseScrolled(MouseScrolledEvent& e)
+	{
 		return false;
 	}
 

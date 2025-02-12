@@ -4,7 +4,10 @@
 
 #include "GE/Asset/Assets/Scene/Components/Components.h"
 
+#include "GE/Core/Application/Application.h"
 #include "GE/Core/Input/Input.h"
+
+#include "GE/Project/Project.h"
 
 namespace GE
 {
@@ -18,26 +21,28 @@ namespace GE
 
 	void CameraController::OnUpdate(Timestep timestep)
 	{
-		auto& translation = GetComponent<TransformComponent>().Translation;
-		float speed = 10.0f;
-		//	Camera Movement
-		if (Input::IsKeyPressed(Input::KEY_A))
+		if (Ref<Scene> runtimeScene = Project::GetRuntimeScene())
 		{
-			translation.x -= speed * timestep;
-		}
-		else if (Input::IsKeyPressed(Input::KEY_D))
-		{
-			translation.x += speed * timestep;
-		}
+			auto& translation = runtimeScene->GetComponent<TransformComponent>(*this).Translation;
+			float speed = 10.0f;
+			//	Camera Movement
+			if (Application::IsKeyPressed(Input::KEY_A))
+			{
+				translation.x -= speed * timestep;
+			}
+			else if (Application::IsKeyPressed(Input::KEY_D))
+			{
+				translation.x += speed * timestep;
+			}
 
-		if (Input::IsKeyPressed(Input::KEY_W))
-		{
-			translation.y += speed * timestep;
+			if (Application::IsKeyPressed(Input::KEY_W))
+			{
+				translation.y += speed * timestep;
+			}
+			else if (Application::IsKeyPressed(Input::KEY_S))
+			{
+				translation.y -= speed * timestep;
+			}
 		}
-		else if (Input::IsKeyPressed(Input::KEY_S))
-		{
-			translation.y -= speed * timestep;
-		}
-
 	}
 }

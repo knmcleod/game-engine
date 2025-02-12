@@ -17,17 +17,18 @@ namespace GE
 		void OnEvent(Event& e) override;
 
 		inline const float& GetDistance() const { return m_Distance; }
-
+		inline const float& GetRotationSpeed() const { return m_RotationSpeed; }
 	private:
 		inline void CalculatePosition() override { p_Position = m_FocalPoint - GetDepth() * m_Distance; }
 
+		void UpdateViewProjection() override;
+
+		float GetZoomSpeed() const;
 		glm::vec3 GetVertical() const;
 		glm::vec3 GetHorizontal() const;
 		glm::vec3 GetDepth() const;
 
 		std::pair<float, float> GetPanSpeed() const;
-		float GetRotationSpeed() const { return m_RotationSpeed; }
-		float GetZoomSpeed() const;
 
 		void MousePan(const glm::vec2& delta);
 		void MouseOrbit(const glm::vec2& delta);
